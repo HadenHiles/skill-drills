@@ -29,6 +29,13 @@
             {
               "client_id": "1092639561657-3f6ufbn3arbv5l55ejln96ta0bh6gbbq.apps.googleusercontent.com",
               "client_type": 3
+            },
+            {
+              "client_id": "1092639561657-op99ucesokvmb8srqr6tqblkdibjiltc.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.skilldrills"
+              }
             }
           ]
         }
@@ -82,6 +89,13 @@
             {
               "client_id": "1092639561657-3f6ufbn3arbv5l55ejln96ta0bh6gbbq.apps.googleusercontent.com",
               "client_type": 3
+            },
+            {
+              "client_id": "1092639561657-op99ucesokvmb8srqr6tqblkdibjiltc.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.skilldrills"
+              }
             }
           ]
         }
