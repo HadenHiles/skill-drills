@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class Routines extends StatefulWidget {
-  const Routines({Key? key}) : super(key: key);
+  const Routines({super.key});
 
   @override
   _RoutinesState createState() => _RoutinesState();

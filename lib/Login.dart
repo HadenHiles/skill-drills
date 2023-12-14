@@ -6,7 +6,7 @@ import 'package:skilldrills/services/auth.dart';
 import 'Nav.dart';
 
 class Login extends StatefulWidget {
-  const Login({Key? key}) : super(key: key);
+  const Login({super.key});
 
   // This widget is the home page of your application. It is stateful, meaning
   // that it has a State object (defined below) that contains fields that affect
@@ -49,7 +49,7 @@ class _LoginState extends State<Login> {
   Widget build(BuildContext context) {
     //If user is signed in
     if (_signedIn) {
-      return Nav();
+      return const Nav();
     }
 
     return Scaffold(

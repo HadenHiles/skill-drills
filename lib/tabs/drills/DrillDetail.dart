@@ -16,7 +16,7 @@ import 'package:skilldrills/services/utility.dart';
 final FirebaseAuth auth = FirebaseAuth.instance;
 
 class DrillDetail extends StatefulWidget {
-  const DrillDetail({Key? key, this.drill}) : super(key: key);
+  const DrillDetail({super.key, this.drill});
 
   final Drill? drill;
 
@@ -51,7 +51,7 @@ class _DrillDetailState extends State<DrillDetail> {
     // Load the activities first
     FirebaseFirestore.instance.collection('activities').doc(auth.currentUser!.uid).collection('activities').get().then((snapshot) async {
       List<Activity> activities = [];
-      if (snapshot.docs.length > 0) {
+      if (snapshot.docs.isNotEmpty) {
         await Future.forEach(snapshot.docs, (doc) async {
           Activity a = Activity.fromSnapshot(doc);
           await _getCategories(doc.reference).then((categories) {
@@ -88,10 +88,10 @@ class _DrillDetailState extends State<DrillDetail> {
     // Load the drill measurements
     FirebaseFirestore.instance.collection('drills').doc(auth.currentUser!.uid).collection('drills').doc(widget.drill!.reference!.id).collection('measurements').orderBy('order').get().then((snapshot) async {
       List<Measurement> measures = [];
-      if (snapshot.docs.length > 0) {
-        snapshot.docs.forEach((doc) {
+      if (snapshot.docs.isNotEmpty) {
+        for (var doc in snapshot.docs) {
           measures.add(Measurement.fromSnapshot(doc));
-        });
+        }
 
         setState(() {
           _drill!.measurements = measures;
@@ -105,7 +105,7 @@ class _DrillDetailState extends State<DrillDetail> {
     // Load the drill types
     FirebaseFirestore.instance.collection('drill_types').doc(auth.currentUser!.uid).collection('drill_types').orderBy('order').get().then((snapshot) async {
       List<DrillType> drillTypes = [];
-      if (snapshot.docs.length > 0) {
+      if (snapshot.docs.isNotEmpty) {
         await Future.forEach(snapshot.docs, (doc) async {
           DrillType dt = DrillType.fromSnapshot(doc);
           await _getMeasurements(doc.reference).then((measurements) {
@@ -196,19 +196,19 @@ class _DrillDetailState extends State<DrillDetail> {
                       if (!hasErrors) {
                         if (_formKey.currentState!.validate()) {
                           FirebaseFirestore.instance.collection('drills').doc(auth.currentUser!.uid).collection('drills').doc(widget.drill!.reference!.id).collection('measurements').get().then((snapshot) {
-                            snapshot.docs.forEach((doc) {
+                            for (var doc in snapshot.docs) {
                               doc.reference.delete();
-                            });
+                            }
 
-                            _drillType!.measurements!.forEach((m) {
+                            for (var m in _drillType!.measurements!) {
                               FirebaseFirestore.instance.collection('drills').doc(auth.currentUser!.uid).collection('drills').doc(widget.drill!.reference!.id).collection('measurements').doc().set(m.toMap());
-                            });
+                            }
                           });
 
                           FirebaseFirestore.instance.collection('drills').doc(auth.currentUser!.uid).collection('drills').doc(widget.drill!.reference!.id).collection('categories').get().then((snapshot) {
-                            snapshot.docs.forEach((doc) {
+                            for (var doc in snapshot.docs) {
                               doc.reference.delete();
-                            });
+                            }
 
                             for (var c in _selectedCategories) {
                               FirebaseFirestore.instance.collection('drills').doc(auth.currentUser!.uid).collection('drills').doc(widget.drill!.reference!.id).collection('categories').doc().set(c.toMap());
@@ -245,7 +245,7 @@ class _DrillDetailState extends State<DrillDetail> {
 
                           newDoc.set(newDrill.toMap());
 
-                          _drillType!.measurements!.forEach((m) {
+                          for (var m in _drillType!.measurements!) {
                             if (m.value is Duration) {
                               m.value = (m.value as Duration).inSeconds;
                             }
@@ -254,7 +254,7 @@ class _DrillDetailState extends State<DrillDetail> {
                             }
 
                             newDoc.collection('measurements').doc().set(m.toMap());
-                          });
+                          }
 
                           for (var c in _selectedCategories) {
                             newDoc.collection('categories').doc().set(c.toMap());
@@ -713,18 +713,18 @@ class _DrillDetailState extends State<DrillDetail> {
   Future<List<Category>> _getCategories(DocumentReference aDoc) async {
     List<Category> categories = [];
     return await aDoc.collection('categories').get().then((catSnapshot) async {
-      catSnapshot.docs.forEach((cDoc) {
+      for (var cDoc in catSnapshot.docs) {
         categories.add(Category.fromSnapshot(cDoc));
-      });
+      }
     }).then((_) => categories);
   }
 
   Future<List<Measurement>> _getMeasurements(DocumentReference dtDoc) async {
     List<Measurement> measurements = [];
     return await dtDoc.collection('measurements').orderBy('order').get().then((measurementSnapshot) async {
-      measurementSnapshot.docs.forEach((mDoc) {
+      for (var mDoc in measurementSnapshot.docs) {
         measurements.add(Measurement.fromSnapshot(mDoc));
-      });
+      }
     }).then((_) => measurements);
   }
 
@@ -732,7 +732,7 @@ class _DrillDetailState extends State<DrillDetail> {
     String catString = "";
 
     _selectedCategories.asMap().forEach((i, c) {
-      catString += (i != _selectedCategories.length - 1 && _selectedCategories.length != 1) ? c.title + ", " : c.title;
+      catString += (i != _selectedCategories.length - 1 && _selectedCategories.length != 1) ? "${c.title}, " : c.title;
     });
 
     return catString;

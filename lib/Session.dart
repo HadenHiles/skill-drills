@@ -3,7 +3,7 @@ import 'package:skilldrills/main.dart';
 import 'package:sliding_up_panel/sliding_up_panel.dart';
 
 class Session extends StatefulWidget {
-  const Session({Key? key, required this.sessionPanelController}) : super(key: key);
+  const Session({super.key, required this.sessionPanelController});
 
   final PanelController sessionPanelController;
 

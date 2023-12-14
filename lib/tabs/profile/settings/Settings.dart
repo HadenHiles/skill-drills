@@ -11,7 +11,7 @@ import 'package:skilldrills/theme/SettingsStateNotifier.dart';
 import 'package:skilldrills/widgets/BasicTitle.dart';
 
 class ProfileSettings extends StatefulWidget {
-  const ProfileSettings({Key? key}) : super(key: key);
+  const ProfileSettings({super.key});
 
   @override
   _ProfileSettingsState createState() => _ProfileSettingsState();
@@ -72,7 +72,7 @@ class _ProfileSettingsState extends State<ProfileSettings> {
                   collapseMode: CollapseMode.parallax,
                   titlePadding: null,
                   centerTitle: false,
-                  title: BasicTitle(title: "Settings"),
+                  title: const BasicTitle(title: "Settings"),
                   background: Container(
                     color: Theme.of(context).scaffoldBackgroundColor,
                   ),
@@ -152,7 +152,7 @@ class _ProfileSettingsState extends State<ProfileSettings> {
                   ),
                   onPressed: (BuildContext context) {
                     navigatorKey.currentState!.push(MaterialPageRoute(builder: (context) {
-                      return ActivitiesSettings();
+                      return const ActivitiesSettings();
                     }));
                   },
                 ),
@@ -172,7 +172,7 @@ class _ProfileSettingsState extends State<ProfileSettings> {
                       fontSize: Theme.of(context).textTheme.bodyLarge!.fontSize,
                     ),
                   ),
-                  leading: Icon(
+                  leading: const Icon(
                     Icons.logout,
                     color: Colors.red,
                   ),
@@ -183,7 +183,7 @@ class _ProfileSettingsState extends State<ProfileSettings> {
                     navigatorKey.currentState!.pushReplacement(
                       MaterialPageRoute(
                         builder: (context) {
-                          return Login();
+                          return const Login();
                         },
                       ),
                     );

@@ -13,7 +13,7 @@ import 'package:skilldrills/widgets/BasicTitle.dart';
 final FirebaseAuth auth = FirebaseAuth.instance;
 
 class ActivitiesSettings extends StatefulWidget {
-  const ActivitiesSettings({Key? key}) : super(key: key);
+  const ActivitiesSettings({super.key});
 
   @override
   _ActivitiesSettingsState createState() => _ActivitiesSettingsState();
@@ -73,9 +73,9 @@ class _ActivitiesSettingsState extends State<ActivitiesSettings> {
   void _deleteActivity(Activity activity) {
     FirebaseFirestore.instance.collection('activities').doc(auth.currentUser!.uid).collection('activities').doc(activity.reference!.id).get().then((doc) {
       doc.reference.collection('categories').get().then((catSnapshots) {
-        catSnapshots.docs.forEach((cDoc) {
+        for (var cDoc in catSnapshots.docs) {
           cDoc.reference.delete();
-        });
+        }
       });
 
       doc.reference.delete();
@@ -116,7 +116,7 @@ class _ActivitiesSettingsState extends State<ActivitiesSettings> {
                   centerTitle: false,
                   title: Row(
                     children: [
-                      BasicTitle(title: "Sports"),
+                      const BasicTitle(title: "Sports"),
                       Container(
                         margin: const EdgeInsets.only(left: 10),
                         child: Text(
@@ -141,7 +141,7 @@ class _ActivitiesSettingsState extends State<ActivitiesSettings> {
                     ),
                     onPressed: () {
                       navigatorKey.currentState!.push(MaterialPageRoute(builder: (context) {
-                        return ActivityDetail();
+                        return const ActivityDetail();
                       }));
                     },
                   ),

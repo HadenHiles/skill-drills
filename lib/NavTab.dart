@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class NavTab extends StatefulWidget {
-  const NavTab({Key? key, this.title, this.actions, this.body}) : super(key: key);
+  const NavTab({super.key, this.title, this.actions, this.body});
 
   final Widget? title;
   final List<Widget>? actions;

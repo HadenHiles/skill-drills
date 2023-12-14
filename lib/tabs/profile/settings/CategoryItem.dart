@@ -5,7 +5,7 @@ import 'package:skilldrills/models/firestore/Category.dart';
 final user = FirebaseAuth.instance.currentUser;
 
 class CategoryItem extends StatefulWidget {
-  const CategoryItem({Key? key, this.category, this.editCallback, this.deleteCallback}) : super(key: key);
+  const CategoryItem({super.key, this.category, this.editCallback, this.deleteCallback});
 
   final Category? category;
   final Function? editCallback;

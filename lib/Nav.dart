@@ -23,7 +23,7 @@ final PanelController sessionPanelController = PanelController();
 
 // This is the stateful widget that the main application instantiates.
 class Nav extends StatefulWidget {
-  const Nav({Key? key}) : super(key: key);
+  const Nav({super.key});
 
   @override
   _NavState createState() => _NavState();
@@ -49,7 +49,7 @@ class _NavState extends State<Nav> {
   bool _showLogoToolbar = true;
   static final List<NavTab> _tabs = [
     NavTab(
-      title: BasicTitle(title: "Profile"),
+      title: const BasicTitle(title: "Profile"),
       actions: [
         Container(
           margin: const EdgeInsets.only(top: 10),
@@ -60,25 +60,25 @@ class _NavState extends State<Nav> {
             ),
             onPressed: () {
               navigatorKey.currentState!.push(MaterialPageRoute(builder: (BuildContext context) {
-                return ProfileSettings();
+                return const ProfileSettings();
               }));
             },
           ),
         ),
       ],
-      body: Profile(),
+      body: const Profile(),
     ),
-    NavTab(
+    const NavTab(
       title: BasicTitle(title: "History"),
     ),
     NavTab(
-      title: BasicTitle(title: "Start"),
+      title: const BasicTitle(title: "Start"),
       body: Start(
         sessionPanelController: sessionPanelController,
       ),
     ),
     NavTab(
-      title: BasicTitle(title: "Drills"),
+      title: const BasicTitle(title: "Drills"),
       actions: [
         Container(
           margin: const EdgeInsets.only(top: 10),
@@ -89,15 +89,15 @@ class _NavState extends State<Nav> {
             ),
             onPressed: () {
               navigatorKey.currentState!.push(MaterialPageRoute(builder: (context) {
-                return DrillDetail();
+                return const DrillDetail();
               }));
             },
           ),
         ),
       ],
-      body: Drills(),
+      body: const Drills(),
     ),
-    NavTab(
+    const NavTab(
       title: BasicTitle(title: "Routines"),
     ),
   ];

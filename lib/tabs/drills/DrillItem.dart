@@ -11,7 +11,7 @@ import 'package:skilldrills/tabs/drills/DrillDetail.dart';
 final user = FirebaseAuth.instance.currentUser;
 
 class DrillItem extends StatefulWidget {
-  const DrillItem({Key? key, required this.drill, required this.deleteCallback}) : super(key: key);
+  const DrillItem({super.key, required this.drill, required this.deleteCallback});
 
   final Drill drill;
   final Function deleteCallback;
@@ -28,9 +28,9 @@ class _DrillItemState extends State<DrillItem> {
     FirebaseFirestore.instance.collection('drills').doc(user!.uid).collection('drills').doc(widget.drill.reference!.id).collection('categories').get().then((cSnap) {
       List<Category> categories = [];
 
-      cSnap.docs.forEach((m) {
+      for (var m in cSnap.docs) {
         categories.add(Category.fromSnapshot(m));
-      });
+      }
 
       setState(() {
         _categories = categories;
@@ -126,7 +126,7 @@ class _DrillItemState extends State<DrillItem> {
     String catString = "";
 
     categories.asMap().forEach((i, c) {
-      catString += (i != categories.length - 1 && categories.length != 1) ? c.title + ", " : c.title;
+      catString += (i != categories.length - 1 && categories.length != 1) ? "${c.title}, " : c.title;
     });
 
     return catString;

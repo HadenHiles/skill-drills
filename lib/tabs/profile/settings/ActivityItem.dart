@@ -9,7 +9,7 @@ import 'package:skilldrills/tabs/profile/settings/ActivityDetail.dart';
 final user = FirebaseAuth.instance.currentUser;
 
 class ActivityItem extends StatefulWidget {
-  const ActivityItem({Key? key, this.activity, this.deleteCallback}) : super(key: key);
+  const ActivityItem({super.key, this.activity, this.deleteCallback});
 
   final Activity? activity;
   final Function? deleteCallback;

@@ -32,7 +32,7 @@ void addUser() {
 /// Bootstrap the activities if user has none (first launch)
 void bootstrapActivities() {
   FirebaseFirestore.instance.collection('activities').doc(auth.currentUser!.uid).collection('activities').get().then((snapshot) {
-    if (auth.currentUser!.uid.isNotEmpty && !(snapshot.docs.length > 0)) {
+    if (auth.currentUser!.uid.isNotEmpty && !(snapshot.docs.isNotEmpty)) {
       resetActivities();
     }
   });
@@ -45,9 +45,9 @@ Future<void> resetActivities() async {
     await Future.forEach(snapshot.docs, (doc) {
       // Delete the activities categories first
       doc.reference.collection('categories').get().then((categorySnapshots) {
-        categorySnapshots.docs.forEach((cDoc) {
+        for (var cDoc in categorySnapshots.docs) {
           cDoc.reference.delete();
-        });
+        }
       });
 
       // Then delete the activity itself
@@ -212,9 +212,9 @@ void bootstrapDrillTypes() {
       await Future.forEach(snapshot.docs, (dtDoc) {
         // Delete the activities categories first
         dtDoc.reference.collection('measurements').get().then((measurementSnapshots) {
-          measurementSnapshots.docs.forEach((mDoc) {
+          for (var mDoc in measurementSnapshots.docs) {
             mDoc.reference.delete();
-          });
+          }
         });
 
         // Then delete the activity itself

@@ -9,7 +9,7 @@ import 'package:skilldrills/tabs/drills/DrillItem.dart';
 final FirebaseAuth auth = FirebaseAuth.instance;
 
 class Drills extends StatefulWidget {
-  const Drills({Key? key}) : super(key: key);
+  const Drills({super.key});
 
   @override
   _DrillsState createState() => _DrillsState();
@@ -42,9 +42,9 @@ class _DrillsState extends State<Drills> {
       d.reference!.collection('measurements').get().then((mSnap) {
         List<Measurement> measurements = [];
 
-        mSnap.docs.forEach((m) {
+        for (var m in mSnap.docs) {
           measurements.add(Measurement.fromSnapshot(m));
-        });
+        }
 
         d.measurements = measurements;
       });
@@ -52,9 +52,9 @@ class _DrillsState extends State<Drills> {
       d.reference!.collection('categories').get().then((cSnap) {
         List<Category> categories = [];
 
-        cSnap.docs.forEach((m) {
+        for (var m in cSnap.docs) {
           categories.add(Category.fromSnapshot(m));
-        });
+        }
 
         d.categories = categories;
       });
@@ -91,15 +91,15 @@ class _DrillsState extends State<Drills> {
 
     FirebaseFirestore.instance.collection('drills').doc(auth.currentUser!.uid).collection('drills').doc(drill.reference!.id).get().then((doc) {
       doc.reference.collection('measurements').get().then((mSnapshots) {
-        mSnapshots.docs.forEach((mDoc) {
+        for (var mDoc in mSnapshots.docs) {
           mDoc.reference.delete();
-        });
+        }
       });
 
       doc.reference.collection('categories').get().then((catSnapshots) {
-        catSnapshots.docs.forEach((cDoc) {
+        for (var cDoc in catSnapshots.docs) {
           cDoc.reference.delete();
-        });
+        }
       });
 
       doc.reference.delete();

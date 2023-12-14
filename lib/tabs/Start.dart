@@ -5,7 +5,7 @@ import 'package:skilldrills/services/dialogs.dart';
 import 'package:sliding_up_panel/sliding_up_panel.dart';
 
 class Start extends StatefulWidget {
-  const Start({Key? key, this.sessionPanelController}) : super(key: key);
+  const Start({super.key, this.sessionPanelController});
 
   final PanelController? sessionPanelController;
 

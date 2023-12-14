@@ -11,7 +11,7 @@ import 'CategoryItem.dart';
 final FirebaseAuth auth = FirebaseAuth.instance;
 
 class ActivityDetail extends StatefulWidget {
-  const ActivityDetail({Key? key, this.activity}) : super(key: key);
+  const ActivityDetail({super.key, this.activity});
 
   final Activity? activity;
 
@@ -38,9 +38,9 @@ class _ActivityDetailState extends State<ActivityDetail> {
     titleFieldController.text = widget.activity!.title!;
     widget.activity!.reference!.collection('categories').get().then((snapshots) {
       List<Category> categories = [];
-      snapshots.docs.forEach((doc) {
+      for (var doc in snapshots.docs) {
         categories.add(Category.fromSnapshot(doc));
-      });
+      }
 
       setState(() {
         _categories = categories;
@@ -209,9 +209,9 @@ class _ActivityDetailState extends State<ActivityDetail> {
 
                                 // Remove the old categories
                                 widget.activity!.reference!.collection('categories').get().then((snapshots) {
-                                  snapshots.docs.forEach((doc) {
+                                  for (var doc in snapshots.docs) {
                                     doc.reference.delete();
-                                  });
+                                  }
 
                                   // Save the updated categories
                                   for (var c in _categories) {
