@@ -2,11 +2,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:skilldrills/main.dart';
-import 'package:skilldrills/models/SkillDrillsDialog.dart';
+import 'package:skilldrills/models/skill_drills_dialog.dart';
 import 'package:skilldrills/models/firestore/Category.dart';
-import 'package:skilldrills/models/firestore/Drill.dart';
+import 'package:skilldrills/models/firestore/drill.dart';
 import 'package:skilldrills/services/dialogs.dart';
-import 'package:skilldrills/tabs/drills/DrillDetail.dart';
+import 'package:skilldrills/tabs/drills/drill_detail.dart';
 
 final user = FirebaseAuth.instance.currentUser;
 

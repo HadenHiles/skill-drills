@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:skilldrills/main.dart';
-import 'package:skilldrills/models/SkillDrillsDialog.dart';
+import 'package:skilldrills/models/skill_drills_dialog.dart';
 import 'package:skilldrills/services/dialogs.dart';
 import 'package:sliding_up_panel/sliding_up_panel.dart';
 

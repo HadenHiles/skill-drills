@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:skilldrills/models/Settings.dart';
+import 'package:skilldrills/models/settings.dart';
 
 class SettingsStateNotifier extends ChangeNotifier {
   Settings settings = Settings(

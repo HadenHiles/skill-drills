@@ -8,7 +8,7 @@ class NavTab extends StatefulWidget {
   final Widget? body;
 
   @override
-  _NavTabState createState() => _NavTabState();
+  State<NavTab> createState() => _NavTabState();
 }
 
 class _NavTabState extends State<NavTab> {

@@ -1,6 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:skilldrills/widgets/UserAvatar.dart';
+import 'package:skilldrills/widgets/user_avatar.dart';
 
 class Profile extends StatefulWidget {
   const Profile({super.key});

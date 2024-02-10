@@ -7,10 +7,10 @@ import 'package:skilldrills/main.dart';
 import 'package:skilldrills/models/firestore/Activity.dart';
 import 'package:skilldrills/models/firestore/Category.dart';
 import 'package:skilldrills/models/firestore/Drill.dart';
-import 'package:skilldrills/models/firestore/DrillType.dart';
-import 'package:skilldrills/models/firestore/Measurement.dart';
-import 'package:skilldrills/models/firestore/MeasurementTarget.dart';
-import 'package:skilldrills/widgets/BasicTitle.dart';
+import 'package:skilldrills/models/firestore/drill_type.dart';
+import 'package:skilldrills/models/firestore/measurement.dart';
+import 'package:skilldrills/models/firestore/measurement_target.dart';
+import 'package:skilldrills/widgets/basic_title.dart';
 import 'package:skilldrills/services/utility.dart';
 
 final FirebaseAuth auth = FirebaseAuth.instance;
@@ -33,10 +33,10 @@ class _DrillDetailState extends State<DrillDetail> {
   Drill? _drill = Drill("", "", Activity("", null), null);
 
   List<Activity>? _activities;
-  Activity _activity = Activity("", null);
+  Activity? _activity = Activity("", null);
   bool _activityError = false;
 
-  List<Category> _selectedCategories = [];
+  List<Category>? _selectedCategories = [];
   bool _categoryError = false;
 
   List<DrillType>? _drillTypes;
@@ -59,7 +59,7 @@ class _DrillDetailState extends State<DrillDetail> {
 
             if (a == widget.drill!.activity) {
               setState(() {
-                _activity.categories = a.categories;
+                _activity!.categories = a.categories;
               });
             }
 
@@ -172,14 +172,14 @@ class _DrillDetailState extends State<DrillDetail> {
                     ),
                     onPressed: () {
                       bool hasErrors = false;
-                      if (_activity.title!.isEmpty) {
+                      if (_activity!.title!.isEmpty) {
                         hasErrors = true;
                         setState(() {
                           _activityError = true;
                         });
                       }
 
-                      if (_activity.title!.isNotEmpty && _selectedCategories.isEmpty) {
+                      if (_activity!.title!.isNotEmpty && _selectedCategories!.isEmpty) {
                         hasErrors = true;
                         setState(() {
                           _categoryError = true;
@@ -210,7 +210,7 @@ class _DrillDetailState extends State<DrillDetail> {
                               doc.reference.delete();
                             }
 
-                            for (var c in _selectedCategories) {
+                            for (var c in _selectedCategories!) {
                               FirebaseFirestore.instance.collection('drills').doc(auth.currentUser!.uid).collection('drills').doc(widget.drill!.reference!.id).collection('categories').doc().set(c.toMap());
                             }
                           });
@@ -256,7 +256,7 @@ class _DrillDetailState extends State<DrillDetail> {
                             newDoc.collection('measurements').doc().set(m.toMap());
                           }
 
-                          for (var c in _selectedCategories) {
+                          for (var c in _selectedCategories!) {
                             newDoc.collection('categories').doc().set(c.toMap());
                           }
 
@@ -440,9 +440,9 @@ class _DrillDetailState extends State<DrillDetail> {
                           vertical: 10,
                           horizontal: 20,
                         ),
-                        leading: Text(_selectedCategories.length <= 1 ? "Skill" : "Skills", style: Theme.of(context).textTheme.bodyLarge),
+                        leading: Text(_selectedCategories!.length <= 1 ? "Skill" : "Skills", style: Theme.of(context).textTheme.bodyLarge),
                         trailing: Text(
-                          _selectedCategories.isNotEmpty ? _outputCategories() : "choose",
+                          _selectedCategories!.isNotEmpty ? _outputCategories() : "choose",
                           style: TextStyle(
                             color: !_categoryError ? Theme.of(context).colorScheme.onPrimary : Colors.red,
                             fontSize: 14,
@@ -731,17 +731,17 @@ class _DrillDetailState extends State<DrillDetail> {
   String _outputCategories() {
     String catString = "";
 
-    _selectedCategories.asMap().forEach((i, c) {
-      catString += (i != _selectedCategories.length - 1 && _selectedCategories.length != 1) ? "${c.title}, " : c.title;
+    _selectedCategories!.asMap().forEach((i, c) {
+      catString += (i != _selectedCategories!.length - 1 && _selectedCategories!.length != 1) ? "${c.title}, " : c.title;
     });
 
     return catString;
   }
 
-  Widget _buildDefaultTargetFields(Drill drill) {
+  Widget _buildDefaultTargetFields(Drill? drill) {
     Map<int, TextEditingController> targetTextControllers = {};
     List<Widget> targetFields = [];
-    List<Measurement> targets = drill.measurements!.where((m) => (m).type == "target").toList();
+    List<Measurement>? targets = drill!.measurements!.where((m) => (m).type == "target").toList();
 
     targets.asMap().forEach((i, t) {
       targetTextControllers.putIfAbsent(i, () => TextEditingController());

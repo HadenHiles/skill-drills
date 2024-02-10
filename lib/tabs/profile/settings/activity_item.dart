@@ -1,10 +1,10 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:skilldrills/main.dart';
-import 'package:skilldrills/models/SkillDrillsDialog.dart';
+import 'package:skilldrills/models/skill_drills_dialog.dart';
 import 'package:skilldrills/models/firestore/Activity.dart';
 import 'package:skilldrills/services/dialogs.dart';
-import 'package:skilldrills/tabs/profile/settings/ActivityDetail.dart';
+import 'package:skilldrills/tabs/profile/settings/activity_detail.dart';
 
 final user = FirebaseAuth.instance.currentUser;
 

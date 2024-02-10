@@ -1,12 +1,12 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:skilldrills/models/firestore/Activity.dart';
+import 'package:skilldrills/models/firestore/activity.dart';
 import 'package:skilldrills/models/firestore/Category.dart';
-import 'package:skilldrills/models/firestore/DrillType.dart';
+import 'package:skilldrills/models/firestore/drill_type.dart';
 import 'package:skilldrills/models/firestore/Measurement.dart';
-import 'package:skilldrills/models/firestore/MeasurementTarget.dart';
-import 'package:skilldrills/models/firestore/MeasurementResult.dart';
-import 'package:skilldrills/models/firestore/SkillDrillsUser.dart';
+import 'package:skilldrills/models/firestore/measurement_target.dart';
+import 'package:skilldrills/models/firestore/measurement_result.dart';
+import 'package:skilldrills/models/firestore/skill_drill_user.dart';
 
 final FirebaseAuth auth = FirebaseAuth.instance;
 
@@ -224,87 +224,87 @@ void bootstrapDrillTypes() {
       for (var dt in drillTypes) {
         DocumentReference drillType = FirebaseFirestore.instance.collection('drill_types').doc(auth.currentUser!.uid).collection('drill_types').doc();
 
-        List<Measurement> measurements = [];
+        List<Measurement>? measurements;
 
         switch (dt.id) {
           case "reps":
             measurements = [
-              MeasurementResult("result", "amount", "Reps", 1, null),
+              MeasurementResult("result", "amount", "Reps", 1, null) as Measurement,
             ];
 
             break;
           case "score":
             measurements = [
-              MeasurementResult("result", "amount", "Score", 1, null),
-              MeasurementTarget("target", "amount", "Target Score", 2, null, false),
+              MeasurementResult("result", "amount", "Score", 1, null) as Measurement,
+              MeasurementTarget("target", "amount", "Target Score", 2, null, false) as Measurement,
             ];
 
             break;
           case "time_elapsed":
             measurements = [
-              MeasurementResult("result", "duration", "Time", 1, null),
+              MeasurementResult("result", "duration", "Time", 1, null) as Measurement,
             ];
 
             break;
           case "timer":
             measurements = [
-              MeasurementResult("result", "duration", "Timer", 1, null),
+              MeasurementResult("result", "duration", "Timer", 1, null) as Measurement,
             ];
 
             break;
           case "reps_in_time":
             measurements = [
-              MeasurementResult("result", "amount", "Reps", 1, null),
+              MeasurementResult("result", "amount", "Reps", 1, null) as Measurement,
             ];
 
             break;
           case "score_in_time":
             measurements = [
-              MeasurementResult("result", "amount", "Score", 1, null),
-              MeasurementTarget("target", "amount", "Target Score", 2, null, false),
+              MeasurementResult("result", "amount", "Score", 1, null) as Measurement,
+              MeasurementTarget("target", "amount", "Target Score", 2, null, false) as Measurement,
             ];
 
             break;
           case "duration_target":
             measurements = [
-              MeasurementResult("result", "duration", "Time", 1, null),
-              MeasurementTarget("target", "duration", "Target Time", 2, null, false),
+              MeasurementResult("result", "duration", "Time", 1, null) as Measurement,
+              MeasurementTarget("target", "duration", "Target Time", 2, null, false) as Measurement,
             ];
 
             break;
           case "reps_time":
             measurements = [
-              MeasurementResult("result", "amount", "Reps", 1, null),
-              MeasurementResult("result", "duration", "Time", 2, null),
+              MeasurementResult("result", "amount", "Reps", 1, null) as Measurement,
+              MeasurementResult("result", "duration", "Time", 2, null) as Measurement,
             ];
 
             break;
           case "score_time":
             measurements = [
-              MeasurementResult("result", "amount", "Score", 1, null),
-              MeasurementResult("result", "duration", "Time", 2, null),
-              MeasurementTarget("target", "amount", "Target Score", 3, null, false),
+              MeasurementResult("result", "amount", "Score", 1, null) as Measurement,
+              MeasurementResult("result", "duration", "Time", 2, null) as Measurement,
+              MeasurementTarget("target", "amount", "Target Score", 3, null, false) as Measurement,
             ];
 
             break;
           case "weighted_reps":
             measurements = [
-              MeasurementResult("result", "amount", "Weight", 1, null),
-              MeasurementResult("result", "amount", "Reps", 2, null),
+              MeasurementResult("result", "amount", "Weight", 1, null) as Measurement,
+              MeasurementResult("result", "amount", "Reps", 2, null) as Measurement,
             ];
 
             break;
           case "assisted_reps":
             measurements = [
-              MeasurementResult("result", "amount", "Assisted", 1, null),
-              MeasurementResult("result", "amount", "Reps", 2, null),
+              MeasurementResult("result", "amount", "Assisted", 1, null) as Measurement,
+              MeasurementResult("result", "amount", "Reps", 2, null) as Measurement,
             ];
 
             break;
           default:
         }
 
-        for (var m in measurements) {
+        for (var m in measurements!) {
           _saveMeasurement(drillType, m);
         }
 

@@ -1,5 +1,7 @@
+// ignore_for_file: overridden_fields
+
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:skilldrills/models/firestore/Measurement.dart';
+import 'package:skilldrills/models/firestore/measurement.dart';
 
 /// MeasurementValue
 /// @value The value of the saved measurement
