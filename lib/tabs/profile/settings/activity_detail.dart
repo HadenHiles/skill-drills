@@ -2,11 +2,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:skilldrills/main.dart';
-import 'package:skilldrills/models/firestore/Activity.dart';
-import 'package:skilldrills/models/firestore/Category.dart';
-import 'package:skilldrills/widgets/BasicTitle.dart';
+import 'package:skilldrills/models/firestore/activity.dart';
+import 'package:skilldrills/models/firestore/category.dart';
+import 'package:skilldrills/widgets/basic_title.dart';
 
-import 'CategoryItem.dart';
+import 'category_item.dart';
 
 final FirebaseAuth auth = FirebaseAuth.instance;
 

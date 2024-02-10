@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:settings_ui/settings_ui.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:skilldrills/Login.dart';
+import 'package:skilldrills/login.dart';
 import 'package:skilldrills/main.dart';
 import 'package:skilldrills/models/Settings.dart';
 import 'package:skilldrills/services/auth.dart';
-import 'package:skilldrills/tabs/profile/settings/Activities.dart';
-import 'package:skilldrills/theme/SettingsStateNotifier.dart';
-import 'package:skilldrills/widgets/BasicTitle.dart';
+import 'package:skilldrills/tabs/profile/settings/activities.dart';
+import 'package:skilldrills/theme/settings_state_notifier.dart';
+import 'package:skilldrills/widgets/basic_title.dart';
 
 class ProfileSettings extends StatefulWidget {
   const ProfileSettings({super.key});

@@ -1,10 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:skilldrills/models/firestore/Category.dart';
-import 'package:skilldrills/models/firestore/Drill.dart';
-import 'package:skilldrills/models/firestore/Measurement.dart';
-import 'package:skilldrills/tabs/drills/DrillItem.dart';
+import 'package:skilldrills/models/firestore/category.dart';
+import 'package:skilldrills/models/firestore/drill.dart';
+import 'package:skilldrills/models/firestore/measurement.dart';
+import 'package:skilldrills/tabs/drills/drill_item.dart';
 
 final FirebaseAuth auth = FirebaseAuth.instance;
 
@@ -12,7 +12,7 @@ class Drills extends StatefulWidget {
   const Drills({super.key});
 
   @override
-  _DrillsState createState() => _DrillsState();
+  State<Drills> createState() => _DrillsState();
 }
 
 class _DrillsState extends State<Drills> {
@@ -40,7 +40,7 @@ class _DrillsState extends State<Drills> {
     for (var docSnap in snapshot) {
       Drill d = Drill.fromSnapshot(docSnap);
       d.reference!.collection('measurements').get().then((mSnap) {
-        List<Measurement> measurements = [];
+        List<Measurement>? measurements = [];
 
         for (var m in mSnap.docs) {
           measurements.add(Measurement.fromSnapshot(m));

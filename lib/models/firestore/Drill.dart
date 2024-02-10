@@ -1,8 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:skilldrills/models/firestore/Category.dart';
-import 'package:skilldrills/models/firestore/Measurement.dart';
-import 'Activity.dart';
-import 'DrillType.dart';
+import 'package:skilldrills/models/firestore/category.dart';
+import 'package:skilldrills/models/firestore/measurement.dart';
+import 'activity.dart';
+import 'drill_type.dart';
 
 class Drill {
   final String? title;

@@ -26,7 +26,7 @@ class Category {
   String toString() => title;
 
   @override
-  operator ==(c) => c is Category && c.id == id;
+  operator ==(other) => other is Category && other.id == id;
 
   @override
   int get hashCode => id.hashCode ^ title.hashCode;

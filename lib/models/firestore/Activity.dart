@@ -34,7 +34,7 @@ class Activity {
 
   // For select dialogs
   @override
-  operator ==(a) => a is Activity && a.id == id;
+  operator ==(other) => other is Activity && other.id == id;
 
   @override
   int get hashCode => id.hashCode ^ title.hashCode ^ createdBy.hashCode;

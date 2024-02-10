@@ -5,12 +5,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:skilldrills/Nav.dart';
+import 'package:skilldrills/nav.dart';
 import 'package:skilldrills/services/session.dart';
-import 'package:skilldrills/theme/SettingsStateNotifier.dart';
-import 'package:skilldrills/theme/Theme.dart';
-import 'Login.dart';
-import 'models/Settings.dart';
+import 'package:skilldrills/theme/settings_state_notifier.dart';
+import 'package:skilldrills/theme/theme.dart';
+import 'login.dart';
+import 'models/settings.dart';
 
 // Setup a navigation key so that we can navigate without context
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();

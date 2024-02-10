@@ -1,5 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:skilldrills/models/firestore/Measurement.dart';
+import 'package:skilldrills/models/firestore/measurement.dart';
 
 class DrillType {
   final String? id; // Ensure unique
@@ -23,7 +23,7 @@ class DrillType {
         order = map['order'];
 
   Map<String, dynamic> toMap() {
-    List<Map<String, dynamic>> measures = [];
+    List<Map<String, dynamic>>? measures = [];
 
     for (var m in measurements!) {
       measures.add(m.toMap());
@@ -43,7 +43,7 @@ class DrillType {
 
   // For select dialogs
   @override
-  operator ==(dt) => dt is DrillType && dt.id == id;
+  operator ==(other) => other is DrillType && other.id == id;
 
   @override
   int get hashCode => id.hashCode ^ title.hashCode;

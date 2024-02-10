@@ -1,23 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:skilldrills/Session.dart';
+import 'package:skilldrills/session.dart';
 import 'package:skilldrills/main.dart';
 import 'package:skilldrills/services/session.dart';
 import 'package:skilldrills/services/utility.dart';
-import 'package:skilldrills/tabs/Drills.dart';
-import 'package:skilldrills/tabs/Profile.dart';
+import 'package:skilldrills/tabs/drills.dart';
+import 'package:skilldrills/tabs/profile.dart';
 import 'package:skilldrills/services/factory.dart';
 import 'package:skilldrills/tabs/Start.dart';
-import 'package:skilldrills/tabs/drills/DrillDetail.dart';
-import 'package:skilldrills/tabs/profile/settings/Settings.dart';
-import 'package:skilldrills/theme/SettingsStateNotifier.dart';
-import 'package:skilldrills/widgets/BasicTitle.dart';
+import 'package:skilldrills/tabs/drills/drill_detail.dart';
+import 'package:skilldrills/tabs/profile/settings/settings.dart';
+import 'package:skilldrills/widgets/basic_title.dart';
 import 'package:sliding_up_panel/sliding_up_panel.dart';
 import 'package:vibration/vibration.dart';
-import 'NavTab.dart';
-import 'models/Settings.dart';
+import 'package:skilldrills/nav_tab.dart';
 
 final PanelController sessionPanelController = PanelController();
 
@@ -26,7 +22,7 @@ class Nav extends StatefulWidget {
   const Nav({super.key});
 
   @override
-  _NavState createState() => _NavState();
+  State<Nav> createState() => _NavState();
 }
 
 /// This is the private State class that goes with MyStatefulWidget.
@@ -123,8 +119,6 @@ class _NavState extends State<Nav> {
 
   @override
   void initState() {
-    _loadPreferences();
-
     setState(() {
       _title = lightLogo;
       _actions = [];
@@ -133,15 +127,6 @@ class _NavState extends State<Nav> {
     bootstrap();
 
     super.initState();
-  }
-
-  // Load shared preferences
-  void _loadPreferences() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    bool vibrate = prefs.getBool('vibrate') ?? true;
-    bool darkMode = prefs.getBool('dark_mode') ?? ThemeMode.system == ThemeMode.dark;
-
-    Provider.of<SettingsStateNotifier>(context, listen: false).updateSettings(Settings(vibrate, darkMode));
   }
 
   @override

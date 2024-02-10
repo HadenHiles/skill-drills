@@ -1,9 +1,11 @@
+// ignore_for_file: avoid_print
+
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_signin_button/flutter_signin_button.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:skilldrills/services/auth.dart';
-import 'Nav.dart';
+import 'nav.dart';
 
 class Login extends StatefulWidget {
   const Login({super.key});

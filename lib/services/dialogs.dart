@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:skilldrills/models/SkillDrillsDialog.dart';
+import 'package:skilldrills/models/skill_drills_dialog.dart';
 
 void dialog(BuildContext context, SkillDrillsDialog dialog) {
   // set up the buttons
