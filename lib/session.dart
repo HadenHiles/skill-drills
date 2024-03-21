@@ -8,7 +8,7 @@ class Session extends StatefulWidget {
   final PanelController sessionPanelController;
 
   @override
-  _SessionState createState() => _SessionState();
+  State<Session> createState() => _SessionState();
 }
 
 class _SessionState extends State<Session> {

@@ -1,9 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:skilldrills/models/firestore/activity.dart';
-import 'package:skilldrills/models/firestore/Category.dart';
+import 'package:skilldrills/models/firestore/category.dart';
 import 'package:skilldrills/models/firestore/drill_type.dart';
-import 'package:skilldrills/models/firestore/Measurement.dart';
+import 'package:skilldrills/models/firestore/measurement.dart';
 import 'package:skilldrills/models/firestore/measurement_target.dart';
 import 'package:skilldrills/models/firestore/measurement_result.dart';
 import 'package:skilldrills/models/firestore/skill_drill_user.dart';

@@ -16,7 +16,7 @@ class ActivityDetail extends StatefulWidget {
   final Activity? activity;
 
   @override
-  _ActivityDetailState createState() => _ActivityDetailState();
+  State<ActivityDetail> createState() => _ActivityDetailState();
 }
 
 class _ActivityDetailState extends State<ActivityDetail> {
@@ -295,55 +295,53 @@ class _ActivityDetailState extends State<ActivityDetail> {
               ),
               child: Column(
                 children: [
-                  Container(
-                    child: Form(
-                      key: _categoryFormKey,
-                      autovalidateMode: _autoValidateMode,
-                      child: Column(
-                        children: [
-                          TextFormField(
-                            autovalidateMode: AutovalidateMode.onUserInteraction,
-                            validator: (String? value) {
-                              if (value!.isEmpty && _validateCategoryTitle) {
-                                return 'Please enter a skill name';
-                              } else if (value.isNotEmpty && !RegExp(r"^[a-zA-Z0-9 ]+$").hasMatch(value)) {
-                                return 'No special characters are allowed';
-                              }
+                  Form(
+                    key: _categoryFormKey,
+                    autovalidateMode: _autoValidateMode,
+                    child: Column(
+                      children: [
+                        TextFormField(
+                          autovalidateMode: AutovalidateMode.onUserInteraction,
+                          validator: (String? value) {
+                            if (value!.isEmpty && _validateCategoryTitle) {
+                              return 'Please enter a skill name';
+                            } else if (value.isNotEmpty && !RegExp(r"^[a-zA-Z0-9 ]+$").hasMatch(value)) {
+                              return 'No special characters are allowed';
+                            }
 
-                              return null;
-                            },
-                            controller: categoryTitleFieldController,
-                            focusNode: _categoryTitleFocusNode,
-                            cursorColor: Theme.of(context).colorScheme.onPrimary,
-                            decoration: InputDecoration(
-                                labelText: _editingCategoryIndex != null ? "Edit Skill" : "Add Skill",
-                                labelStyle: TextStyle(
-                                  color: Theme.of(context).colorScheme.onPrimary,
-                                  fontSize: 14,
+                            return null;
+                          },
+                          controller: categoryTitleFieldController,
+                          focusNode: _categoryTitleFocusNode,
+                          cursorColor: Theme.of(context).colorScheme.onPrimary,
+                          decoration: InputDecoration(
+                              labelText: _editingCategoryIndex != null ? "Edit Skill" : "Add Skill",
+                              labelStyle: TextStyle(
+                                color: Theme.of(context).colorScheme.onPrimary,
+                                fontSize: 14,
+                              ),
+                              suffixIcon: IconButton(
+                                icon: Icon(
+                                  _editingCategoryIndex != null ? Icons.check_circle : Icons.add_circle,
+                                  color: Theme.of(context).primaryColor,
+                                  size: 22,
                                 ),
-                                suffixIcon: IconButton(
-                                  icon: Icon(
-                                    _editingCategoryIndex != null ? Icons.check_circle : Icons.add_circle,
-                                    color: Theme.of(context).primaryColor,
-                                    size: 22,
-                                  ),
-                                  onPressed: () {
-                                    if (_categoryFormKey.currentState!.validate()) {
-                                      _saveCategory(categoryTitleFieldController.text.toString().trim());
-                                    }
-                                  },
-                                )),
-                            onFieldSubmitted: (value) {
-                              if (_categoryFormKey.currentState!.validate()) {
-                                _saveCategory(value);
-                              }
-                            },
-                            style: TextStyle(
-                              color: Theme.of(context).colorScheme.onBackground,
-                            ),
+                                onPressed: () {
+                                  if (_categoryFormKey.currentState!.validate()) {
+                                    _saveCategory(categoryTitleFieldController.text.toString().trim());
+                                  }
+                                },
+                              )),
+                          onFieldSubmitted: (value) {
+                            if (_categoryFormKey.currentState!.validate()) {
+                              _saveCategory(value);
+                            }
+                          },
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.onBackground,
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ),
                 ],

@@ -33,7 +33,7 @@ void main() async {
 
   runApp(
     ChangeNotifierProvider<SettingsStateNotifier>(
-      create: (_) => SettingsStateNotifier(),
+      create: (context) => SettingsStateNotifier(),
       child: SkillDrills(),
     ),
   );

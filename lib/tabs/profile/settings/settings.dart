@@ -4,7 +4,7 @@ import 'package:settings_ui/settings_ui.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:skilldrills/login.dart';
 import 'package:skilldrills/main.dart';
-import 'package:skilldrills/models/Settings.dart';
+import 'package:skilldrills/models/settings.dart';
 import 'package:skilldrills/services/auth.dart';
 import 'package:skilldrills/tabs/profile/settings/activities.dart';
 import 'package:skilldrills/theme/settings_state_notifier.dart';
@@ -14,7 +14,7 @@ class ProfileSettings extends StatefulWidget {
   const ProfileSettings({super.key});
 
   @override
-  _ProfileSettingsState createState() => _ProfileSettingsState();
+  State<ProfileSettings> createState() => _ProfileSettingsState();
 }
 
 class _ProfileSettingsState extends State<ProfileSettings> {
@@ -108,7 +108,9 @@ class _ProfileSettingsState extends State<ProfileSettings> {
                       prefs.setBool('vibrate', _vibrate);
                     });
 
-                    Provider.of<SettingsStateNotifier>(context, listen: false).updateSettings(Settings(value, _darkMode));
+                    if (context.mounted) {
+                      Provider.of<SettingsStateNotifier>(context, listen: false).updateSettings(Settings(value, _darkMode));
+                    }
                   },
                 ),
                 SettingsTile.switchTile(
@@ -129,7 +131,9 @@ class _ProfileSettingsState extends State<ProfileSettings> {
                       prefs.setBool('dark_mode', _darkMode);
                     });
 
-                    Provider.of<SettingsStateNotifier>(context, listen: false).updateSettings(Settings(_vibrate, value));
+                    if (context.mounted) {
+                      Provider.of<SettingsStateNotifier>(context, listen: false).updateSettings(Settings(_vibrate, value));
+                    }
                   },
                 ),
               ],

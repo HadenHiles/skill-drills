@@ -4,9 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_picker/Picker.dart';
 import 'package:select_dialog/select_dialog.dart';
 import 'package:skilldrills/main.dart';
-import 'package:skilldrills/models/firestore/Activity.dart';
-import 'package:skilldrills/models/firestore/Category.dart';
-import 'package:skilldrills/models/firestore/Drill.dart';
+import 'package:skilldrills/models/firestore/activity.dart';
+import 'package:skilldrills/models/firestore/category.dart';
+import 'package:skilldrills/models/firestore/drill.dart';
 import 'package:skilldrills/models/firestore/drill_type.dart';
 import 'package:skilldrills/models/firestore/measurement.dart';
 import 'package:skilldrills/models/firestore/measurement_target.dart';
@@ -21,7 +21,7 @@ class DrillDetail extends StatefulWidget {
   final Drill? drill;
 
   @override
-  _DrillDetailState createState() => _DrillDetailState();
+  State<DrillDetail> createState() => _DrillDetailState();
 }
 
 class _DrillDetailState extends State<DrillDetail> {
@@ -355,7 +355,7 @@ class _DrillDetailState extends State<DrillDetail> {
                           ),
                         )
                       : Text(
-                          _activity.title!.isNotEmpty ? _activity.title! : "choose",
+                          _activity!.title!.isNotEmpty ? _activity!.title! : "choose",
                           style: TextStyle(
                             color: !_activityError ? Theme.of(context).colorScheme.onPrimary : Colors.red,
                             fontSize: 14,
@@ -433,7 +433,7 @@ class _DrillDetailState extends State<DrillDetail> {
                           );
                         },
                 ),
-                (_activity.categories?.length ?? 0) < 1
+                (_activity!.categories?.length ?? 0) < 1
                     ? Container()
                     : ListTile(
                         contentPadding: const EdgeInsets.symmetric(
@@ -452,7 +452,7 @@ class _DrillDetailState extends State<DrillDetail> {
                           setState(() {
                             _categoryError = false;
                             _selectedCategories = [];
-                            Activity a = Activity(_activity.title, null);
+                            Activity a = Activity(_activity!.title, null);
                             a.categories = [];
                             _drill = Drill(_drill!.title, _drill!.description, a, _drill!.drillType);
                           });
@@ -461,7 +461,7 @@ class _DrillDetailState extends State<DrillDetail> {
                           SelectDialog.showModal<Category>(
                             context,
                             label: "Choose Skill(s)",
-                            items: _activity.categories,
+                            items: _activity!.categories,
                             showSearchBox: false,
                             backgroundColor: Theme.of(context).colorScheme.primary,
                             alwaysShowScrollBar: true,
@@ -492,7 +492,7 @@ class _DrillDetailState extends State<DrillDetail> {
                               setState(() {
                                 _categoryError = false;
                                 _selectedCategories = selected;
-                                Activity a = Activity(_activity.title, null);
+                                Activity a = Activity(_activity!.title, null);
                                 a.categories = selected;
                                 _drill = Drill(_drill!.title, _drill!.description, a, _drill!.drillType);
                               });
@@ -711,7 +711,7 @@ class _DrillDetailState extends State<DrillDetail> {
   }
 
   Future<List<Category>> _getCategories(DocumentReference aDoc) async {
-    List<Category> categories = [];
+    List<Category>? categories = [];
     return await aDoc.collection('categories').get().then((catSnapshot) async {
       for (var cDoc in catSnapshot.docs) {
         categories.add(Category.fromSnapshot(cDoc));
@@ -720,7 +720,7 @@ class _DrillDetailState extends State<DrillDetail> {
   }
 
   Future<List<Measurement>> _getMeasurements(DocumentReference dtDoc) async {
-    List<Measurement> measurements = [];
+    List<Measurement>? measurements = [];
     return await dtDoc.collection('measurements').orderBy('order').get().then((measurementSnapshot) async {
       for (var mDoc in measurementSnapshot.docs) {
         measurements.add(Measurement.fromSnapshot(mDoc));
@@ -759,29 +759,27 @@ class _DrillDetailState extends State<DrillDetail> {
           targetFields.add(
             SizedBox(
               width: targets.length > 1 ? MediaQuery.of(context).size.width / 2 : MediaQuery.of(context).size.width,
-              child: Container(
-                child: TextField(
-                  controller: targetTextControllers[i],
-                  keyboardType: TextInputType.number,
-                  scrollPadding: const EdgeInsets.all(5),
-                  style: Theme.of(context).textTheme.bodyLarge,
-                  decoration: InputDecoration(
-                    labelText: t.label,
-                    labelStyle: TextStyle(
-                      fontSize: 14,
-                      color: Theme.of(context).colorScheme.onPrimary,
-                    ),
+              child: TextField(
+                controller: targetTextControllers[i],
+                keyboardType: TextInputType.number,
+                scrollPadding: const EdgeInsets.all(5),
+                style: Theme.of(context).textTheme.bodyLarge,
+                decoration: InputDecoration(
+                  labelText: t.label,
+                  labelStyle: TextStyle(
+                    fontSize: 14,
+                    color: Theme.of(context).colorScheme.onPrimary,
                   ),
-                  onChanged: (value) {
-                    targets[i] = MeasurementTarget(t.type, t.metric, t.label, t.order, value, false);
-
-                    List<Measurement> newMeasurements = _drillType!.measurements!.where((m) => m.type == "result").toList();
-                    newMeasurements.addAll(targets);
-                    setState(() {
-                      _drillType!.measurements = newMeasurements;
-                    });
-                  },
                 ),
+                onChanged: (value) {
+                  targets[i] = MeasurementTarget(t.type, t.metric, t.label, t.order, value, false);
+
+                  List<Measurement> newMeasurements = _drillType!.measurements!.where((m) => m.type == "result").toList();
+                  newMeasurements.addAll(targets);
+                  setState(() {
+                    _drillType!.measurements = newMeasurements;
+                  });
+                },
               ),
             ),
           );
@@ -791,58 +789,56 @@ class _DrillDetailState extends State<DrillDetail> {
           targetFields.add(
             SizedBox(
               width: targets.length > 1 ? MediaQuery.of(context).size.width / 2 : MediaQuery.of(context).size.width,
-              child: Container(
-                child: TextField(
-                  controller: targetTextControllers[i],
-                  keyboardType: TextInputType.number,
-                  scrollPadding: const EdgeInsets.all(5),
-                  style: Theme.of(context).textTheme.bodyLarge,
-                  decoration: InputDecoration(
-                    labelText: t.label,
-                    labelStyle: TextStyle(
-                      fontSize: 14,
-                      color: Theme.of(context).colorScheme.onPrimary,
-                    ),
-                    hintStyle: Theme.of(context).textTheme.bodyLarge,
+              child: TextField(
+                controller: targetTextControllers[i],
+                keyboardType: TextInputType.number,
+                scrollPadding: const EdgeInsets.all(5),
+                style: Theme.of(context).textTheme.bodyLarge,
+                decoration: InputDecoration(
+                  labelText: t.label,
+                  labelStyle: TextStyle(
+                    fontSize: 14,
+                    color: Theme.of(context).colorScheme.onPrimary,
                   ),
-                  onTap: () {
-                    const TextStyle suffixStyle = TextStyle(fontSize: 14, height: 1.5);
-                    Picker(
-                      adapter: NumberPickerAdapter(data: <NumberPickerColumn>[
-                        const NumberPickerColumn(begin: 0, end: 24, suffix: Text(' hrs', style: suffixStyle), jump: 1),
-                        const NumberPickerColumn(begin: 0, end: 59, suffix: Text(' mins', style: suffixStyle), jump: 1),
-                        const NumberPickerColumn(begin: 0, end: 59, suffix: Text(' secs', style: suffixStyle), jump: 5),
-                      ]),
-                      height: 200,
-                      backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                      textStyle: Theme.of(context).textTheme.headlineSmall,
-                      hideHeader: true,
-                      confirmText: 'Ok',
-                      confirmTextStyle: TextStyle(
-                        inherit: false,
-                        color: Theme.of(context).primaryColor,
-                      ),
-                      title: const Text('Select duration'),
-                      selectedTextStyle: TextStyle(
-                        color: Theme.of(context).primaryColor,
-                      ),
-                      onConfirm: (Picker picker, List<int> value) {
-                        // You get your duration here
-                        Duration duration = Duration(hours: picker.getSelectedValues()[0], minutes: picker.getSelectedValues()[1], seconds: picker.getSelectedValues()[2]);
-
-                        targetTextControllers[i]!.text = printDuration(duration);
-
-                        targets[i] = MeasurementTarget(t.type, t.metric, t.label, t.order, duration, false);
-
-                        List<Measurement> newMeasurements = _drillType!.measurements!.where((m) => m.type == "result").toList();
-                        newMeasurements.addAll(targets);
-                        setState(() {
-                          _drillType!.measurements = newMeasurements;
-                        });
-                      },
-                    ).showDialog(context);
-                  },
+                  hintStyle: Theme.of(context).textTheme.bodyLarge,
                 ),
+                onTap: () {
+                  const TextStyle suffixStyle = TextStyle(fontSize: 14, height: 1.5);
+                  Picker(
+                    adapter: NumberPickerAdapter(data: <NumberPickerColumn>[
+                      const NumberPickerColumn(begin: 0, end: 24, suffix: Text(' hrs', style: suffixStyle), jump: 1),
+                      const NumberPickerColumn(begin: 0, end: 59, suffix: Text(' mins', style: suffixStyle), jump: 1),
+                      const NumberPickerColumn(begin: 0, end: 59, suffix: Text(' secs', style: suffixStyle), jump: 5),
+                    ]),
+                    height: 200,
+                    backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                    textStyle: Theme.of(context).textTheme.headlineSmall,
+                    hideHeader: true,
+                    confirmText: 'Ok',
+                    confirmTextStyle: TextStyle(
+                      inherit: false,
+                      color: Theme.of(context).primaryColor,
+                    ),
+                    title: const Text('Select duration'),
+                    selectedTextStyle: TextStyle(
+                      color: Theme.of(context).primaryColor,
+                    ),
+                    onConfirm: (Picker picker, List<int> value) {
+                      // You get your duration here
+                      Duration duration = Duration(hours: picker.getSelectedValues()[0], minutes: picker.getSelectedValues()[1], seconds: picker.getSelectedValues()[2]);
+
+                      targetTextControllers[i]!.text = printDuration(duration);
+
+                      targets[i] = MeasurementTarget(t.type, t.metric, t.label, t.order, duration, false);
+
+                      List<Measurement> newMeasurements = _drillType!.measurements!.where((m) => m.type == "result").toList();
+                      newMeasurements.addAll(targets);
+                      setState(() {
+                        _drillType!.measurements = newMeasurements;
+                      });
+                    },
+                  ).showDialog(context);
+                },
               ),
             ),
           );
