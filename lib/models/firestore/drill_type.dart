@@ -20,6 +20,7 @@ class DrillType {
         title = map['title'],
         descriptor = map['descriptor'],
         timerInSeconds = map['timer_in_seconds'],
+        measurements = [],
         order = map['order'];
 
   Map<String, dynamic> toMap() {

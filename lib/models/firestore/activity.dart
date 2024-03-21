@@ -14,6 +14,7 @@ class Activity {
       : assert(map!['title'] != null),
         id = map!['id'],
         title = map['title'],
+        categories = [],
         createdBy = map['created_by'];
 
   Map<String, dynamic> toMap() {

@@ -31,10 +31,10 @@
               "client_type": 3
             },
             {
-              "client_id": "1092639561657-op99ucesokvmb8srqr6tqblkdibjiltc.apps.googleusercontent.com",
+              "client_id": "1092639561657-bdam6mjd8apbghqg7ln6ihaqtehhqf60.apps.googleusercontent.com",
               "client_type": 2,
               "ios_info": {
-                "bundle_id": "com.example.skilldrills"
+                "bundle_id": "com.hadenhiles.skilldrills"
               }
             }
           ]
@@ -91,10 +91,10 @@
               "client_type": 3
             },
             {
-              "client_id": "1092639561657-op99ucesokvmb8srqr6tqblkdibjiltc.apps.googleusercontent.com",
+              "client_id": "1092639561657-bdam6mjd8apbghqg7ln6ihaqtehhqf60.apps.googleusercontent.com",
               "client_type": 2,
               "ios_info": {
-                "bundle_id": "com.example.skilldrills"
+                "bundle_id": "com.hadenhiles.skilldrills"
               }
             }
           ]
