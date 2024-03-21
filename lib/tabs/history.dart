@@ -4,7 +4,7 @@ class History extends StatefulWidget {
   const History({super.key});
 
   @override
-  _HistoryState createState() => _HistoryState();
+  State<History> createState() => _HistoryState();
 }
 
 class _HistoryState extends State<History> {

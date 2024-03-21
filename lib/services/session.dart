@@ -57,5 +57,5 @@ class SessionServiceProvider extends InheritedWidget {
   final SessionService service;
 
   @override
-  bool updateShouldNotify(SessionServiceProvider old) => service != old.service;
+  bool updateShouldNotify(SessionServiceProvider oldWidget) => service != oldWidget.service;
 }

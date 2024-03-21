@@ -2,7 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:skilldrills/main.dart';
-import 'package:skilldrills/models/firestore/Activity.dart';
+import 'package:skilldrills/models/firestore/activity.dart';
 import 'package:skilldrills/models/skill_drills_dialog.dart';
 import 'package:skilldrills/services/dialogs.dart';
 import 'package:skilldrills/services/factory.dart';
@@ -16,7 +16,7 @@ class ActivitiesSettings extends StatefulWidget {
   const ActivitiesSettings({super.key});
 
   @override
-  _ActivitiesSettingsState createState() => _ActivitiesSettingsState();
+  State<ActivitiesSettings> createState() => _ActivitiesSettingsState();
 }
 
 class _ActivitiesSettingsState extends State<ActivitiesSettings> {
