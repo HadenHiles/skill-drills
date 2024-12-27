@@ -5,6 +5,14 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Haden's S24 Ultra",
+            "type": "dart",
+            "flutterMode": "debug",
+            "request": "launch",
+            "deviceId": "R3CX20HFZJL",
+        },
+
+        {
             "name": "skilldrills",
             "request": "launch",
             "type": "dart"
