@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_picker/Picker.dart';
+import 'package:flutter_picker_plus/flutter_picker_plus.dart';
 import 'package:select_dialog/select_dialog.dart';
 import 'package:skilldrills/main.dart';
 import 'package:skilldrills/models/firestore/activity.dart';
