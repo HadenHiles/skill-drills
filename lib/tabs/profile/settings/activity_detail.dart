@@ -36,16 +36,19 @@ class _ActivityDetailState extends State<ActivityDetail> {
   @override
   void initState() {
     titleFieldController.text = widget.activity!.title!;
-    widget.activity!.reference!.collection('categories').get().then((snapshots) {
-      List<Category> categories = [];
-      for (var doc in snapshots.docs) {
-        categories.add(Category.fromSnapshot(doc));
-      }
 
-      setState(() {
-        _categories = categories;
+    if (widget.activity!.reference != null) {
+      widget.activity!.reference!.collection('categories').get().then((snapshots) {
+        List<Category> categories = [];
+        for (var doc in snapshots.docs) {
+          categories.add(Category.fromSnapshot(doc));
+        }
+
+        setState(() {
+          _categories = categories;
+        });
       });
-    });
+    }
 
     _categoryTitleFocusNode = FocusNode();
 

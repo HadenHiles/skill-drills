@@ -141,7 +141,7 @@ class _ActivitiesSettingsState extends State<ActivitiesSettings> {
                     ),
                     onPressed: () {
                       navigatorKey.currentState!.push(MaterialPageRoute(builder: (context) {
-                        return const ActivityDetail();
+                        return ActivityDetail(activity: Activity("New Activity", user?.uid));
                       }));
                     },
                   ),
