@@ -259,9 +259,9 @@ class _ActivityDetailState extends State<ActivityDetail> {
                           autovalidateMode: _autoValidateMode,
                           validator: (String? value) {
                             if (value!.isEmpty) {
-                              return 'Please enter a title';
-                            } else if (value.isNotEmpty && !RegExp(r"^[a-zA-Z0-9 ]+$").hasMatch(value)) {
-                              return 'No special characters are allowed';
+                              return 'Enter a title';
+                            } else if (value.isNotEmpty && !RegExp(r"^[a-zA-Z0-9 -/_']+$").hasMatch(value)) {
+                              return 'Remove special characters';
                             }
                             return null;
                           },
@@ -315,7 +315,7 @@ class _ActivityDetailState extends State<ActivityDetail> {
                           validator: (String? value) {
                             if (value!.isEmpty && _validateCategoryTitle) {
                               return 'Please enter a skill name';
-                            } else if (value.isNotEmpty && !RegExp(r"^[a-zA-Z0-9 ]+$").hasMatch(value)) {
+                            } else if (value.isNotEmpty && !RegExp(r"^[a-zA-Z0-9 -/_']+$").hasMatch(value)) {
                               return 'No special characters are allowed';
                             }
 
