@@ -19,8 +19,8 @@ class ProfileSettings extends StatefulWidget {
 
 class _ProfileSettingsState extends State<ProfileSettings> {
   // State settings values
-  bool _vibrate = true;
-  bool _darkMode = false;
+  bool _vibrate = settings.vibrate;
+  bool _darkMode = settings.darkMode;
 
   @override
   void initState() {
@@ -31,10 +31,9 @@ class _ProfileSettingsState extends State<ProfileSettings> {
 
   //Loading counter value on start
   _loadSettings() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
     setState(() {
-      _vibrate = (prefs.getBool('vibrate') ?? true);
-      _darkMode = (prefs.getBool('dark_mode') ?? false);
+      _vibrate = settings.vibrate;
+      _darkMode = settings.darkMode;
     });
   }
 
@@ -66,7 +65,7 @@ class _ProfileSettingsState extends State<ProfileSettings> {
               ),
               flexibleSpace: DecoratedBox(
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surface,
+                  color: Theme.of(context).colorScheme.primary,
                 ),
                 child: FlexibleSpaceBar(
                   collapseMode: CollapseMode.parallax,
@@ -91,7 +90,7 @@ class _ProfileSettingsState extends State<ProfileSettings> {
               ),
               tiles: [
                 SettingsTile.switchTile(
-                  initialValue: _darkMode,
+                  initialValue: _vibrate,
                   title: Text(
                     'Vibration',
                     style: Theme.of(context).textTheme.bodyLarge,
@@ -100,12 +99,12 @@ class _ProfileSettingsState extends State<ProfileSettings> {
                     Icons.vibration,
                     color: Theme.of(context).colorScheme.onPrimary,
                   ),
-                  enabled: _vibrate,
                   onToggle: (bool value) async {
                     SharedPreferences prefs = await SharedPreferences.getInstance();
                     setState(() {
                       _vibrate = value;
-                      prefs.setBool('vibrate', _vibrate);
+                      settings.vibrate = value;
+                      prefs.setBool('vibrate', value);
                     });
 
                     if (context.mounted) {
@@ -123,12 +122,12 @@ class _ProfileSettingsState extends State<ProfileSettings> {
                     Icons.brightness_2,
                     color: Theme.of(context).colorScheme.onPrimary,
                   ),
-                  enabled: _darkMode,
                   onToggle: (bool value) async {
                     SharedPreferences prefs = await SharedPreferences.getInstance();
                     setState(() {
-                      _darkMode = !_darkMode;
-                      prefs.setBool('dark_mode', _darkMode);
+                      _darkMode = value;
+                      settings.darkMode = value;
+                      prefs.setBool('dark_mode', value);
                     });
 
                     if (context.mounted) {

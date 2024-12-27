@@ -51,7 +51,8 @@ class SkillDrillsTheme {
         color: Colors.black87,
         fontSize: 12,
       ),
-    ), colorScheme: const ColorScheme.light(
+    ),
+    colorScheme: const ColorScheme.light(
       primary: Colors.white,
       onPrimary: Colors.black54,
       secondary: Color.fromRGBO(2, 164, 221, 1),
@@ -108,7 +109,8 @@ class SkillDrillsTheme {
         color: Color.fromRGBO(255, 255, 255, 0.8),
         fontSize: 12,
       ),
-    ), colorScheme: const ColorScheme.light(
+    ),
+    colorScheme: const ColorScheme.dark(
       primary: Color(0xff1A1A1A),
       onPrimary: Color.fromRGBO(255, 255, 255, 0.75),
       secondary: Color.fromRGBO(2, 164, 221, 1),
