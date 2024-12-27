@@ -16,11 +16,10 @@ class DrillType {
       : assert(map!['id'] != null),
         assert(map!['title'] != null),
         assert(map!['descriptor'] != null),
-        assert(map!['timer_in_seconds'] != null),
         id = map!['id'],
         title = map['title'],
         descriptor = map['descriptor'],
-        timerInSeconds = map['timer_in_seconds'],
+        timerInSeconds = map['timer_in_seconds'] ?? 0,
         measurements = [],
         order = map['order'];
 
