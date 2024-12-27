@@ -521,7 +521,7 @@ class _LoginState extends State<Login> {
         password: authAttempt.password,
       )
           .then((credential) {
-        Navigator.of(context, rootNavigator: true).pop('dialog');
+        if (context.mounted) Navigator.of(context, rootNavigator: true).pop('dialog');
 
         setState(() {
           _signedIn = true;
@@ -547,7 +547,7 @@ class _LoginState extends State<Login> {
   signIn(BuildContext context, AuthAttempt authAttempt, Function error) async {
     try {
       await FirebaseAuth.instance.signInWithEmailAndPassword(email: authAttempt.email, password: authAttempt.password).then((credential) {
-        Navigator.of(context, rootNavigator: true).pop('dialog');
+        if (context.mounted) Navigator.of(context, rootNavigator: true).pop('dialog');
 
         setState(() {
           _signedIn = true;
