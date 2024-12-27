@@ -102,10 +102,16 @@ class _ActivityDetailState extends State<ActivityDetail> {
   }
 
   void _saveCategory(String value) {
-    setState(() {
-      _categories.replaceRange(_editingCategoryIndex!, (_editingCategoryIndex! + 1), [Category(value)]);
-      _editingCategoryIndex = null;
-    });
+    if (_categories.isNotEmpty && _editingCategoryIndex != null) {
+      setState(() {
+        _categories[_editingCategoryIndex!] = Category(value);
+        _editingCategoryIndex = null;
+      });
+    } else {
+      setState(() {
+        _categories.add(Category(value));
+      });
+    }
 
     categoryTitleFieldController.clear();
     FocusScope.of(context).unfocus();
@@ -174,7 +180,7 @@ class _ActivityDetailState extends State<ActivityDetail> {
                       size: 28,
                       color: Theme.of(context).colorScheme.secondary,
                     ),
-                    onPressed: widget.activity == null
+                    onPressed: widget.activity!.reference == null
                         ? () {
                             if (_formKey.currentState!.validate()) {
                               // Create the activity
@@ -184,6 +190,7 @@ class _ActivityDetailState extends State<ActivityDetail> {
                               );
                               DocumentReference activity = FirebaseFirestore.instance.collection('activities').doc(user!.uid).collection('activities').doc();
                               a.id = activity.id;
+                              a.categories = _categories;
                               activity.set(a.toMap());
 
                               // Add the categories for the activity
