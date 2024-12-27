@@ -175,7 +175,7 @@ class _NavState extends State<Nav> {
                           Text(
                             "Wednesday Session",
                             style: TextStyle(
-                              color: Theme.of(context).colorScheme.onSecondary,
+                              color: Theme.of(context).colorScheme.onPrimary,
                               fontFamily: "Choplin",
                               fontSize: 20,
                               fontWeight: FontWeight.w700,
@@ -187,7 +187,7 @@ class _NavState extends State<Nav> {
                               Text(
                                 printDuration(sessionService.currentDuration),
                                 style: TextStyle(
-                                  color: Theme.of(context).colorScheme.onSecondary,
+                                  color: Theme.of(context).colorScheme.onPrimary,
                                   fontFamily: "Choplin",
                                   fontSize: 18,
                                   fontWeight: FontWeight.w700,
@@ -200,7 +200,7 @@ class _NavState extends State<Nav> {
                       trailing: InkWell(
                         child: Icon(
                           _sessionPanelState == PanelState.CLOSED ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
-                          color: Theme.of(context).colorScheme.onSecondary,
+                          color: Theme.of(context).colorScheme.onPrimary,
                         ),
                       ),
                       contentPadding: const EdgeInsets.symmetric(vertical: 5, horizontal: 20),

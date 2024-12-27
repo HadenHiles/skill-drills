@@ -27,8 +27,8 @@ void main() async {
   // Load app settings
   SharedPreferences prefs = await SharedPreferences.getInstance();
   settings = Settings(
-    prefs.getBool('vibrate') ?? false,
-    prefs.getBool('dark_mode') ?? ThemeMode.system == ThemeMode.dark,
+    prefs.getBool('vibrate') != null ? prefs.getBool('vibrate')! : false,
+    prefs.getBool('dark_mode') != null ? prefs.getBool('dark_mode')! : false,
   );
 
   runApp(
