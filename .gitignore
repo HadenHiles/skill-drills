@@ -44,3 +44,4 @@ app.*.map.json
 !.vscode/launch.json
 !.vscode/extensions.json
 /.vscode
+flutter.groovy alias
