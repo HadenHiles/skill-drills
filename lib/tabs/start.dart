@@ -45,7 +45,7 @@ class _StartState extends State<Start> {
                     Text(
                       "Starting a new session will override your existing one.\n\nWould you like to continue?",
                       style: TextStyle(
-                        color: Theme.of(context).colorScheme.onBackground,
+                        color: Theme.of(context).colorScheme.onSurface,
                       ),
                     ),
                     "Cancel",

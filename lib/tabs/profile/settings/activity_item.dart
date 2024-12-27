@@ -61,7 +61,7 @@ class _ActivityItemState extends State<ActivityItem> {
                         Text(
                           "Are you sure you want to delete this activity?\n\nThis action cannot be undone.",
                           style: TextStyle(
-                            color: Theme.of(context).colorScheme.onBackground,
+                            color: Theme.of(context).colorScheme.onSurface,
                           ),
                         ),
                         null,

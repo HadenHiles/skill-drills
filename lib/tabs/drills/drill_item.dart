@@ -88,7 +88,7 @@ class _DrillItemState extends State<DrillItem> {
                         Text(
                           "Are you sure you want to delete this drill?\n\nThis action cannot be undone.",
                           style: TextStyle(
-                            color: Theme.of(context).colorScheme.onBackground,
+                            color: Theme.of(context).colorScheme.onSurface,
                           ),
                         ),
                         null,

@@ -149,7 +149,7 @@ class _DrillDetailState extends State<DrillDetail> {
               ),
               flexibleSpace: DecoratedBox(
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.background,
+                  color: Theme.of(context).colorScheme.surface,
                 ),
                 child: FlexibleSpaceBar(
                   collapseMode: CollapseMode.parallax,
@@ -306,7 +306,7 @@ class _DrillDetailState extends State<DrillDetail> {
                                 ),
                               ),
                               style: TextStyle(
-                                color: Theme.of(context).colorScheme.onBackground,
+                                color: Theme.of(context).colorScheme.onSurface,
                               ),
                               onChanged: (value) {
                                 setState(() {
@@ -326,7 +326,7 @@ class _DrillDetailState extends State<DrillDetail> {
                               minLines: 4,
                               maxLines: 6,
                               style: TextStyle(
-                                color: Theme.of(context).colorScheme.onBackground,
+                                color: Theme.of(context).colorScheme.onSurface,
                               ),
                               onChanged: (value) {
                                 setState(() {

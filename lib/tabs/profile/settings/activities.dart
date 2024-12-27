@@ -108,7 +108,7 @@ class _ActivitiesSettingsState extends State<ActivitiesSettings> {
               ),
               flexibleSpace: DecoratedBox(
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.background,
+                  color: Theme.of(context).colorScheme.surface,
                 ),
                 child: FlexibleSpaceBar(
                   collapseMode: CollapseMode.parallax,
@@ -176,7 +176,7 @@ class _ActivitiesSettingsState extends State<ActivitiesSettings> {
                       Text(
                         "Are you sure you want to reset your sports?\n\nThis can't be undone.",
                         style: TextStyle(
-                          color: Theme.of(context).colorScheme.onBackground,
+                          color: Theme.of(context).colorScheme.onSurface,
                         ),
                       ),
                       "Cancel",

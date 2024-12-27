@@ -150,7 +150,7 @@ class _ActivityDetailState extends State<ActivityDetail> {
               ),
               flexibleSpace: DecoratedBox(
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.background,
+                  color: Theme.of(context).colorScheme.surface,
                 ),
                 child: FlexibleSpaceBar(
                   collapseMode: CollapseMode.parallax,
@@ -264,7 +264,7 @@ class _ActivityDetailState extends State<ActivityDetail> {
                             ),
                           ),
                           style: TextStyle(
-                            color: Theme.of(context).colorScheme.onBackground,
+                            color: Theme.of(context).colorScheme.onSurface,
                           ),
                         ),
                       ],
@@ -338,7 +338,7 @@ class _ActivityDetailState extends State<ActivityDetail> {
                             }
                           },
                           style: TextStyle(
-                            color: Theme.of(context).colorScheme.onBackground,
+                            color: Theme.of(context).colorScheme.onSurface,
                           ),
                         ),
                       ],

@@ -8,7 +8,7 @@ void dialog(BuildContext context, SkillDrillsDialog dialog) {
     child: Text(
       dialog.cancelText ?? "Cancel",
       style: TextStyle(
-        color: Theme.of(context).colorScheme.onBackground,
+        color: Theme.of(context).colorScheme.onSurface,
       ),
     ),
   );
@@ -29,12 +29,12 @@ void dialog(BuildContext context, SkillDrillsDialog dialog) {
         fontSize: 20,
       ),
     ),
-    backgroundColor: Theme.of(context).colorScheme.background,
+    backgroundColor: Theme.of(context).colorScheme.surface,
     content: dialog.body ??
         Text(
           "This action cannot be undone.",
           style: TextStyle(
-            color: Theme.of(context).colorScheme.onBackground,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
         ),
     actions: [
