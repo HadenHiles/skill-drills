@@ -533,7 +533,7 @@ class _LoginState extends State<Login> {
         await error('The password provided is too weak');
       } else if (e.code == 'email-already-in-use') {
         print(e.toString());
-        await error('The account already exists for that email');
+        await error('An account already exists with that email');
       } else {
         print(e.toString());
         await error('There was an error signing up');
