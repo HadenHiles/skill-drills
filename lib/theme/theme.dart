@@ -56,8 +56,8 @@ class SkillDrillsTheme {
       onPrimary: Colors.black54,
       secondary: Color.fromRGBO(2, 164, 221, 1),
       onSecondary: Colors.white,
-      onBackground: Colors.black,
-    ).copyWith(secondary: const Color.fromRGBO(2, 164, 221, 1)).copyWith(background: Colors.white),
+      onSurface: Colors.black,
+    ).copyWith(secondary: const Color.fromRGBO(2, 164, 221, 1)).copyWith(surface: Colors.white),
   );
 
   static final ThemeData darkTheme = ThemeData(
@@ -113,7 +113,7 @@ class SkillDrillsTheme {
       onPrimary: Color.fromRGBO(255, 255, 255, 0.75),
       secondary: Color.fromRGBO(2, 164, 221, 1),
       onSecondary: Colors.white,
-      onBackground: Colors.white,
-    ).copyWith(secondary: const Color.fromRGBO(2, 164, 221, 1)).copyWith(background: const Color(0xff222222)),
+      onSurface: Colors.white,
+    ).copyWith(secondary: const Color.fromRGBO(2, 164, 221, 1)).copyWith(surface: const Color(0xff222222)),
   );
 }

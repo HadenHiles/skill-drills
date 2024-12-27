@@ -237,7 +237,7 @@ class _NavState extends State<Nav> {
                       pinned: true,
                       flexibleSpace: DecoratedBox(
                         decoration: BoxDecoration(
-                          color: _showLogoToolbar ? Theme.of(context).primaryColor : Theme.of(context).colorScheme.background,
+                          color: _showLogoToolbar ? Theme.of(context).primaryColor : Theme.of(context).colorScheme.surface,
                         ),
                         child: FlexibleSpaceBar(
                           collapseMode: CollapseMode.parallax,
@@ -291,7 +291,7 @@ class _NavState extends State<Nav> {
               ),
             ],
             currentIndex: _selectedIndex,
-            backgroundColor: Theme.of(context).colorScheme.background,
+            backgroundColor: Theme.of(context).colorScheme.surface,
             selectedItemColor: Theme.of(context).primaryColor,
             unselectedItemColor: Theme.of(context).colorScheme.onPrimary,
             onTap: _onItemTapped,
