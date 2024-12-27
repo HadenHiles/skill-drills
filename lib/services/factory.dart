@@ -32,7 +32,7 @@ void addUser() {
 /// Bootstrap the activities if user has none (first launch)
 void bootstrapActivities() {
   FirebaseFirestore.instance.collection('activities').doc(auth.currentUser!.uid).collection('activities').get().then((snapshot) {
-    if (auth.currentUser!.uid.isNotEmpty && !(snapshot.docs.isNotEmpty)) {
+    if (snapshot.docs.isEmpty) {
       resetActivities();
     }
   });
@@ -84,6 +84,7 @@ Future<void> resetActivities() async {
     for (var a in activities) {
       DocumentReference activity = FirebaseFirestore.instance.collection('activities').doc(auth.currentUser!.uid).collection('activities').doc();
       a.id = activity.id;
+      a.categories = [];
       activity.set(a.toMap());
 
       if (a.title == "Hockey") {
