@@ -113,7 +113,9 @@ class _ProfileSettingsState extends State<ProfileSettings> {
                       prefs.setBool('vibrate', value);
                     });
 
-                    Provider.of<SettingsStateNotifier>(context, listen: false).updateSettings(Settings(value, _darkMode));
+                    if (context.mounted) {
+                      Provider.of<SettingsStateNotifier>(context, listen: false).updateSettings(Settings(value, _darkMode));
+                    }
                   },
                 ),
                 SettingsTile.switchTile(
@@ -134,7 +136,9 @@ class _ProfileSettingsState extends State<ProfileSettings> {
                       prefs.setBool('dark_mode', value);
                     });
 
-                    Provider.of<SettingsStateNotifier>(context, listen: false).updateSettings(Settings(_vibrate, value));
+                    if (context.mounted) {
+                      Provider.of<SettingsStateNotifier>(context, listen: false).updateSettings(Settings(_vibrate, value));
+                    }
                   },
                 ),
               ],
