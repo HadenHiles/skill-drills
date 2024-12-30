@@ -62,7 +62,7 @@ class SkillDrills extends StatelessWidget {
           navigatorKey: navigatorKey,
           theme: SkillDrillsTheme.lightTheme,
           darkTheme: SkillDrillsTheme.darkTheme,
-          themeMode: settings.darkMode ? ThemeMode.dark : ThemeMode.system,
+          themeMode: settingsState.settings.darkMode ? ThemeMode.dark : ThemeMode.system,
           home: user != null ? const Nav() : const Login(),
         );
       },
