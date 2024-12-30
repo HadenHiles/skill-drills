@@ -31,9 +31,15 @@ class _ProfileSettingsState extends State<ProfileSettings> {
 
   //Loading counter value on start
   _loadSettings() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    bool vibrate = prefs.getBool('vibrate') ?? false; // Provide default if null
+    bool darkMode = prefs.getBool('dark_mode') ?? false; // Provide default if null
+
     setState(() {
-      _vibrate = settings.vibrate;
-      _darkMode = settings.darkMode;
+      _vibrate = vibrate;
+      _darkMode = darkMode;
+      settings.vibrate = vibrate; // Update the settings object
+      settings.darkMode = darkMode; // Update the settings object
     });
   }
 
@@ -107,9 +113,7 @@ class _ProfileSettingsState extends State<ProfileSettings> {
                       prefs.setBool('vibrate', value);
                     });
 
-                    if (context.mounted) {
-                      Provider.of<SettingsStateNotifier>(context, listen: false).updateSettings(Settings(value, _darkMode));
-                    }
+                    Provider.of<SettingsStateNotifier>(context, listen: false).updateSettings(Settings(value, _darkMode));
                   },
                 ),
                 SettingsTile.switchTile(
@@ -130,9 +134,7 @@ class _ProfileSettingsState extends State<ProfileSettings> {
                       prefs.setBool('dark_mode', value);
                     });
 
-                    if (context.mounted) {
-                      Provider.of<SettingsStateNotifier>(context, listen: false).updateSettings(Settings(_vibrate, value));
-                    }
+                    Provider.of<SettingsStateNotifier>(context, listen: false).updateSettings(Settings(_vibrate, value));
                   },
                 ),
               ],
