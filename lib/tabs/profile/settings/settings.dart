@@ -185,16 +185,14 @@ class _ProfileSettingsState extends State<ProfileSettings> {
                     Icons.logout,
                     color: Colors.red,
                   ),
-                  onPressed: (BuildContext context) {
-                    signOut();
+                  onPressed: (BuildContext context) async {
+                    await signOut();
 
-                    navigatorKey.currentState!.pop();
-                    navigatorKey.currentState!.pushReplacement(
+                    navigatorKey.currentState!.pushAndRemoveUntil(
                       MaterialPageRoute(
-                        builder: (context) {
-                          return const Login();
-                        },
+                        builder: (context) => const Login(),
                       ),
+                      (route) => false,
                     );
                   },
                 )
