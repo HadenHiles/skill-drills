@@ -7,7 +7,7 @@
 The long-term vision includes:
 
 - A white-label / clone strategy targeting specific skill verticals (hockey, guitar, chess, yoga, etc.)
-- An in-app **Skill/Sport Mode** selector that re-themes the UI and surfaces relevant curated drills
+- An in-app **Skill Mode** selector that re-themes the UI and surfaces relevant curated drills
 - A freemium model where free users get one active skill mode; paid tiers unlock multiple modes, saved routines, and advanced analytics
 
 ---
@@ -41,11 +41,11 @@ lib/
     skill_drills_dialog.dart  # Reusable dialog model
 
     firestore/
-      activity.dart           # Activity (a named skill domain, e.g. "Slap Shot")
-      category.dart           # Category tag (e.g. "Accuracy", "Speed")
+      activity.dart           # Activity (a named skill domain, e.g. "Hockey", "Guitar") — has Skills[]
+      skill.dart              # Skill tag (e.g. "Accuracy", "Tempo") — sub-discipline within an Activity
       drill.dart              # Drill (belongs to Activity + DrillType, has Measurements)
       drill_type.dart         # DrillType (template: title, descriptor, timer, ordered Measurements)
-      measurement.dart        # Measurement definition (type, metric, label, order, value, target, reverse)
+      measurement.dart        # Measurement definition (role, type, label, order, value, target, reverse)
       measurement_result.dart # Saved result for one measurement in a completed session
       measurement_target.dart # User-defined target for a measurement (with reverse flag)
       skill_drill_user.dart   # Extended user profile (displayName, email, photoURL)
@@ -65,7 +65,7 @@ lib/
     start.dart                # Start tab (quick-start session, shows saved routines)
 
     drills/
-      drill_detail.dart       # Create / edit drill (activity, categories, drill type, measurements, targets)
+      drill_detail.dart       # Create / edit drill (activity, skills, drill type, measurements, targets)
       drill_item.dart         # Drill list item widget
 
     profile/
@@ -89,16 +89,16 @@ lib/
 
 ```
 User (Firebase Auth UID)
- └── Activities[]            (user-defined skill domains, e.g. "Slap Shot", "C Major Scale")
-      └── Categories[]       (tags per activity, e.g. "Accuracy", "Tempo")
- └── DrillTypes[]            (reusable drill templates)
-      └── Measurements[]     (ordered list of metrics for this drill type)
- └── Drills[]                (user's drill library)
+ └── activities[]           (Firestore: collection('activities').doc(uid).collection('activities'))
+      └── skills[]           (sub-disciplines per activity, e.g. "Shooting", "Passing")
+ └── drillTypes[]           (Firestore: collection('drillTypes').doc(uid).collection('drillTypes'))
+      └── measurements[]     (ordered list of metrics for this drill type — role: "result"|"target")
+ └── drills[]               (Firestore: collection('drills').doc(uid).collection('drills'))
       ├── activity           (embedded Activity snapshot)
       ├── drillType          (embedded DrillType snapshot)
-      ├── measurements[]     (subcollection – Measurement definitions with targets)
-      └── categories[]       (subcollection – Category tags)
- └── Sessions[]              (to be built)
+      ├── measurements[]     (subcollection – Measurement definitions with targets; deep-copied from DrillType on selection)
+      └── skills[]           (subcollection – Skill tags)
+ └── Sessions[]             (to be built)
       ├── startedAt, endedAt, duration
       └── DrillResults[]
            └── MeasurementResults[]  (actual recorded values per measurement)
@@ -108,21 +108,38 @@ User (Firebase Auth UID)
 
 ```dart
 class Measurement {
-  final String type;    // "amount" | "duration" — drives the input widget rendered
-  final String metric;  // e.g. "reps", "seconds", "bpm", "yards", "goals"
-  final String label;   // Human-readable label shown in the session UI
-  final int order;      // Display/input order within a drill
-  dynamic value;        // The recorded value (used in MeasurementResult)
-  dynamic target;       // The goal value (used in MeasurementTarget)
-  bool reverse;         // true = lower is better (e.g. time-to-complete)
+  final String role;   // "result" | "target" — PURPOSE: what this measurement captures
+  final String type;   // "amount" | "duration" — INPUT WIDGET: how the value is entered
+  final String label;  // Human-readable label shown in the session UI (e.g. "Reps", "Lap Time")
+  final int order;     // Display/input order within a drill
+  num? value;          // Recorded value: int count for "amount", int seconds for "duration"
+  num? target;         // Goal value: same encoding as value; null until explicitly set
+  bool reverse;        // true = lower is better (e.g. time-to-complete)
+  DocumentReference? reference;
 }
 ```
 
-**Design intent:** Every sport metric can be modeled by composing measurements. Examples:
+**`role` vs `type` — the key distinction:**
 
-- Hockey shot accuracy: `{ type: "amount", metric: "goals", label: "Goals scored", target: 10, reverse: false }`
-- Speed skating lap: `{ type: "duration", metric: "seconds", label: "Lap time", target: 90, reverse: true }`
-- Guitar scale BPM: `{ type: "amount", metric: "bpm", label: "Tempo", target: 120, reverse: false }`
+- `role` answers _what is this for?_ — a `"result"` measurement records what happened; a `"target"` measurement defines the goal
+- `type` answers _how is it entered?_ — `"amount"` renders a numeric counter; `"duration"` renders a time picker
+- These two dimensions are independent: you can have a `role: "target", type: "duration"` (a time goal) or `role: "result", type: "amount"` (a rep count)
+
+**Subclasses with implicit role:**
+
+```dart
+// role is hardcoded — no need to pass it
+MeasurementResult(String type, String label, int order, num? value)
+MeasurementTarget(String type, String label, int order, num? target, bool reverse)
+```
+
+**Design intent:** Every skill metric can be modeled by composing measurements. Examples:
+
+- Hockey shot accuracy: `{ role: "result", type: "amount", label: "Goals scored", target: 10, reverse: false }`
+- Speed skating lap: `{ role: "result", type: "duration", label: "Lap time", target: 90, reverse: true }`
+- Guitar scale BPM: `{ role: "result", type: "amount", label: "Tempo", target: 120, reverse: false }`
+
+**Duration encoding:** Duration values are stored as `int` seconds (not Dart `Duration` objects) — use `Duration(seconds: m.value!.toInt())` to reconstruct and `duration.inSeconds` to store.
 
 ---
 
@@ -146,7 +163,7 @@ The **Start** tab hosts a `sliding_up_panel` session overlay that slides up from
 
 - Firebase Auth (email/password + Google Sign-In)
 - Drill CRUD (create/edit/delete) with full measurement schema authoring
-- Activity and Category management (linked to drills)
+- Activity and Skill management (linked to drills; Firestore paths: `activities`, `skills`)
 - DrillType templates with ordered measurements and timers
 - Session timer (stopwatch via `SessionService`)
 - In-session slide-up panel UI (cancel/end session buttons, timer display)
@@ -168,7 +185,7 @@ The **Start** tab hosts a `sliding_up_panel` session overlay that slides up from
 - **Routines tab** — authoring and saving ordered sets of drills as a `Routine`
 - **Routine → Session flow** — starting a session from a saved routine and stepping through drills
 - **Profile stats** — real session count, streaks, personal bests, charts
-- **Skill/Sport Mode** — user selects their active skill (hockey, guitar, chess, etc.); drives curated default activities/drill types and subtle UI theming changes
+- **Skill Mode** — user selects their active skill domain (hockey, guitar, chess, etc.); drives curated default activities/drill types and subtle UI theming changes
 - **Paid tiers** — free = 1 active skill mode; paid = multiple modes, unlimited routines, analytics export
 
 ---
@@ -190,8 +207,8 @@ The **Start** tab hosts a `sliding_up_panel` session overlay that slides up from
 
 ### Phase 3 – Skill Modes
 
-8. **Skill/Sport Mode model** — `SkillMode { id, title, icon, accentColor, defaultActivities[], defaultDrillTypes[] }`
-9. **Mode selector UI** — onboarding screen or profile setting to choose active skill (Hockey, Golf, Guitar, Chess, Yoga, Fitness, etc.)
+8. **Skill Mode model** — `SkillMode { id, title, icon, accentColor, defaultActivities[], defaultDrillTypes[] }`
+9. **Mode selector UI** — onboarding screen or profile setting to choose active skill domain (Hockey, Golf, Guitar, Chess, Yoga, Fitness, etc.)
 10. **Themed UI per mode** — accent color, illustrations, and curated empty-state copy adapt to the selected mode
 11. **Curated drill library** — seed Firestore with default `Activity` + `DrillType` templates per skill mode that users can adopt into their own library
 
@@ -212,7 +229,7 @@ The **Start** tab hosts a `sliding_up_panel` session overlay that slides up from
 
 ## Code Style & Conventions
 
-- Follow the rules in [STYLE_GUIDE.md](../STYLE_GUIDE.md)
+- Follow the code style rules defined in `STYLE_GUIDE` (workspace root)
 - Firestore collections live under the authenticated user's UID: `collection('drills').doc(uid).collection('drills')`
 - Models have three constructors: `ClassName(...)`, `ClassName.fromMap(map, {reference})`, `ClassName.fromSnapshot(snapshot)`
 - `toMap()` is used for all Firestore writes
@@ -225,7 +242,11 @@ The **Start** tab hosts a `sliding_up_panel` session overlay that slides up from
 
 ## Key Design Decisions & Constraints
 
-- **General-purpose compromise**: The `Measurement` model is intentionally generic (`type`, `metric`, `label`) so that any sport or skill can be modeled without schema changes. Sport-specific UX is layered on top via Skill Modes, not by changing the data model.
+- **General-purpose compromise**: The `Measurement` model is intentionally generic (`role`, `type`, `label`) so that any skill domain can be modeled without schema changes. SkillDrills is not sports-only — it targets athletes, musicians, gamers, and anyone with a practice routine. Skill-specific UX is layered on top via Skill Modes, not by changing the data model.
+- **`role`/`type` separation**: `role` (`"result"`|`"target"`) describes _purpose_; `type` (`"amount"`|`"duration"`) describes _input widget_. These must never be conflated — filter by `role` when deciding what to display/save, filter by `type` when deciding how to render input.
+- **`num?` for measurement values**: `value` and `target` are `num?` (never `dynamic`). Duration values are stored as `int` seconds. Use `Duration(seconds: m.value!.toInt())` to reconstruct.
+- **DrillType as template, Drill as instance**: When a `DrillType` is selected during drill creation, its `measurements` are **deep-copied** into `_drill.measurements`. The DrillType object itself must never be mutated — it is a shared template.
+- **Activity/Skill taxonomy**: The top-level skill domain is `Activity` (Firestore: `activities`); sub-disciplines are `Skill` (Firestore: `skills`). Drills embed an `Activity` snapshot and a `List<Skill>` snapshot. SkillDrills is not sports-only — an `Activity` can be "Hockey", "Guitar", "Chess", or any skill domain. All references in code and Firestore paths use these names.
 - **Per-user Firestore data**: All user content (drills, activities, sessions, routines) lives under `/{collection}/{uid}/{subcollection}` — no shared public content yet.
 - **No offline-first yet**: The app assumes connectivity. Firestore's built-in caching provides light offline resilience but is not explicitly configured.
 - **Measurement `type` values**: Currently `"amount"` and `"duration"`. Extending to `"boolean"`, `"scale"` (1–10), or `"distance"` is planned and should be backward-compatible by adding new input widget cases.

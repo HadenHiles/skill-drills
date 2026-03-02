@@ -1,37 +1,24 @@
-// ignore_for_file: overridden_fields
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:skilldrills/models/firestore/measurement.dart';
 
-/// MeasurementValue
-/// @value The value of the saved measurement
+/// MeasurementResult – a [Measurement] with role "result", capturing the
+/// value recorded during a completed drill. [value] holds the recorded result;
+/// [target] is always null (targets are stored in [MeasurementTarget]).
 class MeasurementResult extends Measurement {
   String? id;
-  @override
-  final String type;
-  @override
-  final String metric;
-  @override
-  final String label;
-  @override
-  final int order;
-  @override
-  dynamic value;
-  @override
-  DocumentReference? reference;
 
-  MeasurementResult(this.type, this.metric, this.label, this.order, this.value) : super(type, metric, label, order, value, null, false);
+  MeasurementResult(String type, String label, int order, num? value) : super('result', type, label, order, value, null, false);
 
-  MeasurementResult.fromMap(super.map, {this.reference})
-      : assert(map!['type'] != null),
-        assert(map!['metric'] != null),
-        id = map!['id'],
-        type = map['type'],
-        metric = map['metric'],
-        label = map['label'],
-        order = map['order'],
-        value = map['value'],
-        super.fromMap();
+  // ignore: use_super_parameters
+  MeasurementResult.fromMap(Map<String, dynamic>? map, {DocumentReference? reference})
+      : id = map!['id'],
+        super.fromMap(map, reference: reference);
+
+  @override
+  Map<String, dynamic> toMap() => {
+        ...super.toMap(),
+        'id': id,
+      };
 
   MeasurementResult.fromSnapshot(DocumentSnapshot<Map<String, dynamic>> snapshot) : this.fromMap(snapshot.data(), reference: snapshot.reference);
 }

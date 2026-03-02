@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:skilldrills/models/firestore/activity.dart';
-import 'package:skilldrills/models/firestore/category.dart';
+import 'package:skilldrills/models/firestore/skill.dart';
 import 'package:skilldrills/models/firestore/drill_type.dart';
 import 'package:skilldrills/models/firestore/measurement.dart';
 import 'package:skilldrills/models/firestore/measurement_target.dart';
@@ -31,7 +31,7 @@ void addUser() {
 
 /// Bootstrap the activities if user has none (first launch)
 void bootstrapActivities() {
-  FirebaseFirestore.instance.collection('activities').doc(auth.currentUser!.uid).collection('activities').get().then((snapshot) {
+  FirebaseFirestore.instance.collection("activities").doc(auth.currentUser!.uid).collection("activities").get().then((snapshot) {
     if (snapshot.docs.isEmpty) {
       resetActivities();
     }
@@ -41,10 +41,10 @@ void bootstrapActivities() {
 /// Reset activities for the current user
 Future<void> resetActivities() async {
   // Clear out any existing activities for the signed in user
-  FirebaseFirestore.instance.collection('activities').doc(auth.currentUser!.uid).collection('activities').get().then((snapshot) async {
+  FirebaseFirestore.instance.collection("activities").doc(auth.currentUser!.uid).collection("activities").get().then((snapshot) async {
     await Future.forEach(snapshot.docs, (doc) {
       // Delete the activities categories first
-      doc.reference.collection('categories').get().then((categorySnapshots) {
+      doc.reference.collection('skills').get().then((categorySnapshots) {
         for (var cDoc in categorySnapshots.docs) {
           cDoc.reference.delete();
         }
@@ -82,98 +82,98 @@ Future<void> resetActivities() async {
       ),
     ];
     for (var a in activities) {
-      DocumentReference activity = FirebaseFirestore.instance.collection('activities').doc(auth.currentUser!.uid).collection('activities').doc();
+      DocumentReference activity = FirebaseFirestore.instance.collection("activities").doc(auth.currentUser!.uid).collection("activities").doc();
       a.id = activity.id;
-      a.categories = [];
+      a.skills = [];
       activity.set(a.toMap());
 
       if (a.title == "Hockey") {
-        List<Category> categories = [
-          Category("Skating"),
-          Category("Shooting"),
-          Category("Stickhandling"),
-          Category("Passing"),
+        List<Skill> categories = [
+          Skill("Skating"),
+          Skill("Shooting"),
+          Skill("Stickhandling"),
+          Skill("Passing"),
         ];
 
         for (var c in categories) {
-          _saveActivityCategory(activity, c);
+          _saveActivitySkill(activity, c);
         }
       } else if (a.title == "Basketball") {
-        List<Category> categories = [
-          Category("Shooting"),
-          Category("Rebounding"),
-          Category("Passing"),
-          Category("Dribbling"),
-          Category("Blocking"),
-          Category("Stealing"),
+        List<Skill> categories = [
+          Skill("Shooting"),
+          Skill("Rebounding"),
+          Skill("Passing"),
+          Skill("Dribbling"),
+          Skill("Blocking"),
+          Skill("Stealing"),
         ];
 
         for (var c in categories) {
-          _saveActivityCategory(activity, c);
+          _saveActivitySkill(activity, c);
         }
       } else if (a.title == "Baseball") {
-        List<Category> categories = [
-          Category("Hitting"),
-          Category("Bunting"),
-          Category("Throwing"),
-          Category("Pitching"),
-          Category("Base Running"),
-          Category("Stealing"),
-          Category("Sliding"),
-          Category("Ground Balls"),
-          Category("Pop Fly's"),
+        List<Skill> categories = [
+          Skill("Hitting"),
+          Skill("Bunting"),
+          Skill("Throwing"),
+          Skill("Pitching"),
+          Skill("Base Running"),
+          Skill("Stealing"),
+          Skill("Sliding"),
+          Skill("Ground Balls"),
+          Skill("Pop Fly's"),
         ];
 
         for (var c in categories) {
-          _saveActivityCategory(activity, c);
+          _saveActivitySkill(activity, c);
         }
       } else if (a.title == "Golf") {
-        List<Category> categories = [
-          Category("Drive"),
-          Category("Approach"),
-          Category("Putt"),
-          Category("Lay-Up"),
-          Category("Chip"),
-          Category("Punch"),
-          Category("Flop"),
-          Category("Draw"),
-          Category("Fade"),
+        List<Skill> categories = [
+          Skill("Drive"),
+          Skill("Approach"),
+          Skill("Putt"),
+          Skill("Lay-Up"),
+          Skill("Chip"),
+          Skill("Punch"),
+          Skill("Flop"),
+          Skill("Draw"),
+          Skill("Fade"),
         ];
 
         for (var c in categories) {
-          _saveActivityCategory(activity, c);
+          _saveActivitySkill(activity, c);
         }
       } else if (a.title == "Soccer") {
-        List<Category> categories = [
-          Category("Ball Control"),
-          Category("Passing"),
-          Category("Stamina"),
-          Category("Dribbling"),
-          Category("Shooting"),
-          Category("Penalty Shots"),
-          Category("Free Kicks"),
-          Category("Keep-up"),
-          Category("Tricks/Moves"),
+        List<Skill> categories = [
+          Skill("Ball Control"),
+          Skill("Passing"),
+          Skill("Stamina"),
+          Skill("Dribbling"),
+          Skill("Shooting"),
+          Skill("Penalty Shots"),
+          Skill("Free Kicks"),
+          Skill("Keep-up"),
+          Skill("Tricks/Moves"),
         ];
 
         for (var c in categories) {
-          _saveActivityCategory(activity, c);
+          _saveActivitySkill(activity, c);
         }
       } else if (a.title == "Weight Training") {
-        List<Category> categories = [
-          Category("Core"),
-          Category("Arms"),
-          Category("Back"),
-          Category("Chest"),
-          Category("Legs"),
-          Category("Shoulders"),
-          Category("Olympic"),
-          Category("Full Body"),
-          Category("Cardio"),
+        List<Skill> categories = [
+          Skill("Core"),
+          Skill("Arms"),
+          Skill("Back"),
+          Skill("Chest"),
+          Skill("Legs"),
+          Skill("Shoulders"),
+          Skill("Olympic"),
+          Skill("Full Body"),
+          Skill("Cardio"),
         ];
 
         for (var c in categories) {
-          _saveActivityCategory(activity, c);
+          _saveActivitySkill(activity, c);
         }
       }
     }
@@ -181,8 +181,8 @@ Future<void> resetActivities() async {
 }
 
 /// Save individual category to activity categories collection
-void _saveActivityCategory(a, c) {
-  DocumentReference category = FirebaseFirestore.instance.collection('activities').doc(auth.currentUser!.uid).collection('activities').doc(a.id).collection('categories').doc();
+void _saveActivitySkill(a, c) {
+  DocumentReference category = FirebaseFirestore.instance.collection("activities").doc(auth.currentUser!.uid).collection("activities").doc(a.id).collection('skills').doc();
   c.id = category.id;
   category.set(c.toMap());
 }
@@ -230,75 +230,75 @@ void bootstrapDrillTypes() {
         switch (dt.id) {
           case "reps":
             measurements = [
-              MeasurementResult("result", "amount", "Reps", 1, null) as Measurement,
+              MeasurementResult("amount", "Reps", 1, null) as Measurement,
             ];
 
             break;
           case "score":
             measurements = [
-              MeasurementResult("result", "amount", "Score", 1, null) as Measurement,
-              MeasurementTarget("target", "amount", "Target Score", 2, null, false) as Measurement,
+              MeasurementResult("amount", "Score", 1, null) as Measurement,
+              MeasurementTarget("amount", "Target Score", 2, null, false) as Measurement,
             ];
 
             break;
           case "time_elapsed":
             measurements = [
-              MeasurementResult("result", "duration", "Time", 1, null) as Measurement,
+              MeasurementResult("duration", "Time", 1, null) as Measurement,
             ];
 
             break;
           case "timer":
             measurements = [
-              MeasurementResult("result", "duration", "Timer", 1, null) as Measurement,
+              MeasurementResult("duration", "Timer", 1, null) as Measurement,
             ];
 
             break;
           case "reps_in_time":
             measurements = [
-              MeasurementResult("result", "amount", "Reps", 1, null) as Measurement,
+              MeasurementResult("amount", "Reps", 1, null) as Measurement,
             ];
 
             break;
           case "score_in_time":
             measurements = [
-              MeasurementResult("result", "amount", "Score", 1, null) as Measurement,
-              MeasurementTarget("target", "amount", "Target Score", 2, null, false) as Measurement,
+              MeasurementResult("amount", "Score", 1, null) as Measurement,
+              MeasurementTarget("amount", "Target Score", 2, null, false) as Measurement,
             ];
 
             break;
           case "duration_target":
             measurements = [
-              MeasurementResult("result", "duration", "Time", 1, null) as Measurement,
-              MeasurementTarget("target", "duration", "Target Time", 2, null, false) as Measurement,
+              MeasurementResult("duration", "Time", 1, null) as Measurement,
+              MeasurementTarget("duration", "Target Time", 2, null, false) as Measurement,
             ];
 
             break;
           case "reps_time":
             measurements = [
-              MeasurementResult("result", "amount", "Reps", 1, null) as Measurement,
-              MeasurementResult("result", "duration", "Time", 2, null) as Measurement,
+              MeasurementResult("amount", "Reps", 1, null) as Measurement,
+              MeasurementResult("duration", "Time", 2, null) as Measurement,
             ];
 
             break;
           case "score_time":
             measurements = [
-              MeasurementResult("result", "amount", "Score", 1, null) as Measurement,
-              MeasurementResult("result", "duration", "Time", 2, null) as Measurement,
-              MeasurementTarget("target", "amount", "Target Score", 3, null, false) as Measurement,
+              MeasurementResult("amount", "Score", 1, null) as Measurement,
+              MeasurementResult("duration", "Time", 2, null) as Measurement,
+              MeasurementTarget("amount", "Target Score", 3, null, false) as Measurement,
             ];
 
             break;
           case "weighted_reps":
             measurements = [
-              MeasurementResult("result", "amount", "Weight", 1, null) as Measurement,
-              MeasurementResult("result", "amount", "Reps", 2, null) as Measurement,
+              MeasurementResult("amount", "Weight", 1, null) as Measurement,
+              MeasurementResult("amount", "Reps", 2, null) as Measurement,
             ];
 
             break;
           case "assisted_reps":
             measurements = [
-              MeasurementResult("result", "amount", "Assisted", 1, null) as Measurement,
-              MeasurementResult("result", "amount", "Reps", 2, null) as Measurement,
+              MeasurementResult("amount", "Assisted", 1, null) as Measurement,
+              MeasurementResult("amount", "Reps", 2, null) as Measurement,
             ];
 
             break;

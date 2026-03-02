@@ -1,9 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:skilldrills/models/firestore/category.dart';
 import 'package:skilldrills/models/firestore/drill.dart';
 import 'package:skilldrills/models/firestore/measurement.dart';
+import 'package:skilldrills/models/firestore/skill.dart';
 import 'package:skilldrills/tabs/drills/drill_item.dart';
 
 final FirebaseAuth auth = FirebaseAuth.instance;
@@ -49,14 +49,14 @@ class _DrillsState extends State<Drills> {
         d.measurements = measurements;
       });
 
-      d.reference!.collection('categories').get().then((cSnap) {
-        List<Category> categories = [];
+      d.reference!.collection('skills').get().then((cSnap) {
+        List<Skill> categories = [];
 
         for (var m in cSnap.docs) {
-          categories.add(Category.fromSnapshot(m));
+          categories.add(Skill.fromSnapshot(m));
         }
 
-        d.categories = categories;
+        d.skills = categories;
       });
 
       items.add(
@@ -96,7 +96,7 @@ class _DrillsState extends State<Drills> {
         }
       });
 
-      doc.reference.collection('categories').get().then((catSnapshots) {
+      doc.reference.collection('skills').get().then((catSnapshots) {
         for (var cDoc in catSnapshots.docs) {
           cDoc.reference.delete();
         }

@@ -7,9 +7,9 @@ import 'package:skilldrills/tabs/profile/settings/activity_detail.dart';
 import 'package:skilldrills/widgets/app_list_item.dart';
 
 class ActivityItem extends StatefulWidget {
-  const ActivityItem({super.key, this.activity, this.deleteCallback});
+  const ActivityItem({super.key, this.sport, this.deleteCallback});
 
-  final Activity? activity;
+  final Activity? sport;
   final Function? deleteCallback;
 
   @override
@@ -20,7 +20,7 @@ class _ActivityItemState extends State<ActivityItem> {
   @override
   Widget build(BuildContext context) {
     return AppListItem(
-      title: widget.activity!.title!,
+      title: widget.sport!.title!,
       trailing: IconButton(
         padding: EdgeInsets.zero,
         constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
@@ -34,7 +34,7 @@ class _ActivityItemState extends State<ActivityItem> {
           dialog(
             context,
             SkillDrillsDialog(
-              "Delete \"${widget.activity!.title}\"?",
+              "Delete \"${widget.sport!.title}\"?",
               Text(
                 "Are you sure you want to delete this activity?\n\nThis action cannot be undone.",
                 textAlign: TextAlign.center,
@@ -44,7 +44,7 @@ class _ActivityItemState extends State<ActivityItem> {
               () => Navigator.of(context).pop(),
               "Delete",
               () {
-                widget.deleteCallback!(widget.activity);
+                widget.deleteCallback!(widget.sport);
                 Navigator.of(context).pop();
               },
             ),
@@ -53,7 +53,7 @@ class _ActivityItemState extends State<ActivityItem> {
       ),
       onTap: () {
         navigatorKey.currentState!.push(MaterialPageRoute(builder: (context) {
-          return ActivityDetail(activity: widget.activity);
+          return ActivityDetail(sport: widget.sport);
         }));
       },
     );

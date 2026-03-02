@@ -150,7 +150,7 @@ class _ProfileSettingsState extends State<ProfileSettings> {
               ),
               tiles: [
                 SettingsTile(
-                  title: Text('Sports', style: Theme.of(context).textTheme.bodyLarge),
+                  title: Text("Activities", style: Theme.of(context).textTheme.bodyLarge),
                   description: Text(
                     '(Activities)',
                     style: Theme.of(context).textTheme.bodyMedium,

@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:skilldrills/models/firestore/category.dart';
+import 'package:skilldrills/models/firestore/skill.dart';
 import 'package:skilldrills/widgets/app_list_item.dart';
 
 class CategoryItem extends StatefulWidget {
   const CategoryItem({super.key, this.category, this.editCallback, this.deleteCallback});
 
-  final Category? category;
+  final Skill? category;
   final Function? editCallback;
   final Function? deleteCallback;
 

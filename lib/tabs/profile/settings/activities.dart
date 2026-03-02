@@ -28,7 +28,7 @@ class _ActivitiesSettingsState extends State<ActivitiesSettings> {
 
   Widget _buildActivities(BuildContext context) {
     return StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance.collection('activities').doc(auth.currentUser!.uid).collection('activities').orderBy('title', descending: false).snapshots(),
+        stream: FirebaseFirestore.instance.collection("activities").doc(auth.currentUser!.uid).collection("activities").orderBy('title', descending: false).snapshots(),
         builder: (context, snapshot) {
           if (!snapshot.hasData) {
             return const Column(
@@ -47,7 +47,7 @@ class _ActivitiesSettingsState extends State<ActivitiesSettings> {
   Widget _buildActivityList(BuildContext context, List<DocumentSnapshot<Map<String, dynamic>>> snapshot) {
     List<ActivityItem> items = snapshot
         .map((data) => ActivityItem(
-              activity: Activity.fromSnapshot(data),
+              sport: Activity.fromSnapshot(data),
               deleteCallback: _deleteActivity,
             ))
         .toList();
@@ -62,7 +62,7 @@ class _ActivitiesSettingsState extends State<ActivitiesSettings> {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Text(
-                "There are no sports (activities) to display",
+                "There are no activities to display",
                 style: TextStyle(
                   fontSize: 16,
                 ),
@@ -72,8 +72,8 @@ class _ActivitiesSettingsState extends State<ActivitiesSettings> {
   }
 
   void _deleteActivity(Activity activity) {
-    FirebaseFirestore.instance.collection('activities').doc(auth.currentUser!.uid).collection('activities').doc(activity.reference!.id).get().then((doc) {
-      doc.reference.collection('categories').get().then((catSnapshots) {
+    FirebaseFirestore.instance.collection("activities").doc(auth.currentUser!.uid).collection("activities").doc(activity.reference!.id).get().then((doc) {
+      doc.reference.collection('skills').get().then((catSnapshots) {
         for (var cDoc in catSnapshots.docs) {
           cDoc.reference.delete();
         }
@@ -117,7 +117,7 @@ class _ActivitiesSettingsState extends State<ActivitiesSettings> {
                   centerTitle: false,
                   title: Row(
                     children: [
-                      const BasicTitle(title: "Sports"),
+                      const BasicTitle(title: "Activities"),
                       Container(
                         margin: const EdgeInsets.only(left: 10),
                         child: Text(
@@ -142,7 +142,7 @@ class _ActivitiesSettingsState extends State<ActivitiesSettings> {
                     ),
                     onPressed: () {
                       navigatorKey.currentState!.push(MaterialPageRoute(builder: (context) {
-                        return ActivityDetail(activity: Activity("New Activity", user?.uid));
+                        return ActivityDetail(sport: Activity("New Activity", user?.uid));
                       }));
                     },
                   ),

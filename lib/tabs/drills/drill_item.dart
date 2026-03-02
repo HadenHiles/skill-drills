@@ -3,7 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:skilldrills/main.dart';
 import 'package:skilldrills/models/skill_drills_dialog.dart';
-import 'package:skilldrills/models/firestore/category.dart';
+import 'package:skilldrills/models/firestore/skill.dart';
 import 'package:skilldrills/models/firestore/drill.dart';
 import 'package:skilldrills/services/dialogs.dart';
 import 'package:skilldrills/tabs/drills/drill_detail.dart';
@@ -22,15 +22,15 @@ class DrillItem extends StatefulWidget {
 }
 
 class _DrillItemState extends State<DrillItem> {
-  List<Category> _categories = [];
+  List<Skill> _categories = [];
 
   @override
   void initState() {
-    FirebaseFirestore.instance.collection('drills').doc(user!.uid).collection('drills').doc(widget.drill.reference!.id).collection('categories').get().then((cSnap) {
-      List<Category> categories = [];
+    FirebaseFirestore.instance.collection('drills').doc(user!.uid).collection('drills').doc(widget.drill.reference!.id).collection('skills').get().then((cSnap) {
+      List<Skill> categories = [];
 
       for (var m in cSnap.docs) {
-        categories.add(Category.fromSnapshot(m));
+        categories.add(Skill.fromSnapshot(m));
       }
 
       setState(() {
@@ -84,7 +84,7 @@ class _DrillItemState extends State<DrillItem> {
     );
   }
 
-  String _outputCategories(List<Category> categories) {
+  String _outputCategories(List<Skill> categories) {
     String catString = "";
 
     categories.asMap().forEach((i, c) {

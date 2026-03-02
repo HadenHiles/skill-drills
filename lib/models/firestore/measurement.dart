@@ -1,24 +1,32 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-/// Measurement
-/// @type A string representation of the measurement type (amount, duration)
+/// Measurement – the atomic unit of a drill schema.
+///
+/// [role]    "result" | "target" — whether this captures a recorded value or a goal.
+/// [type]    "amount" | "duration" — drives the input widget rendered during a session.
+///           Extendable to "boolean" | "scale" without schema changes.
+/// [label]   Human-readable input label shown in UI (e.g. "Reps", "Score", "Time").
+/// [order]   Display/input order within a drill.
+/// [value]   Recorded value: int count for "amount", int seconds for "duration". Null until recorded.
+/// [target]  Goal value: same encoding as value. Null until set.
+/// [reverse] true = lower is better (e.g. a lap-time target where faster is better).
 class Measurement {
+  final String role;
   final String type;
-  final String metric;
   final String label;
   final int order;
-  dynamic value;
-  dynamic target;
+  num? value;
+  num? target;
   bool reverse;
   DocumentReference? reference;
 
-  Measurement(this.type, this.metric, this.label, this.order, this.value, this.target, this.reverse);
+  Measurement(this.role, this.type, this.label, this.order, this.value, this.target, this.reverse);
 
   Measurement.fromMap(Map<String, dynamic>? map, {this.reference})
-      : assert(map!['type'] != null),
-        assert(map!['metric'] != null),
-        type = map!['type'],
-        metric = map['metric'],
+      : assert(map!['role'] != null),
+        assert(map!['type'] != null),
+        role = map!['role'],
+        type = map['type'],
         label = map['label'],
         order = map['order'],
         value = map['value'],
@@ -27,8 +35,8 @@ class Measurement {
 
   Map<String, dynamic> toMap() {
     return {
+      'role': role,
       'type': type,
-      'metric': metric,
       'label': label,
       'order': order,
       'value': value,

@@ -5,7 +5,7 @@ import 'package:flutter_picker_plus/flutter_picker_plus.dart';
 import 'package:select_dialog/select_dialog.dart';
 import 'package:skilldrills/main.dart';
 import 'package:skilldrills/models/firestore/activity.dart';
-import 'package:skilldrills/models/firestore/category.dart';
+import 'package:skilldrills/models/firestore/skill.dart';
 import 'package:skilldrills/models/firestore/drill.dart';
 import 'package:skilldrills/models/firestore/drill_type.dart';
 import 'package:skilldrills/models/firestore/measurement.dart';
@@ -36,7 +36,7 @@ class _DrillDetailState extends State<DrillDetail> {
   Activity? _activity = Activity("", null);
   bool _activityError = false;
 
-  List<Category>? _selectedCategories = [];
+  List<Skill>? _selectedCategories = [];
   bool _categoryError = false;
 
   List<DrillType>? _drillTypes;
@@ -49,17 +49,17 @@ class _DrillDetailState extends State<DrillDetail> {
   @override
   void initState() {
     // Load the activities first
-    FirebaseFirestore.instance.collection('activities').doc(auth.currentUser!.uid).collection('activities').get().then((snapshot) async {
+    FirebaseFirestore.instance.collection("activities").doc(auth.currentUser!.uid).collection("activities").get().then((snapshot) async {
       List<Activity> activities = [];
       if (snapshot.docs.isNotEmpty) {
         await Future.forEach(snapshot.docs, (doc) async {
           Activity a = Activity.fromSnapshot(doc);
           await _getCategories(doc.reference).then((categories) {
-            a.categories = categories;
+            a.skills = categories;
 
-            if (a == widget.drill!.activity) {
+            if (widget.drill?.reference != null && a == widget.drill!.activity) {
               setState(() {
-                _activity!.categories = a.categories;
+                _activity!.skills = a.skills;
               });
             }
 
@@ -74,33 +74,37 @@ class _DrillDetailState extends State<DrillDetail> {
       }
     });
 
-    // If the user is editing a drill
-    setState(() {
-      _drill = widget.drill;
-      _titleFieldController.text = widget.drill!.title!;
-      _descriptionFieldController.text = widget.drill!.description!;
-      _activity = widget.drill!.activity!;
-      _selectedCategories = widget.drill!.categories!;
-      _drillType = widget.drill!.drillType;
-      _timerTextController.text = printDuration(Duration(seconds: widget.drill!.drillType!.timerInSeconds));
-    });
-
-    // Load the drill measurements
-    FirebaseFirestore.instance.collection('drills').doc(auth.currentUser!.uid).collection('drills').doc(widget.drill!.reference!.id).collection('measurements').orderBy('order').get().then((snapshot) async {
-      List<Measurement> measures = [];
-      if (snapshot.docs.isNotEmpty) {
-        for (var doc in snapshot.docs) {
-          measures.add(Measurement.fromSnapshot(doc));
+    // If the user is editing an existing drill, pre-populate the form
+    if (widget.drill?.reference != null) {
+      setState(() {
+        _drill = widget.drill;
+        _titleFieldController.text = widget.drill!.title ?? '';
+        _descriptionFieldController.text = widget.drill!.description ?? '';
+        _activity = widget.drill!.activity ?? Activity('', null);
+        _selectedCategories = widget.drill!.skills ?? [];
+        _drillType = widget.drill!.drillType;
+        if (widget.drill!.drillType != null) {
+          _timerTextController.text = printDuration(Duration(seconds: widget.drill!.drillType!.timerInSeconds));
         }
+      });
 
-        setState(() {
-          _drill!.measurements = measures;
-          _drillType!.measurements = measures;
-          _preview = _buildPreview(_drill!);
-          _targetFields = _buildDefaultTargetFields(_drill!);
-        });
-      }
-    });
+      // Load the drill's saved measurements (which may include per-drill targets)
+      FirebaseFirestore.instance.collection('drills').doc(auth.currentUser!.uid).collection('drills').doc(widget.drill!.reference!.id).collection('measurements').orderBy('order').get().then((snapshot) async {
+        List<Measurement> measures = [];
+        if (snapshot.docs.isNotEmpty) {
+          for (var doc in snapshot.docs) {
+            measures.add(Measurement.fromSnapshot(doc));
+          }
+
+          setState(() {
+            // Store on _drill only; never mutate the shared DrillType template
+            _drill!.measurements = measures;
+            _preview = _buildPreview(_drill!);
+            _targetFields = _buildDefaultTargetFields(_drill!);
+          });
+        }
+      });
+    }
 
     // Load the drill types
     FirebaseFirestore.instance.collection('drill_types').doc(auth.currentUser!.uid).collection('drill_types').orderBy('order').get().then((snapshot) async {
@@ -155,7 +159,7 @@ class _DrillDetailState extends State<DrillDetail> {
                   collapseMode: CollapseMode.parallax,
                   titlePadding: null,
                   centerTitle: false,
-                  title: BasicTitle(title: widget.drill!.title!),
+                  title: BasicTitle(title: widget.drill?.title ?? 'New Drill'),
                   background: Container(
                     color: Theme.of(context).scaffoldBackgroundColor,
                   ),
@@ -193,71 +197,62 @@ class _DrillDetailState extends State<DrillDetail> {
                         });
                       }
 
-                      if (!hasErrors) {
-                        if (_formKey.currentState!.validate()) {
-                          FirebaseFirestore.instance.collection('drills').doc(auth.currentUser!.uid).collection('drills').doc(widget.drill!.reference!.id).collection('measurements').get().then((snapshot) {
+                      if (!hasErrors && _formKey.currentState!.validate()) {
+                        // Measurements to persist: prefer the drill's own copy (which holds
+                        // per-drill targets), fall back to the DrillType template.
+                        final measurements = _drill!.measurements ?? _drillType!.measurements ?? <Measurement>[];
+
+                        if (widget.drill?.reference != null) {
+                          // UPDATE existing drill
+                          final ref = widget.drill!.reference!;
+
+                          ref.collection('measurements').get().then((snapshot) {
                             for (var doc in snapshot.docs) {
                               doc.reference.delete();
                             }
-
-                            for (var m in _drillType!.measurements!) {
-                              FirebaseFirestore.instance.collection('drills').doc(auth.currentUser!.uid).collection('drills').doc(widget.drill!.reference!.id).collection('measurements').doc().set(m.toMap());
+                            for (var m in measurements) {
+                              ref.collection('measurements').doc().set(m.toMap());
                             }
                           });
 
-                          FirebaseFirestore.instance.collection('drills').doc(auth.currentUser!.uid).collection('drills').doc(widget.drill!.reference!.id).collection('categories').get().then((snapshot) {
+                          ref.collection('skills').get().then((snapshot) {
                             for (var doc in snapshot.docs) {
                               doc.reference.delete();
                             }
-
                             for (var c in _selectedCategories!) {
-                              FirebaseFirestore.instance.collection('drills').doc(auth.currentUser!.uid).collection('drills').doc(widget.drill!.reference!.id).collection('categories').doc().set(c.toMap());
+                              ref.collection('skills').doc().set(c.toMap());
                             }
                           });
 
                           FirebaseFirestore.instance.runTransaction((transaction) async {
                             transaction.update(
-                              widget.drill!.reference!,
+                              ref,
                               Drill(
-                                _titleFieldController.text.toString().trim(),
-                                _descriptionFieldController.text.toString().trim(),
+                                _titleFieldController.text.trim(),
+                                _descriptionFieldController.text.trim(),
                                 _activity,
                                 _drillType,
                               ).toMap(),
                             );
-
                             navigatorKey.currentState!.pop();
                           });
-                        }
-                      } else if (!hasErrors) {
-                        if (_formKey.currentState!.validate()) {
-                          DocumentReference newDoc = FirebaseFirestore.instance.collection('drills').doc(auth.currentUser!.uid).collection('drills').doc();
+                        } else {
+                          // CREATE new drill
+                          final newDoc = FirebaseFirestore.instance.collection('drills').doc(auth.currentUser!.uid).collection('drills').doc();
 
-                          Drill newDrill = Drill(
-                            _titleFieldController.text.toString().trim(),
-                            _descriptionFieldController.text.toString().trim(),
+                          newDoc.set(Drill(
+                            _titleFieldController.text.trim(),
+                            _descriptionFieldController.text.trim(),
                             _activity,
                             _drillType,
-                          );
+                          ).toMap());
 
-                          newDrill.measurements = _drillType!.measurements;
-                          newDrill.activity!.categories = _selectedCategories;
-
-                          newDoc.set(newDrill.toMap());
-
-                          for (var m in _drillType!.measurements!) {
-                            if (m.value is Duration) {
-                              m.value = (m.value as Duration).inSeconds;
-                            }
-                            if (m.target is Duration) {
-                              m.target = (m.target as Duration).inSeconds;
-                            }
-
+                          for (var m in measurements) {
                             newDoc.collection('measurements').doc().set(m.toMap());
                           }
 
                           for (var c in _selectedCategories!) {
-                            newDoc.collection('categories').doc().set(c.toMap());
+                            newDoc.collection('skills').doc().set(c.toMap());
                           }
 
                           navigatorKey.currentState!.pop();
@@ -345,7 +340,7 @@ class _DrillDetailState extends State<DrillDetail> {
                     vertical: 10,
                     horizontal: 20,
                   ),
-                  leading: Text("Sport", style: Theme.of(context).textTheme.bodyLarge),
+                  leading: Text("Activity", style: Theme.of(context).textTheme.bodyLarge),
                   trailing: _activities == null
                       ? SizedBox(
                           height: 25,
@@ -377,7 +372,7 @@ class _DrillDetailState extends State<DrillDetail> {
                       : () {
                           SelectDialog.showModal<Activity>(
                             context,
-                            label: "Choose Sport",
+                            label: "Choose Activity",
                             items: _activities,
                             showSearchBox: false,
                             backgroundColor: Theme.of(context).colorScheme.primary,
@@ -417,7 +412,7 @@ class _DrillDetailState extends State<DrillDetail> {
                             },
                             onChange: (selected) async {
                               await _getCategories(selected.reference!).then((cats) async {
-                                selected.categories = cats;
+                                selected.skills = cats;
 
                                 setState(() {
                                   _activityError = false;
@@ -433,7 +428,7 @@ class _DrillDetailState extends State<DrillDetail> {
                           );
                         },
                 ),
-                (_activity!.categories?.length ?? 0) < 1
+                (_activity!.skills?.length ?? 0) < 1
                     ? Container()
                     : ListTile(
                         contentPadding: const EdgeInsets.symmetric(
@@ -453,20 +448,20 @@ class _DrillDetailState extends State<DrillDetail> {
                             _categoryError = false;
                             _selectedCategories = [];
                             Activity a = Activity(_activity!.title, null);
-                            a.categories = [];
+                            a.skills = [];
                             _drill = Drill(_drill!.title, _drill!.description, a, _drill!.drillType);
                           });
                         },
                         onTap: () {
-                          SelectDialog.showModal<Category>(
+                          SelectDialog.showModal<Skill>(
                             context,
                             label: "Choose Skill(s)",
-                            items: _activity!.categories,
+                            items: _activity!.skills,
                             showSearchBox: false,
                             backgroundColor: Theme.of(context).colorScheme.primary,
                             alwaysShowScrollBar: true,
                             multipleSelectedValues: _selectedCategories,
-                            itemBuilder: (BuildContext context, Category category, bool isSelected) {
+                            itemBuilder: (BuildContext context, Skill category, bool isSelected) {
                               return Container(
                                 decoration: !isSelected
                                     ? null
@@ -488,12 +483,12 @@ class _DrillDetailState extends State<DrillDetail> {
                                 ),
                               );
                             },
-                            onMultipleItemsChange: (List<Category> selected) {
+                            onMultipleItemsChange: (List<Skill> selected) {
                               setState(() {
                                 _categoryError = false;
                                 _selectedCategories = selected;
                                 Activity a = Activity(_activity!.title, null);
-                                a.categories = selected;
+                                a.skills = selected;
                                 _drill = Drill(_drill!.title, _drill!.description, a, _drill!.drillType);
                               });
                             },
@@ -591,8 +586,9 @@ class _DrillDetailState extends State<DrillDetail> {
                               setState(() {
                                 _drillTypeError = false;
                                 _drillType = selected;
-                                d.measurements = _drillType!.measurements;
-                                d.categories = _selectedCategories;
+                                // Deep copy so per-drill target edits never mutate the shared DrillType template
+                                d.measurements = selected.measurements?.map((m) => Measurement(m.role, m.type, m.label, m.order, m.value, m.target, m.reverse)).toList();
+                                d.skills = _selectedCategories;
                                 _drill = d;
                                 _targetFields = _buildDefaultTargetFields(d);
                                 _preview = _buildPreview(d);
@@ -710,11 +706,11 @@ class _DrillDetailState extends State<DrillDetail> {
     );
   }
 
-  Future<List<Category>> _getCategories(DocumentReference aDoc) async {
-    List<Category>? categories = [];
-    return await aDoc.collection('categories').get().then((catSnapshot) async {
+  Future<List<Skill>> _getCategories(DocumentReference aDoc) async {
+    List<Skill>? categories = [];
+    return await aDoc.collection('skills').get().then((catSnapshot) async {
       for (var cDoc in catSnapshot.docs) {
-        categories.add(Category.fromSnapshot(cDoc));
+        categories.add(Skill.fromSnapshot(cDoc));
       }
     }).then((_) => categories);
   }
@@ -738,24 +734,27 @@ class _DrillDetailState extends State<DrillDetail> {
     return catString;
   }
 
-  Widget _buildDefaultTargetFields(Drill? drill) {
+  Widget _buildDefaultTargetFields(Drill drill) {
     Map<int, TextEditingController> targetTextControllers = {};
     List<Widget> targetFields = [];
-    List<Measurement>? targets = drill!.measurements!.where((m) => (m).type == "target").toList();
+    // Filter by role, not type
+    List<Measurement> targets = (drill.measurements ?? []).where((m) => m.role == 'target').toList();
 
     targets.asMap().forEach((i, t) {
       targetTextControllers.putIfAbsent(i, () => TextEditingController());
 
-      if (t.type == "target" && t.target != null) {
-        if (t.metric == "duration") {
-          targetTextControllers[i]!.text = printDuration(Duration(seconds: t.target));
+      if (t.role == 'target' && t.target != null) {
+        // type drives the input widget; store/display durations as int seconds
+        if (t.type == 'duration') {
+          targetTextControllers[i]!.text = printDuration(Duration(seconds: t.target!.toInt()));
         } else {
-          targetTextControllers[i]!.text = t.target.toString();
+          targetTextControllers[i]!.text = t.target?.toString() ?? '';
         }
       }
 
-      switch (t.metric) {
-        case "amount":
+      // Switch on type (input widget type), not on role
+      switch (t.type) {
+        case 'amount':
           targetFields.add(
             SizedBox(
               width: targets.length > 1 ? MediaQuery.of(context).size.width / 2 : MediaQuery.of(context).size.width,
@@ -772,12 +771,13 @@ class _DrillDetailState extends State<DrillDetail> {
                   ),
                 ),
                 onChanged: (value) {
-                  targets[i] = MeasurementTarget(t.type, t.metric, t.label, t.order, value, false);
+                  // Store as num (int), never as Duration
+                  targets[i] = MeasurementTarget(t.type, t.label, t.order, num.tryParse(value), false);
 
-                  List<Measurement> newMeasurements = _drillType!.measurements!.where((m) => m.type == "result").toList();
-                  newMeasurements.addAll(targets);
+                  // Update only the drill's own measurement copy, not the shared DrillType template
+                  final results = (drill.measurements ?? []).where((m) => m.role == 'result').toList();
                   setState(() {
-                    _drillType!.measurements = newMeasurements;
+                    _drill!.measurements = [...results, ...targets];
                   });
                 },
               ),
@@ -785,7 +785,7 @@ class _DrillDetailState extends State<DrillDetail> {
           );
 
           break;
-        case "duration":
+        case 'duration':
           targetFields.add(
             SizedBox(
               width: targets.length > 1 ? MediaQuery.of(context).size.width / 2 : MediaQuery.of(context).size.width,
@@ -824,17 +824,20 @@ class _DrillDetailState extends State<DrillDetail> {
                       color: Theme.of(context).primaryColor,
                     ),
                     onConfirm: (Picker picker, List<int> value) {
-                      // You get your duration here
-                      Duration duration = Duration(hours: picker.getSelectedValues()[0], minutes: picker.getSelectedValues()[1], seconds: picker.getSelectedValues()[2]);
+                      final duration = Duration(
+                        hours: picker.getSelectedValues()[0],
+                        minutes: picker.getSelectedValues()[1],
+                        seconds: picker.getSelectedValues()[2],
+                      );
 
                       targetTextControllers[i]!.text = printDuration(duration);
 
-                      targets[i] = MeasurementTarget(t.type, t.metric, t.label, t.order, duration, false);
+                      // Store as int seconds, not as a Duration object
+                      targets[i] = MeasurementTarget(t.type, t.label, t.order, duration.inSeconds, false);
 
-                      List<Measurement> newMeasurements = _drillType!.measurements!.where((m) => m.type == "result").toList();
-                      newMeasurements.addAll(targets);
+                      final results = (drill.measurements ?? []).where((m) => m.role == 'result').toList();
                       setState(() {
-                        _drillType!.measurements = newMeasurements;
+                        _drill!.measurements = [...results, ...targets];
                       });
                     },
                   ).showDialog(context);
@@ -877,23 +880,26 @@ class _DrillDetailState extends State<DrillDetail> {
     Map<int, TextEditingController> measurementTextControllers = {};
     List<Widget> measurementFields = [];
 
-    _drillType?.measurements?.asMap().forEach((i, m) {
+    // Use the drill's own measurements (which carry per-drill targets)
+    drill.measurements?.asMap().forEach((i, m) {
       measurementTextControllers.putIfAbsent(i, () => TextEditingController());
 
-      if (m.type == "target" && m.target != null) {
-        switch (m.metric) {
-          case "amount":
-            measurementTextControllers[i]!.text = m.target;
+      // Pre-fill target values using role and num? types
+      if (m.role == 'target' && m.target != null) {
+        switch (m.type) {
+          case 'amount':
+            measurementTextControllers[i]!.text = m.target!.toInt().toString();
             break;
-          case "duration":
-            measurementTextControllers[i]!.text = printDuration(m.target);
+          case 'duration':
+            measurementTextControllers[i]!.text = printDuration(Duration(seconds: m.target!.toInt()));
             break;
           default:
         }
       }
 
-      switch (m.metric) {
-        case "amount":
+      // Switch on type, not on metric
+      switch (m.type) {
+        case 'amount':
           measurementFields.add(
             Flexible(
               child: Container(

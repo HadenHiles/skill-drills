@@ -1,10 +1,13 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'category.dart';
+import 'skill.dart';
 
+/// Activity – a named skill domain chosen by the user (e.g. "Hockey", "Guitar").
+/// Each Activity has a list of [skills] (sub-disciplines, e.g. "Shooting", "Passing")
+/// that are used to categorise drills.
 class Activity {
   String? id;
   final String? title;
-  List<Category>? categories;
+  List<Skill>? skills;
   final String? createdBy;
   DocumentReference? reference;
 
@@ -14,19 +17,19 @@ class Activity {
       : assert(map!['title'] != null),
         id = map!['id'],
         title = map['title'],
-        categories = [],
+        skills = [],
         createdBy = map['created_by'];
 
   Map<String, dynamic> toMap() {
-    List<Map<String, dynamic>> cats = [];
-    for (var c in categories!) {
-      cats.add(c.toMap());
+    List<Map<String, dynamic>> skillMaps = [];
+    for (var s in skills ?? []) {
+      skillMaps.add(s.toMap());
     }
 
     return {
       'id': id,
       'title': title,
-      'categories': cats,
+      'skills': skillMaps,
       'created_by': createdBy,
     };
   }
