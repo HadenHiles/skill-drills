@@ -50,7 +50,7 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyC2B3mJiSEfc4_kv1m-pEVk4OaVFP28hdY',
-    appId: '1:1092639561657:android:ec6a5d651c82d13db50868',
+    appId: '1:1092639561657:android:18de583de7bf5059b50868',
     messagingSenderId: '1092639561657',
     projectId: 'skill-drills-haden',
     storageBucket: 'skill-drills-haden.appspot.com',

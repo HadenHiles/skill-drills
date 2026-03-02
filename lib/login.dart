@@ -2,7 +2,6 @@
 
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter_signin_button/flutter_signin_button.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:skilldrills/services/auth.dart';
 import 'package:skilldrills/theme/theme.dart';
@@ -86,8 +85,15 @@ class _LoginState extends State<Login> {
                       SizedBox(
                         height: 56,
                         width: double.infinity,
-                        child: SignInButton(
-                          Buttons.Google,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            foregroundColor: const Color(0xFF3C4043),
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: SkillDrillsRadius.smBorderRadius,
+                            ),
+                          ),
                           onPressed: () async {
                             try {
                               await signInWithGoogle();
@@ -114,6 +120,27 @@ class _LoginState extends State<Login> {
                               }
                             }
                           },
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              SvgPicture.asset(
+                                'assets/images/icons/google.svg',
+                                height: 24,
+                                width: 24,
+                              ),
+                              const SizedBox(width: 12),
+                              const Text(
+                                'Sign in with Google',
+                                style: TextStyle(
+                                  fontFamily: 'Choplin',
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 15,
+                                  letterSpacing: 0.3,
+                                  color: Color(0xFF3C4043),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                       const SizedBox(height: 12),
