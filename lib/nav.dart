@@ -5,7 +5,9 @@ import 'package:skilldrills/main.dart';
 import 'package:skilldrills/services/session.dart';
 import 'package:skilldrills/services/utility.dart';
 import 'package:skilldrills/tabs/drills.dart';
+import 'package:skilldrills/tabs/history.dart';
 import 'package:skilldrills/tabs/profile.dart';
+import 'package:skilldrills/tabs/routines.dart';
 import 'package:skilldrills/services/factory.dart';
 import 'package:skilldrills/tabs/Start.dart';
 import 'package:skilldrills/tabs/drills/drill_detail.dart';
@@ -55,9 +57,16 @@ class _NavState extends State<Nav> {
               size: 28,
             ),
             onPressed: () {
-              navigatorKey.currentState!.push(MaterialPageRoute(builder: (BuildContext context) {
-                return const ProfileSettings();
-              }));
+              navigatorKey.currentState!.push(
+                PageRouteBuilder(
+                  pageBuilder: (ctx, anim, _) => const ProfileSettings(),
+                  transitionDuration: const Duration(milliseconds: 320),
+                  transitionsBuilder: (ctx, anim, _, child) => FadeTransition(
+                    opacity: CurvedAnimation(parent: anim, curve: Curves.easeOut),
+                    child: child,
+                  ),
+                ),
+              );
             },
           ),
         ),
@@ -66,6 +75,7 @@ class _NavState extends State<Nav> {
     ),
     const NavTab(
       title: BasicTitle(title: "History"),
+      body: History(),
     ),
     NavTab(
       title: const BasicTitle(title: "Start"),
@@ -84,9 +94,22 @@ class _NavState extends State<Nav> {
               size: 28,
             ),
             onPressed: () {
-              navigatorKey.currentState!.push(MaterialPageRoute(builder: (context) {
-                return const DrillDetail();
-              }));
+              navigatorKey.currentState!.push(
+                PageRouteBuilder(
+                  pageBuilder: (ctx, anim, _) => const DrillDetail(),
+                  transitionDuration: const Duration(milliseconds: 320),
+                  transitionsBuilder: (ctx, anim, _, child) {
+                    final slide = Tween<Offset>(
+                      begin: const Offset(0, 0.06),
+                      end: Offset.zero,
+                    ).animate(CurvedAnimation(parent: anim, curve: Curves.easeOutCubic));
+                    return FadeTransition(
+                      opacity: CurvedAnimation(parent: anim, curve: Curves.easeOut),
+                      child: SlideTransition(position: slide, child: child),
+                    );
+                  },
+                ),
+              );
             },
           ),
         ),
@@ -95,6 +118,7 @@ class _NavState extends State<Nav> {
     ),
     const NavTab(
       title: BasicTitle(title: "Routines"),
+      body: Routines(),
     ),
   ];
 
@@ -162,7 +186,7 @@ class _NavState extends State<Nav> {
               },
               panel: Container(
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primaryContainer,
+                  color: Theme.of(context).colorScheme.surface,
                 ),
                 child: Column(
                   children: [
@@ -174,7 +198,7 @@ class _NavState extends State<Nav> {
                           Text(
                             "Wednesday Session",
                             style: TextStyle(
-                              color: Theme.of(context).colorScheme.onPrimary,
+                              color: Theme.of(context).colorScheme.onSecondary,
                               fontFamily: "Choplin",
                               fontSize: 20,
                               fontWeight: FontWeight.w700,
@@ -186,7 +210,7 @@ class _NavState extends State<Nav> {
                               Text(
                                 printDuration(sessionService.currentDuration),
                                 style: TextStyle(
-                                  color: Theme.of(context).colorScheme.onPrimary,
+                                  color: Theme.of(context).colorScheme.onSecondary,
                                   fontFamily: "Choplin",
                                   fontSize: 18,
                                   fontWeight: FontWeight.w700,
@@ -199,7 +223,7 @@ class _NavState extends State<Nav> {
                       trailing: InkWell(
                         child: Icon(
                           _sessionPanelState == PanelState.CLOSED ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
-                          color: Theme.of(context).colorScheme.onPrimary,
+                          color: Theme.of(context).colorScheme.onSecondary,
                         ),
                       ),
                       contentPadding: const EdgeInsets.symmetric(vertical: 5, horizontal: 20),
@@ -229,7 +253,7 @@ class _NavState extends State<Nav> {
                     SliverAppBar(
                       collapsedHeight: _showLogoToolbar ? 100 : 65,
                       expandedHeight: _showLogoToolbar ? 200.0 : 140,
-                      backgroundColor: Theme.of(context).colorScheme.primary,
+                      backgroundColor: Theme.of(context).colorScheme.surface,
                       iconTheme: Theme.of(context).iconTheme,
                       actionsIconTheme: Theme.of(context).iconTheme,
                       floating: true,
@@ -252,12 +276,20 @@ class _NavState extends State<Nav> {
                     ),
                   ];
                 },
-                body: _sessionPanelState == PanelState.OPEN
-                    ? Container(
-                        padding: const EdgeInsets.only(bottom: 100),
-                        child: _tabs.elementAt(_selectedIndex),
-                      )
-                    : _tabs.elementAt(_selectedIndex),
+                body: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 280),
+                  switchInCurve: Curves.easeOut,
+                  switchOutCurve: Curves.easeIn,
+                  transitionBuilder: (child, animation) => FadeTransition(
+                    opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
+                    child: child,
+                  ),
+                  child: Container(
+                    key: ValueKey(_selectedIndex),
+                    padding: _sessionPanelState == PanelState.OPEN ? const EdgeInsets.only(bottom: 100) : EdgeInsets.zero,
+                    child: _tabs.elementAt(_selectedIndex),
+                  ),
+                ),
               ),
             );
           },

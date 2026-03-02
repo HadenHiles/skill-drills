@@ -177,13 +177,13 @@ class _ProfileSettingsState extends State<ProfileSettings> {
                   title: Text(
                     'Logout',
                     style: TextStyle(
-                      color: Colors.red,
+                      color: Theme.of(context).colorScheme.error,
                       fontSize: Theme.of(context).textTheme.bodyLarge!.fontSize,
                     ),
                   ),
-                  leading: const Icon(
+                  leading: Icon(
                     Icons.logout,
-                    color: Colors.red,
+                    color: Theme.of(context).colorScheme.error,
                   ),
                   onPressed: (BuildContext context) async {
                     await signOut();

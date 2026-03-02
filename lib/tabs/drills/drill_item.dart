@@ -77,9 +77,22 @@ class _DrillItemState extends State<DrillItem> {
         },
       ),
       onTap: () {
-        navigatorKey.currentState!.push(MaterialPageRoute(builder: (context) {
-          return DrillDetail(drill: widget.drill);
-        }));
+        navigatorKey.currentState!.push(
+          PageRouteBuilder(
+            pageBuilder: (ctx, anim, secondaryAnim) => DrillDetail(drill: widget.drill),
+            transitionDuration: const Duration(milliseconds: 320),
+            transitionsBuilder: (ctx, anim, secondaryAnim, child) {
+              final slide = Tween<Offset>(
+                begin: const Offset(0, 0.06),
+                end: Offset.zero,
+              ).animate(CurvedAnimation(parent: anim, curve: Curves.easeOutCubic));
+              return FadeTransition(
+                opacity: CurvedAnimation(parent: anim, curve: Curves.easeOut),
+                child: SlideTransition(position: slide, child: child),
+              );
+            },
+          ),
+        );
       },
     );
   }

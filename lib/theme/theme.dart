@@ -52,6 +52,7 @@ class SkillDrillsRadius {
   static const BorderRadius smBorderRadius = BorderRadius.all(Radius.circular(sm));
   static const BorderRadius mdBorderRadius = BorderRadius.all(Radius.circular(md));
   static const BorderRadius lgBorderRadius = BorderRadius.all(Radius.circular(lg));
+  static const BorderRadius fullBorderRadius = BorderRadius.all(Radius.circular(full));
 }
 
 class SkillDrillsSpacing {

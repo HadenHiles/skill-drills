@@ -14,12 +14,6 @@ class NavTab extends StatefulWidget {
 class _NavTabState extends State<NavTab> {
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.transparent,
-      ),
-      margin: const EdgeInsets.only(top: 40),
-      child: widget.body,
-    );
+    return widget.body ?? const SizedBox.shrink();
   }
 }

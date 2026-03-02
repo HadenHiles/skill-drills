@@ -12,6 +12,7 @@ import 'package:skilldrills/models/firestore/measurement.dart';
 import 'package:skilldrills/models/firestore/measurement_target.dart';
 import 'package:skilldrills/widgets/basic_title.dart';
 import 'package:skilldrills/services/utility.dart';
+import 'package:skilldrills/theme/theme.dart';
 
 final FirebaseAuth auth = FirebaseAuth.instance;
 
@@ -48,6 +49,8 @@ class _DrillDetailState extends State<DrillDetail> {
 
   @override
   void initState() {
+    super.initState();
+
     // Load the activities first
     FirebaseFirestore.instance.collection("activities").doc(auth.currentUser!.uid).collection("activities").get().then((snapshot) async {
       List<Activity> activities = [];
@@ -130,14 +133,14 @@ class _DrillDetailState extends State<DrillDetail> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: NestedScrollView(
         headerSliverBuilder: (BuildContext context, bool innerBoxIsScrolled) {
           return [
             SliverAppBar(
               collapsedHeight: 65,
               expandedHeight: 65,
-              backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+              backgroundColor: Theme.of(context).colorScheme.surface,
               floating: false,
               pinned: true,
               leading: Container(
@@ -266,440 +269,410 @@ class _DrillDetailState extends State<DrillDetail> {
           ];
         },
         body: Column(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.max,
           children: [
-            Column(
-              mainAxisAlignment: MainAxisAlignment.start,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    children: [
-                      Form(
-                        key: _formKey,
-                        autovalidateMode: AutovalidateMode.onUserInteraction,
-                        child: Column(
-                          children: [
-                            TextFormField(
-                              validator: (String? value) {
-                                if (value!.isEmpty) {
-                                  return 'Please enter a title';
-                                } else if (!RegExp(r"^[a-zA-Z0-9 ]+$").hasMatch(value)) {
-                                  return 'No special characters are allowed';
-                                }
-                                return null;
-                              },
-                              controller: _titleFieldController,
-                              cursorColor: Theme.of(context).colorScheme.onPrimary,
-                              decoration: InputDecoration(
-                                labelText: "Title",
-                                labelStyle: TextStyle(
-                                  color: Theme.of(context).colorScheme.onPrimary,
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        children: [
+                          Form(
+                            key: _formKey,
+                            autovalidateMode: AutovalidateMode.onUserInteraction,
+                            child: Column(
+                              children: [
+                                TextFormField(
+                                  validator: (String? value) {
+                                    if (value!.isEmpty) {
+                                      return 'Please enter a title';
+                                    } else if (!RegExp(r"^[a-zA-Z0-9 ]+$").hasMatch(value)) {
+                                      return 'No special characters are allowed';
+                                    }
+                                    return null;
+                                  },
+                                  controller: _titleFieldController,
+                                  cursorColor: Theme.of(context).colorScheme.onPrimary,
+                                  decoration: InputDecoration(
+                                    labelText: "Title",
+                                    labelStyle: TextStyle(
+                                      color: Theme.of(context).colorScheme.onPrimary,
+                                    ),
+                                  ),
+                                  style: TextStyle(
+                                    color: Theme.of(context).colorScheme.onSurface,
+                                  ),
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _drill = Drill(value, _drill!.description, _drill!.activity, _drill!.drillType);
+                                    });
+                                  },
                                 ),
-                              ),
-                              style: TextStyle(
-                                color: Theme.of(context).colorScheme.onSurface,
-                              ),
-                              onChanged: (value) {
-                                setState(() {
-                                  _drill = Drill(value, _drill!.description, _drill!.activity, _drill!.drillType);
-                                });
-                              },
-                            ),
-                            TextFormField(
-                              controller: _descriptionFieldController,
-                              cursorColor: Theme.of(context).colorScheme.onPrimary,
-                              decoration: InputDecoration(
-                                labelText: "Description",
-                                labelStyle: TextStyle(
-                                  color: Theme.of(context).colorScheme.onPrimary,
+                                TextFormField(
+                                  controller: _descriptionFieldController,
+                                  cursorColor: Theme.of(context).colorScheme.onPrimary,
+                                  decoration: InputDecoration(
+                                    labelText: "Description",
+                                    labelStyle: TextStyle(
+                                      color: Theme.of(context).colorScheme.onPrimary,
+                                    ),
+                                  ),
+                                  minLines: 4,
+                                  maxLines: 6,
+                                  style: TextStyle(
+                                    color: Theme.of(context).colorScheme.onSurface,
+                                  ),
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _drill = Drill(_drill!.title, value, _drill!.activity, _drill!.drillType);
+                                    });
+                                  },
                                 ),
-                              ),
-                              minLines: 4,
-                              maxLines: 6,
-                              style: TextStyle(
-                                color: Theme.of(context).colorScheme.onSurface,
-                              ),
-                              onChanged: (value) {
-                                setState(() {
-                                  _drill = Drill(_drill!.title, value, _drill!.activity, _drill!.drillType);
-                                });
-                              },
+                              ],
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                ),
-                ListTile(
-                  contentPadding: const EdgeInsets.symmetric(
-                    vertical: 10,
-                    horizontal: 20,
-                  ),
-                  leading: Text("Activity", style: Theme.of(context).textTheme.bodyLarge),
-                  trailing: _activities == null
-                      ? SizedBox(
-                          height: 25,
-                          width: 25,
-                          child: CircularProgressIndicator(
-                            color: Theme.of(context).primaryColor,
-                          ),
-                        )
-                      : Text(
-                          _activity!.title!.isNotEmpty ? _activity!.title! : "choose",
-                          style: TextStyle(
-                            color: !_activityError ? Theme.of(context).colorScheme.onPrimary : Colors.red,
-                            fontSize: 14,
-                          ),
-                        ),
-                  onLongPress: () {
-                    setState(() {
-                      _activityError = false;
-                      _activity = Activity("", null);
-                      _selectedCategories = [];
+                    ),
+                    ListTile(
+                      contentPadding: const EdgeInsets.symmetric(
+                        vertical: 10,
+                        horizontal: 20,
+                      ),
+                      leading: Text("Activity", style: Theme.of(context).textTheme.bodyLarge),
+                      trailing: _activities == null
+                          ? SizedBox(
+                              height: 25,
+                              width: 25,
+                              child: CircularProgressIndicator(
+                                color: Theme.of(context).primaryColor,
+                              ),
+                            )
+                          : Text(
+                              _activity!.title!.isNotEmpty ? _activity!.title! : "choose",
+                              style: TextStyle(
+                                color: !_activityError ? Theme.of(context).colorScheme.onPrimary : Theme.of(context).colorScheme.error,
+                                fontSize: 14,
+                              ),
+                            ),
+                      onLongPress: () {
+                        setState(() {
+                          _activityError = false;
+                          _activity = Activity("", null);
+                          _selectedCategories = [];
 
-                      setState(() {
-                        _drill = Drill(_drill!.title, _drill!.description, Activity("", null), _drill!.drillType);
-                      });
-                    });
-                  },
-                  onTap: _activities == null
-                      ? null
-                      : () {
-                          SelectDialog.showModal<Activity>(
-                            context,
-                            label: "Choose Activity",
-                            items: _activities,
-                            showSearchBox: false,
-                            backgroundColor: Theme.of(context).colorScheme.primary,
-                            alwaysShowScrollBar: true,
-                            selectedValue: _activity,
-                            itemBuilder: (BuildContext context, Activity activity, bool isSelected) {
-                              return Container(
-                                decoration: !isSelected
-                                    ? null
-                                    : BoxDecoration(
-                                        borderRadius: BorderRadius.circular(5),
-                                        color: Theme.of(context).colorScheme.primaryContainer,
-                                        border: Border.all(
-                                          color: Theme.of(context).colorScheme.primary,
-                                        ),
-                                      ),
-                                child: ListTile(
-                                  selected: isSelected,
-                                  tileColor: Theme.of(context).colorScheme.primary,
-                                  title: Text(
-                                    activity.title ?? "",
-                                    style: Theme.of(context).textTheme.bodyLarge,
-                                  ),
-                                ),
-                              );
-                            },
-                            emptyBuilder: (context) {
-                              return Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                children: [
-                                  CircularProgressIndicator(
-                                    color: Theme.of(context).primaryColor,
-                                  ),
-                                ],
-                              );
-                            },
-                            onChange: (selected) async {
-                              await _getCategories(selected.reference!).then((cats) async {
-                                selected.skills = cats;
-
-                                setState(() {
-                                  _activityError = false;
-                                  _activity = selected;
-                                  _selectedCategories = [];
-
-                                  setState(() {
-                                    _drill = Drill(_drill!.title, _drill!.description, selected, _drill!.drillType);
-                                  });
-                                });
-                              });
-                            },
-                          );
-                        },
-                ),
-                (_activity!.skills?.length ?? 0) < 1
-                    ? Container()
-                    : ListTile(
-                        contentPadding: const EdgeInsets.symmetric(
-                          vertical: 10,
-                          horizontal: 20,
-                        ),
-                        leading: Text(_selectedCategories!.length <= 1 ? "Skill" : "Skills", style: Theme.of(context).textTheme.bodyLarge),
-                        trailing: Text(
-                          _selectedCategories!.isNotEmpty ? _outputCategories() : "choose",
-                          style: TextStyle(
-                            color: !_categoryError ? Theme.of(context).colorScheme.onPrimary : Colors.red,
-                            fontSize: 14,
-                          ),
-                        ),
-                        onLongPress: () {
                           setState(() {
-                            _categoryError = false;
-                            _selectedCategories = [];
-                            Activity a = Activity(_activity!.title, null);
-                            a.skills = [];
-                            _drill = Drill(_drill!.title, _drill!.description, a, _drill!.drillType);
+                            _drill = Drill(_drill!.title, _drill!.description, Activity("", null), _drill!.drillType);
                           });
-                        },
-                        onTap: () {
-                          SelectDialog.showModal<Skill>(
-                            context,
-                            label: "Choose Skill(s)",
-                            items: _activity!.skills,
-                            showSearchBox: false,
-                            backgroundColor: Theme.of(context).colorScheme.primary,
-                            alwaysShowScrollBar: true,
-                            multipleSelectedValues: _selectedCategories,
-                            itemBuilder: (BuildContext context, Skill category, bool isSelected) {
-                              return Container(
-                                decoration: !isSelected
-                                    ? null
-                                    : BoxDecoration(
-                                        borderRadius: BorderRadius.circular(5),
-                                        color: Theme.of(context).colorScheme.primaryContainer,
-                                        border: Border.all(
-                                          color: Theme.of(context).colorScheme.primary,
-                                        ),
+                        });
+                      },
+                      onTap: _activities == null
+                          ? null
+                          : () {
+                              SelectDialog.showModal<Activity>(
+                                context,
+                                label: "Choose Activity",
+                                items: _activities,
+                                showSearchBox: false,
+                                backgroundColor: Theme.of(context).colorScheme.surface,
+                                alwaysShowScrollBar: true,
+                                selectedValue: _activity,
+                                itemBuilder: (BuildContext context, Activity activity, bool isSelected) {
+                                  return Container(
+                                    decoration: !isSelected
+                                        ? null
+                                        : BoxDecoration(
+                                            borderRadius: BorderRadius.circular(5),
+                                            color: Theme.of(context).colorScheme.secondary.withAlpha(18),
+                                            border: Border.all(
+                                              color: Theme.of(context).colorScheme.secondary,
+                                            ),
+                                          ),
+                                    child: ListTile(
+                                      selected: isSelected,
+                                      tileColor: Theme.of(context).colorScheme.surface,
+                                      title: Text(
+                                        activity.title ?? "",
+                                        style: Theme.of(context).textTheme.bodyLarge,
                                       ),
-                                child: ListTile(
-                                  selected: isSelected,
-                                  tileColor: Theme.of(context).colorScheme.primary,
-                                  title: Text(
-                                    category.title,
-                                    style: Theme.of(context).textTheme.bodyLarge,
-                                  ),
-                                  trailing: isSelected ? const Icon(Icons.check) : null,
-                                ),
+                                    ),
+                                  );
+                                },
+                                emptyBuilder: (context) {
+                                  return Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    crossAxisAlignment: CrossAxisAlignment.center,
+                                    children: [
+                                      CircularProgressIndicator(
+                                        color: Theme.of(context).primaryColor,
+                                      ),
+                                    ],
+                                  );
+                                },
+                                onChange: (selected) async {
+                                  await _getCategories(selected.reference!).then((cats) async {
+                                    selected.skills = cats;
+
+                                    setState(() {
+                                      _activityError = false;
+                                      _activity = selected;
+                                      _selectedCategories = [];
+
+                                      setState(() {
+                                        _drill = Drill(_drill!.title, _drill!.description, selected, _drill!.drillType);
+                                      });
+                                    });
+                                  });
+                                },
                               );
                             },
-                            onMultipleItemsChange: (List<Skill> selected) {
+                    ),
+                    (_activity!.skills?.length ?? 0) < 1
+                        ? Container()
+                        : ListTile(
+                            contentPadding: const EdgeInsets.symmetric(
+                              vertical: 10,
+                              horizontal: 20,
+                            ),
+                            leading: Text(_selectedCategories!.length <= 1 ? "Skill" : "Skills", style: Theme.of(context).textTheme.bodyLarge),
+                            trailing: Text(
+                              _selectedCategories!.isNotEmpty ? _outputCategories() : "choose",
+                              style: TextStyle(
+                                color: !_categoryError ? Theme.of(context).colorScheme.onPrimary : Theme.of(context).colorScheme.error,
+                                fontSize: 14,
+                              ),
+                            ),
+                            onLongPress: () {
                               setState(() {
                                 _categoryError = false;
-                                _selectedCategories = selected;
+                                _selectedCategories = [];
                                 Activity a = Activity(_activity!.title, null);
-                                a.skills = selected;
+                                a.skills = [];
                                 _drill = Drill(_drill!.title, _drill!.description, a, _drill!.drillType);
                               });
                             },
-                            okButtonBuilder: (context, onPressed) {
-                              return Align(
-                                alignment: Alignment.centerRight,
-                                child: FloatingActionButton(
-                                  onPressed: onPressed,
-                                  mini: true,
-                                  child: const Icon(Icons.check),
-                                ),
-                              );
-                            },
-                          );
-                        },
-                      ),
-                ListTile(
-                  contentPadding: const EdgeInsets.symmetric(
-                    vertical: 10,
-                    horizontal: 20,
-                  ),
-                  leading: Text("Type", style: Theme.of(context).textTheme.bodyLarge),
-                  trailing: _drillTypes == null
-                      ? SizedBox(
-                          height: 25,
-                          width: 25,
-                          child: CircularProgressIndicator(
-                            color: Theme.of(context).primaryColor,
-                          ),
-                        )
-                      : Text(
-                          _drillType != null ? _drillType!.title! : "choose",
-                          style: TextStyle(
-                            color: !_drillTypeError ? Theme.of(context).colorScheme.onPrimary : Colors.red,
-                            fontSize: 14,
-                          ),
-                        ),
-                  onLongPress: () {
-                    setState(() {
-                      _drillTypeError = false;
-                      _drillType = null;
-                      _drill = Drill(_drill!.title, _drill!.description, _drill!.activity, null);
-                    });
-                  },
-                  onTap: _drillTypes == null
-                      ? null
-                      : () {
-                          SelectDialog.showModal<DrillType>(
-                            context,
-                            label: "Choose Type",
-                            items: _drillTypes,
-                            showSearchBox: false,
-                            backgroundColor: Theme.of(context).colorScheme.primary,
-                            alwaysShowScrollBar: true,
-                            selectedValue: _drillType,
-                            itemBuilder: (BuildContext context, DrillType drillType, bool isSelected) {
-                              return Container(
-                                decoration: !isSelected
-                                    ? null
-                                    : BoxDecoration(
-                                        borderRadius: BorderRadius.circular(5),
-                                        color: Theme.of(context).colorScheme.primaryContainer,
-                                        border: Border.all(
-                                          color: Theme.of(context).colorScheme.primary,
-                                        ),
+                            onTap: () {
+                              SelectDialog.showModal<Skill>(
+                                context,
+                                label: "Choose Skill(s)",
+                                items: _activity!.skills,
+                                showSearchBox: false,
+                                backgroundColor: Theme.of(context).colorScheme.surface,
+                                alwaysShowScrollBar: true,
+                                multipleSelectedValues: _selectedCategories,
+                                itemBuilder: (BuildContext context, Skill category, bool isSelected) {
+                                  return Container(
+                                    decoration: !isSelected
+                                        ? null
+                                        : BoxDecoration(
+                                            borderRadius: BorderRadius.circular(5),
+                                            color: Theme.of(context).colorScheme.secondary.withAlpha(18),
+                                            border: Border.all(
+                                              color: Theme.of(context).colorScheme.secondary,
+                                            ),
+                                          ),
+                                    child: ListTile(
+                                      selected: isSelected,
+                                      tileColor: Theme.of(context).colorScheme.surface,
+                                      title: Text(
+                                        category.title,
+                                        style: Theme.of(context).textTheme.bodyLarge,
                                       ),
-                                child: ListTile(
-                                  selected: isSelected,
-                                  tileColor: Theme.of(context).colorScheme.primary,
-                                  title: Text(
-                                    drillType.title ?? "",
-                                    style: Theme.of(context).textTheme.bodyLarge,
-                                  ),
-                                  subtitle: Text(
-                                    drillType.descriptor!,
-                                    style: Theme.of(context).textTheme.bodyMedium,
-                                  ),
-                                ),
+                                      trailing: isSelected ? const Icon(Icons.check) : null,
+                                    ),
+                                  );
+                                },
+                                onMultipleItemsChange: (List<Skill> selected) {
+                                  setState(() {
+                                    _categoryError = false;
+                                    _selectedCategories = selected;
+                                    Activity a = Activity(_activity!.title, null);
+                                    a.skills = selected;
+                                    _drill = Drill(_drill!.title, _drill!.description, a, _drill!.drillType);
+                                  });
+                                },
+                                okButtonBuilder: (context, onPressed) {
+                                  return Align(
+                                    alignment: Alignment.centerRight,
+                                    child: FloatingActionButton(
+                                      onPressed: onPressed,
+                                      mini: true,
+                                      child: const Icon(Icons.check),
+                                    ),
+                                  );
+                                },
                               );
                             },
-                            emptyBuilder: (context) {
-                              return Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                children: [
-                                  CircularProgressIndicator(
-                                    color: Theme.of(context).primaryColor,
-                                  )
-                                ],
-                              );
-                            },
-                            onChange: (selected) async {
-                              Drill d = Drill(_titleFieldController.text, _descriptionFieldController.text, _activity, selected);
-
-                              setState(() {
-                                _drillTypeError = false;
-                                _drillType = selected;
-                                // Deep copy so per-drill target edits never mutate the shared DrillType template
-                                d.measurements = selected.measurements?.map((m) => Measurement(m.role, m.type, m.label, m.order, m.value, m.target, m.reverse)).toList();
-                                d.skills = _selectedCategories;
-                                _drill = d;
-                                _targetFields = _buildDefaultTargetFields(d);
-                                _preview = _buildPreview(d);
-                              });
-                            },
-                          );
-                        },
-                ),
-                _drillType?.timerInSeconds == null
-                    ? Container()
-                    : Column(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 20),
-                            child: TextField(
-                              controller: _timerTextController,
-                              keyboardType: TextInputType.number,
-                              scrollPadding: const EdgeInsets.all(5),
-                              style: Theme.of(context).textTheme.bodyLarge,
-                              decoration: InputDecoration(
-                                labelText: "Default Duration",
-                                labelStyle: TextStyle(
-                                  fontSize: 14,
-                                  color: Theme.of(context).colorScheme.onPrimary,
-                                ),
-                                hintStyle: Theme.of(context).textTheme.bodyLarge,
+                          ),
+                    ListTile(
+                      contentPadding: const EdgeInsets.symmetric(
+                        vertical: 10,
+                        horizontal: 20,
+                      ),
+                      leading: Text("Type", style: Theme.of(context).textTheme.bodyLarge),
+                      trailing: _drillTypes == null
+                          ? SizedBox(
+                              height: 25,
+                              width: 25,
+                              child: CircularProgressIndicator(
+                                color: Theme.of(context).primaryColor,
                               ),
-                              onTap: () {
-                                const TextStyle suffixStyle = TextStyle(fontSize: 14, height: 1.5);
-                                Picker(
-                                  adapter: NumberPickerAdapter(data: <NumberPickerColumn>[
-                                    const NumberPickerColumn(begin: 0, end: 24, suffix: Text(' hrs', style: suffixStyle), jump: 1),
-                                    const NumberPickerColumn(begin: 0, end: 59, suffix: Text(' mins', style: suffixStyle), jump: 1),
-                                    const NumberPickerColumn(begin: 0, end: 59, suffix: Text(' secs', style: suffixStyle), jump: 5),
-                                  ]),
-                                  height: 200,
-                                  backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                                  textStyle: Theme.of(context).textTheme.headlineSmall,
-                                  hideHeader: true,
-                                  confirmText: 'Ok',
-                                  confirmTextStyle: TextStyle(
-                                    inherit: false,
-                                    color: Theme.of(context).primaryColor,
-                                  ),
-                                  title: const Text('Select duration'),
-                                  selectedTextStyle: TextStyle(
-                                    color: Theme.of(context).primaryColor,
-                                  ),
-                                  onConfirm: (Picker picker, List<int> value) {
-                                    // You get your duration here
-                                    Duration duration = Duration(hours: picker.getSelectedValues()[0], minutes: picker.getSelectedValues()[1], seconds: picker.getSelectedValues()[2]);
-
-                                    _timerTextController.text = printDuration(duration);
-
-                                    setState(() {
-                                      _drillType!.timerInSeconds = duration.inSeconds;
-                                    });
-                                  },
-                                ).showDialog(context);
-                              },
+                            )
+                          : Text(
+                              _drillType != null ? _drillType!.title! : "choose",
+                              style: TextStyle(
+                                color: !_drillTypeError ? Theme.of(context).colorScheme.onPrimary : Theme.of(context).colorScheme.error,
+                                fontSize: 14,
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
-                _drillType == null
-                    ? Container()
-                    : Container(
-                        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 20),
-                        child: _targetFields,
-                      ),
-              ],
-            ),
-            _preview == null
-                ? Container()
-                : ListTile(
-                    contentPadding: const EdgeInsets.symmetric(
-                      vertical: 10,
-                      horizontal: 20,
+                      onLongPress: () {
+                        setState(() {
+                          _drillTypeError = false;
+                          _drillType = null;
+                          _drill = Drill(_drill!.title, _drill!.description, _drill!.activity, null);
+                        });
+                      },
+                      onTap: _drillTypes == null
+                          ? null
+                          : () {
+                              SelectDialog.showModal<DrillType>(
+                                context,
+                                label: "Choose Type",
+                                items: _drillTypes,
+                                showSearchBox: false,
+                                backgroundColor: Theme.of(context).colorScheme.surface,
+                                alwaysShowScrollBar: true,
+                                selectedValue: _drillType,
+                                itemBuilder: (BuildContext context, DrillType drillType, bool isSelected) {
+                                  return Container(
+                                    decoration: !isSelected
+                                        ? null
+                                        : BoxDecoration(
+                                            borderRadius: BorderRadius.circular(5),
+                                            color: Theme.of(context).colorScheme.secondary.withAlpha(18),
+                                            border: Border.all(
+                                              color: Theme.of(context).colorScheme.secondary,
+                                            ),
+                                          ),
+                                    child: ListTile(
+                                      selected: isSelected,
+                                      tileColor: Theme.of(context).colorScheme.surface,
+                                      title: Text(
+                                        drillType.title ?? "",
+                                        style: Theme.of(context).textTheme.bodyLarge,
+                                      ),
+                                      subtitle: Text(
+                                        drillType.descriptor!,
+                                        style: Theme.of(context).textTheme.bodyMedium,
+                                      ),
+                                    ),
+                                  );
+                                },
+                                emptyBuilder: (context) {
+                                  return Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    crossAxisAlignment: CrossAxisAlignment.center,
+                                    children: [
+                                      CircularProgressIndicator(
+                                        color: Theme.of(context).primaryColor,
+                                      )
+                                    ],
+                                  );
+                                },
+                                onChange: (selected) async {
+                                  Drill d = Drill(_titleFieldController.text, _descriptionFieldController.text, _activity, selected);
+
+                                  setState(() {
+                                    _drillTypeError = false;
+                                    _drillType = selected;
+                                    // Deep copy so per-drill target edits never mutate the shared DrillType template
+                                    d.measurements = selected.measurements?.map((m) => Measurement(m.role, m.type, m.label, m.order, m.value, m.target, m.reverse)).toList();
+                                    d.skills = _selectedCategories;
+                                    _drill = d;
+                                    _targetFields = _buildDefaultTargetFields(d);
+                                    _preview = _buildPreview(d);
+                                  });
+                                },
+                              );
+                            },
                     ),
-                    tileColor: Theme.of(context).colorScheme.primary,
-                    title: Container(
-                      margin: const EdgeInsets.only(left: 10),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.start,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            margin: const EdgeInsets.only(bottom: 5),
-                            child: _drill!.title!.isNotEmpty
-                                ? Text(
-                                    "Preview of \"${_drill!.title}\"",
-                                    style: Theme.of(context).textTheme.titleLarge,
-                                  )
-                                : Text(
-                                    "Preview of \"(No Title)\"",
-                                    style: Theme.of(context).textTheme.titleLarge,
+                    _drillType?.timerInSeconds == null
+                        ? Container()
+                        : Column(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 20),
+                                child: TextField(
+                                  controller: _timerTextController,
+                                  keyboardType: TextInputType.number,
+                                  scrollPadding: const EdgeInsets.all(5),
+                                  style: Theme.of(context).textTheme.bodyLarge,
+                                  decoration: InputDecoration(
+                                    labelText: "Default Duration",
+                                    labelStyle: TextStyle(
+                                      fontSize: 14,
+                                      color: Theme.of(context).colorScheme.onPrimary,
+                                    ),
+                                    hintStyle: Theme.of(context).textTheme.bodyLarge,
                                   ),
+                                  onTap: () {
+                                    const TextStyle suffixStyle = TextStyle(fontSize: 14, height: 1.5);
+                                    Picker(
+                                      adapter: NumberPickerAdapter(data: <NumberPickerColumn>[
+                                        const NumberPickerColumn(begin: 0, end: 24, suffix: Text(' hrs', style: suffixStyle), jump: 1),
+                                        const NumberPickerColumn(begin: 0, end: 59, suffix: Text(' mins', style: suffixStyle), jump: 1),
+                                        const NumberPickerColumn(begin: 0, end: 59, suffix: Text(' secs', style: suffixStyle), jump: 5),
+                                      ]),
+                                      height: 200,
+                                      backgroundColor: Theme.of(context).colorScheme.surface,
+                                      textStyle: Theme.of(context).textTheme.headlineSmall,
+                                      hideHeader: true,
+                                      confirmText: 'Ok',
+                                      confirmTextStyle: TextStyle(
+                                        inherit: false,
+                                        color: Theme.of(context).primaryColor,
+                                      ),
+                                      title: const Text('Select duration'),
+                                      selectedTextStyle: TextStyle(
+                                        color: Theme.of(context).primaryColor,
+                                      ),
+                                      onConfirm: (Picker picker, List<int> value) {
+                                        // You get your duration here
+                                        Duration duration = Duration(hours: picker.getSelectedValues()[0], minutes: picker.getSelectedValues()[1], seconds: picker.getSelectedValues()[2]);
+
+                                        _timerTextController.text = printDuration(duration);
+
+                                        setState(() {
+                                          _drillType!.timerInSeconds = duration.inSeconds;
+                                        });
+                                      },
+                                    ).showDialog(context);
+                                  },
+                                ),
+                              ),
+                            ],
                           ),
-                          Text(_drill!.drillType!.descriptor!, style: Theme.of(context).textTheme.bodyMedium),
-                        ],
-                      ),
-                    ),
-                    trailing: InkWell(
-                      onTap: _showPreview,
-                      child: Icon(
-                        Icons.keyboard_arrow_up,
-                        color: Theme.of(context).colorScheme.onPrimary,
-                      ),
-                    ),
-                    onTap: _showPreview,
-                  ),
+                    _drillType == null
+                        ? Container()
+                        : Container(
+                            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 20),
+                            child: _targetFields,
+                          ),
+                  ],
+                ),
+              ),
+            ),
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 300),
+              transitionBuilder: (child, animation) => SlideTransition(
+                position: Tween<Offset>(begin: const Offset(0, 1), end: Offset.zero).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
+                child: FadeTransition(opacity: animation, child: child),
+              ),
+              child: _preview == null ? const SizedBox.shrink() : _buildPreviewBar(),
+            ),
           ],
         ),
       ),
@@ -811,7 +784,7 @@ class _DrillDetailState extends State<DrillDetail> {
                       const NumberPickerColumn(begin: 0, end: 59, suffix: Text(' secs', style: suffixStyle), jump: 5),
                     ]),
                     height: 200,
-                    backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                    backgroundColor: Theme.of(context).colorScheme.surface,
                     textStyle: Theme.of(context).textTheme.headlineSmall,
                     hideHeader: true,
                     confirmText: 'Ok',
@@ -863,13 +836,66 @@ class _DrillDetailState extends State<DrillDetail> {
     return defaultTargetFields;
   }
 
+  /// Compact bottom bar shown when a drill type is selected.
+  /// Tapping it opens the full preview modal.
+  Widget _buildPreviewBar() {
+    final drillTitle = _drill!.title!.isNotEmpty ? '"${_drill!.title!}"' : '"(No Title)"';
+    return Material(
+      key: const ValueKey('preview-bar'),
+      color: Theme.of(context).colorScheme.surface,
+      elevation: 4,
+      child: InkWell(
+        onTap: _showPreview,
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: SkillDrillsSpacing.md,
+            vertical: 14,
+          ),
+          decoration: BoxDecoration(
+            border: Border(
+              top: BorderSide(color: Theme.of(context).dividerColor),
+            ),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Preview of $drillTitle',
+                      style: Theme.of(context).textTheme.titleLarge,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      _drill!.drillType!.descriptor!,
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: SkillDrillsSpacing.sm),
+              Icon(
+                Icons.expand_less_rounded,
+                color: Theme.of(context).colorScheme.secondary,
+                size: 22,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   void _showPreview() {
     setState(() {
       _preview = _buildPreview(_drill!);
     });
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       builder: (BuildContext context) {
         return _preview!;
       },
@@ -947,7 +973,7 @@ class _DrillDetailState extends State<DrillDetail> {
                         const NumberPickerColumn(begin: 0, end: 59, suffix: Text(' secs', style: suffixStyle), jump: 5),
                       ]),
                       height: 200,
-                      backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                      backgroundColor: Theme.of(context).colorScheme.surface,
                       textStyle: Theme.of(context).textTheme.headlineSmall,
                       hideHeader: true,
                       confirmText: 'Ok',
@@ -987,7 +1013,7 @@ class _DrillDetailState extends State<DrillDetail> {
         child: SizedBox(
           height: 200,
           child: Card(
-            color: Theme.of(context).colorScheme.primary,
+            color: Theme.of(context).colorScheme.surface,
             elevation: 1,
             margin: const EdgeInsets.all(0),
             child: Container(

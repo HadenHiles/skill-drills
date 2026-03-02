@@ -86,14 +86,14 @@ class _ActivitiesSettingsState extends State<ActivitiesSettings> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: NestedScrollView(
         headerSliverBuilder: (BuildContext context, bool innerBoxIsScrolled) {
           return [
             SliverAppBar(
               collapsedHeight: 65,
               expandedHeight: 65,
-              backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+              backgroundColor: Theme.of(context).colorScheme.surface,
               floating: false,
               pinned: true,
               leading: Container(
@@ -159,15 +159,13 @@ class _ActivitiesSettingsState extends State<ActivitiesSettings> {
             SizedBox(
               width: double.infinity,
               child: TextButton(
-                style: ElevatedButton.styleFrom(
+                style: TextButton.styleFrom(
+                  foregroundColor: Theme.of(context).colorScheme.error,
                   padding: const EdgeInsets.all(25),
                 ),
                 child: const Text(
                   "Reset to defaults",
-                  style: TextStyle(
-                    fontSize: 20,
-                    color: Colors.red,
-                  ),
+                  style: TextStyle(fontSize: 20),
                 ),
                 onPressed: () {
                   dialog(
