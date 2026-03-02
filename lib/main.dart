@@ -26,7 +26,11 @@ void main() async {
   );
 
   // Initialize Google Sign In (7.x singleton pattern)
-  await GoogleSignIn.instance.initialize();
+  // serverClientId is the Web Client ID (client_type 3) from google-services.json,
+  // required on Android for the 7.x authenticate() API.
+  await GoogleSignIn.instance.initialize(
+    serverClientId: '1092639561657-3f6ufbn3arbv5l55ejln96ta0bh6gbbq.apps.googleusercontent.com',
+  );
 
   // Load app settings
   SharedPreferences prefs = await SharedPreferences.getInstance();

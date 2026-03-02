@@ -1,4 +1,4 @@
-package com.example.skilldrills
+package com.hadenhiles.skilldrills
 
 import io.flutter.embedding.android.FlutterActivity
 
