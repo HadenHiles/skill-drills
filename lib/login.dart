@@ -513,7 +513,7 @@ class _LoginState extends State<Login> {
     );
   }
 
-  signUp(BuildContext context, AuthAttempt authAttempt, Function error) async {
+  Future<void> signUp(BuildContext context, AuthAttempt authAttempt, Function error) async {
     try {
       await FirebaseAuth.instance
           .createUserWithEmailAndPassword(
@@ -544,7 +544,7 @@ class _LoginState extends State<Login> {
     }
   }
 
-  signIn(BuildContext context, AuthAttempt authAttempt, Function error) async {
+  Future<void> signIn(BuildContext context, AuthAttempt authAttempt, Function error) async {
     try {
       await FirebaseAuth.instance.signInWithEmailAndPassword(email: authAttempt.email, password: authAttempt.password).then((credential) {
         if (context.mounted) Navigator.of(context, rootNavigator: true).pop('dialog');
@@ -570,7 +570,7 @@ class _LoginState extends State<Login> {
     }
   }
 
-  socialSignIn(BuildContext context, String provider, Function error) async {
+  Future<void> socialSignIn(BuildContext context, String provider, Function error) async {
     if (provider == 'google') {
       signInWithGoogle().then((googleSignInAccount) {
         setState(() {

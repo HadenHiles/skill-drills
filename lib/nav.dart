@@ -99,15 +99,14 @@ class _NavState extends State<Nav> {
   ];
 
   void _onItemTapped(int index) async {
-    await Vibration.hasAmplitudeControl().then((hasAmplitudeControl) => {
-          if (settings.vibrate && hasAmplitudeControl! && index != _selectedIndex)
-            {
-              Vibration.vibrate(
-                duration: 50,
-                amplitude: 50,
-              )
-            }
-        });
+    await Vibration.hasAmplitudeControl().then((hasAmplitudeControl) {
+      if (settings.vibrate && hasAmplitudeControl && index != _selectedIndex) {
+        Vibration.vibrate(
+          duration: 50,
+          amplitude: 50,
+        );
+      }
+    });
 
     setState(() {
       _selectedIndex = index;

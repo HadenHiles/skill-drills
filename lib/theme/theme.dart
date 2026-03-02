@@ -7,12 +7,12 @@ class SkillDrillsTheme {
     primaryColor: const Color.fromRGBO(2, 164, 221, 1),
     scaffoldBackgroundColor: const Color(0xffF7F7F7),
     appBarTheme: const AppBarTheme(
-      color: Colors.white,
+      backgroundColor: Colors.white,
       iconTheme: IconThemeData(
         color: Colors.black87,
       ),
     ),
-    cardTheme: const CardTheme(
+    cardTheme: const CardThemeData(
       color: Colors.white,
     ),
     iconTheme: const IconThemeData(
@@ -65,12 +65,12 @@ class SkillDrillsTheme {
     primaryColor: const Color.fromRGBO(2, 164, 221, 1),
     scaffoldBackgroundColor: const Color(0xff1A1A1A),
     appBarTheme: const AppBarTheme(
-      color: Color(0xff222222),
+      backgroundColor: Color(0xff222222),
       iconTheme: IconThemeData(
         color: Colors.white,
       ),
     ),
-    cardTheme: const CardTheme(
+    cardTheme: const CardThemeData(
       color: Color(0xff1F1F1F),
     ),
     iconTheme: const IconThemeData(
