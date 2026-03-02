@@ -42,11 +42,9 @@ class _StartState extends State<Start> {
                   context,
                   SkillDrillsDialog(
                     "Override current session?",
-                    Text(
+                    const Text(
                       "Starting a new session will override your existing one.\n\nWould you like to continue?",
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.onSurface,
-                      ),
+                      textAlign: TextAlign.center,
                     ),
                     "Cancel",
                     () {
@@ -58,6 +56,8 @@ class _StartState extends State<Start> {
                       Navigator.of(context).pop();
                       sessionService.start();
                     },
+                    isDangerous: false,
+                    icon: Icons.swap_horiz_rounded,
                   ),
                 );
               }

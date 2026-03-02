@@ -69,7 +69,7 @@ class _DrillsState extends State<Drills> {
 
     return items.isNotEmpty
         ? ListView(
-            padding: const EdgeInsets.only(top: 10),
+            padding: const EdgeInsets.only(top: 8, bottom: 24),
             children: items,
           )
         : const Column(

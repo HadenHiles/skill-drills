@@ -11,6 +11,7 @@ import 'package:skilldrills/tabs/profile/settings/activity_item.dart';
 import 'package:skilldrills/widgets/basic_title.dart';
 
 final FirebaseAuth auth = FirebaseAuth.instance;
+final user = FirebaseAuth.instance.currentUser;
 
 class ActivitiesSettings extends StatefulWidget {
   const ActivitiesSettings({super.key});
@@ -173,11 +174,9 @@ class _ActivitiesSettingsState extends State<ActivitiesSettings> {
                     context,
                     SkillDrillsDialog(
                       "Reset Sports?",
-                      Text(
+                      const Text(
                         "Are you sure you want to reset your sports?\n\nThis can't be undone.",
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.onSurface,
-                        ),
+                        textAlign: TextAlign.center,
                       ),
                       "Cancel",
                       () {

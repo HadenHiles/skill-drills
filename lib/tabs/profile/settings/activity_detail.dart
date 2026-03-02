@@ -9,6 +9,7 @@ import 'package:skilldrills/widgets/basic_title.dart';
 import 'category_item.dart';
 
 final FirebaseAuth auth = FirebaseAuth.instance;
+final user = FirebaseAuth.instance.currentUser;
 
 class ActivityDetail extends StatefulWidget {
   const ActivityDetail({super.key, this.activity});
