@@ -316,7 +316,13 @@ class _NavState extends State<Nav> {
                   ),
                   child: Container(
                     key: ValueKey(_selectedIndex),
-                    padding: _sessionPanelState == PanelState.OPEN ? const EdgeInsets.only(bottom: 100) : EdgeInsets.zero,
+                    // Always pad the bottom so content isn't hidden behind the
+                    // bottom nav bar or the session panel.  NestedScrollView
+                    // doesn't inherit the Scaffold's bottom inset automatically,
+                    // so we apply it explicitly here for every tab at once.
+                    padding: EdgeInsets.only(
+                      bottom: _sessionPanelState == PanelState.OPEN ? 100 : kBottomNavigationBarHeight + MediaQuery.of(context).padding.bottom,
+                    ),
                     child: _tabs.elementAt(_selectedIndex),
                   ),
                 ),
