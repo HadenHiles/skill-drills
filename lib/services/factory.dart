@@ -8,6 +8,7 @@ import 'package:skilldrills/models/firestore/measurement.dart';
 import 'package:skilldrills/models/firestore/measurement_target.dart';
 import 'package:skilldrills/models/firestore/measurement_result.dart';
 import 'package:skilldrills/models/firestore/skill_drill_user.dart';
+import 'package:skilldrills/models/firestore/routine.dart';
 
 final FirebaseAuth auth = FirebaseAuth.instance;
 
@@ -1999,3 +2000,69 @@ List<_DrillSpec> _defaultDrillSpecs() => [
           skillTitles: ['Strumming', 'Rhythm', 'Chords'],
           measurements: [MeasurementResult('amount', 'Patterns Completed', 1, null) as Measurement, MeasurementResult('amount', 'Quality (1–10)', 2, null) as Measurement, MeasurementTarget('amount', 'Target Patterns', 3, 5, false) as Measurement]),
     ];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ROUTINES
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// The Firestore collection reference for the current user's routines.
+CollectionReference<Map<String, dynamic>> _routinesRef() {
+  final uid = auth.currentUser!.uid;
+  return FirebaseFirestore.instance.collection('routines').doc(uid).collection('routines');
+}
+
+/// Stream of all routines for the current user, ordered by creation date.
+Stream<QuerySnapshot<Map<String, dynamic>>> routinesStream() => _routinesRef().orderBy('created_at', descending: false).snapshots();
+
+/// Returns the number of routines the current user has saved.
+Future<int> routineCount() async {
+  final snap = await _routinesRef().count().get();
+  return snap.count ?? 0;
+}
+
+/// Saves a new [Routine] (and its ordered drills subcollection) to Firestore.
+/// Returns the new [DocumentReference].
+Future<DocumentReference> saveRoutine(Routine routine) async {
+  final docRef = _routinesRef().doc();
+  await docRef.set(routine.toMap());
+  if (routine.drills != null) {
+    for (final rd in routine.drills!) {
+      await docRef.collection('drills').doc().set(rd.toMap());
+    }
+  }
+  return docRef;
+}
+
+/// Overwrites an existing routine document and rebuilds its drills subcollection.
+Future<void> updateRoutine(Routine routine) async {
+  final ref = routine.reference!;
+  await ref.update({
+    'title': routine.title,
+    'description': routine.description,
+  });
+  // Replace drills subcollection.
+  final oldDrills = await ref.collection('drills').get();
+  for (final doc in oldDrills.docs) {
+    await doc.reference.delete();
+  }
+  if (routine.drills != null) {
+    for (final rd in routine.drills!) {
+      await ref.collection('drills').doc().set(rd.toMap());
+    }
+  }
+}
+
+/// Deletes a routine and all its drills subcollection documents.
+Future<void> deleteRoutine(DocumentReference routineRef) async {
+  final drillsSnap = await routineRef.collection('drills').get();
+  for (final doc in drillsSnap.docs) {
+    await doc.reference.delete();
+  }
+  await routineRef.delete();
+}
+
+/// Loads the [RoutineDrill] subcollection for a given routine reference.
+Future<List<RoutineDrill>> loadRoutineDrills(DocumentReference routineRef) async {
+  final snap = await routineRef.collection('drills').orderBy('order').get();
+  return snap.docs.cast<DocumentSnapshot<Map<String, dynamic>>>().map(RoutineDrill.fromSnapshot).toList();
+}

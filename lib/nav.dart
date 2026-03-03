@@ -11,6 +11,7 @@ import 'package:skilldrills/tabs/routines.dart';
 import 'package:skilldrills/services/factory.dart';
 import 'package:skilldrills/tabs/Start.dart';
 import 'package:skilldrills/tabs/drills/drill_detail.dart';
+import 'package:skilldrills/tabs/routines/routine_detail.dart';
 import 'package:skilldrills/tabs/profile/settings/settings.dart';
 import 'package:skilldrills/widgets/basic_title.dart';
 import 'package:sliding_up_panel/sliding_up_panel.dart';
@@ -116,9 +117,38 @@ class _NavState extends State<Nav> {
       ],
       body: const Drills(),
     ),
-    const NavTab(
-      title: BasicTitle(title: "Routines"),
-      body: Routines(),
+    NavTab(
+      title: const BasicTitle(title: "Routines"),
+      actions: [
+        Container(
+          margin: const EdgeInsets.only(top: 10),
+          child: IconButton(
+            icon: const Icon(
+              Icons.add,
+              size: 28,
+            ),
+            onPressed: () {
+              navigatorKey.currentState!.push(
+                PageRouteBuilder(
+                  pageBuilder: (ctx, anim, _) => const RoutineDetail(),
+                  transitionDuration: const Duration(milliseconds: 320),
+                  transitionsBuilder: (ctx, anim, _, child) {
+                    final slide = Tween<Offset>(
+                      begin: const Offset(0, 0.06),
+                      end: Offset.zero,
+                    ).animate(CurvedAnimation(parent: anim, curve: Curves.easeOutCubic));
+                    return FadeTransition(
+                      opacity: CurvedAnimation(parent: anim, curve: Curves.easeOut),
+                      child: SlideTransition(position: slide, child: child),
+                    );
+                  },
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+      body: const Routines(),
     ),
   ];
 
