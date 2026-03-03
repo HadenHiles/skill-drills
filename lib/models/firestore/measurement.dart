@@ -3,11 +3,17 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 /// Measurement – the atomic unit of a drill schema.
 ///
 /// [role]    "result" | "target" — whether this captures a recorded value or a goal.
-/// [type]    "amount" | "duration" — drives the input widget rendered during a session.
-///           Extendable to "boolean" | "scale" without schema changes.
+/// [type]    Drives the input widget rendered during a session:
+///             "amount"   — integer counter (reps, sets, goals, etc.)
+///             "duration" — time picker, value stored as int seconds
+///             "rpe"      — Rate of Perceived Exertion, integer 1–10 scale.
+///                          Applies to lifts and conditioning where effort tracking matters.
+///             "rir"      — Reps in Reserve, integer 0–5 scale (reps left before failure).
+///                          Applies to resistance-training sets (compound, isolation, bodyweight).
+///                          Relationship: RIR ≈ 10 − RPE.
 /// [label]   Human-readable input label shown in UI (e.g. "Reps", "Score", "Time").
 /// [order]   Display/input order within a drill.
-/// [value]   Recorded value: int count for "amount", int seconds for "duration". Null until recorded.
+/// [value]   Recorded value: int count for "amount"/"rpe"/"rir", int seconds for "duration". Null until recorded.
 /// [target]  Goal value: same encoding as value. Null until set.
 /// [reverse] true = lower is better (e.g. a lap-time target where faster is better).
 class Measurement {
