@@ -8,6 +8,7 @@ import 'package:skilldrills/models/firestore/skill_drill_user.dart';
 import 'package:skilldrills/models/skill_drills_dialog.dart';
 import 'package:skilldrills/services/dialogs.dart';
 import 'package:skilldrills/services/factory.dart' as firestore_factory;
+import 'package:skilldrills/tabs/drills/drill_detail.dart';
 import 'package:skilldrills/theme/theme.dart';
 import 'package:skilldrills/widgets/basic_title.dart';
 
@@ -149,6 +150,35 @@ class _RoutineDetailState extends State<RoutineDetail> {
 
   // ── Add drills picker ───────────────────────────────────────────────────────
 
+  /// Navigate to DrillDetail, and if the user creates a new drill, auto-add
+  /// it to the routine's drill list.
+  Future<void> _createAndAddDrill() async {
+    final Drill? created = await navigatorKey.currentState!.push<Drill>(
+      PageRouteBuilder(
+        pageBuilder: (ctx, anim, _) => const DrillDetail(),
+        transitionDuration: const Duration(milliseconds: 320),
+        transitionsBuilder: (ctx, anim, _, child) {
+          final slide = Tween<Offset>(begin: const Offset(0, 0.06), end: Offset.zero).animate(CurvedAnimation(parent: anim, curve: Curves.easeOutCubic));
+          return FadeTransition(
+            opacity: CurvedAnimation(parent: anim, curve: Curves.easeOut),
+            child: SlideTransition(position: slide, child: child),
+          );
+        },
+      ),
+    );
+
+    if (created?.reference != null) {
+      setState(() {
+        _allDrills.add(created!);
+        _selectedDrills.add(RoutineDrill(
+          created.reference!.id,
+          created.title!,
+          _selectedDrills.length + 1,
+        ));
+      });
+    }
+  }
+
   void _showDrillPicker() {
     // Drills already in the routine (by id)
     final addedIds = _selectedDrills.map((d) => d.drillId).toSet();
@@ -193,13 +223,46 @@ class _RoutineDetailState extends State<RoutineDetail> {
                 ),
                 const SizedBox(height: 8),
                 const Divider(height: 1),
+
+                // ── Create new drill shortcut ──────────────────────────
+                ListTile(
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: SkillDrillsSpacing.md,
+                    vertical: 2,
+                  ),
+                  leading: Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: SkillDrillsColors.brandBlue.withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.add_rounded,
+                      color: SkillDrillsColors.brandBlue,
+                      size: 20,
+                    ),
+                  ),
+                  title: const Text(
+                    'Create New Drill',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  subtitle: const Text('Build a new drill and add it here'),
+                  trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
+                  onTap: () {
+                    Navigator.of(ctx).pop();
+                    _createAndAddDrill();
+                  },
+                ),
+                const Divider(height: 1),
+
                 Expanded(
                   child: available.isEmpty
                       ? Center(
                           child: Padding(
                             padding: const EdgeInsets.all(SkillDrillsSpacing.xl),
                             child: Text(
-                              _allDrills.isEmpty ? 'You have no drills yet.\nCreate some drills first.' : 'All your drills have already been added.',
+                              'All your existing drills have already been added.',
                               textAlign: TextAlign.center,
                               style: Theme.of(context).textTheme.bodyMedium,
                             ),

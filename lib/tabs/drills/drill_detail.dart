@@ -241,12 +241,14 @@ class _DrillDetailState extends State<DrillDetail> {
                           // CREATE new drill
                           final newDoc = FirebaseFirestore.instance.collection('drills').doc(auth.currentUser!.uid).collection('drills').doc();
 
-                          newDoc.set(Drill(
+                          final createdDrill = Drill(
                             _titleFieldController.text.trim(),
                             _descriptionFieldController.text.trim(),
                             _activity,
                             _drillType,
-                          ).toMap());
+                          )..reference = newDoc;
+
+                          newDoc.set(createdDrill.toMap());
 
                           for (var m in measurements) {
                             newDoc.collection('measurements').doc().set(m.toMap());
@@ -256,7 +258,9 @@ class _DrillDetailState extends State<DrillDetail> {
                             newDoc.collection('skills').doc().set(c.toMap());
                           }
 
-                          navigatorKey.currentState!.pop();
+                          // Pop with the created Drill so callers (e.g. RoutineDetail)
+                          // can receive it and add it to a routine automatically.
+                          navigatorKey.currentState!.pop(createdDrill);
                         }
                       }
                     },
