@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:skilldrills/theme/theme.dart';
@@ -76,6 +77,15 @@ class _ProfileState extends State<Profile> with SingleTickerProviderStateMixin {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
+                          const SizedBox(height: 6),
+                          StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                            stream: FirebaseFirestore.instance.collection('users').doc(user!.uid).snapshots(),
+                            builder: (context, snapshot) {
+                              final data = snapshot.data?.data();
+                              final isPremium = (data?['tier'] as String? ?? 'free') == 'premium';
+                              return _TierBadge(isPremium: isPremium);
+                            },
+                          ),
                         ],
                       ),
                     ),
@@ -139,6 +149,52 @@ class _StatCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _TierBadge extends StatelessWidget {
+  const _TierBadge({required this.isPremium});
+
+  final bool isPremium;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final color = isPremium ? SkillDrillsColors.energyOrange : theme.colorScheme.onPrimary.withAlpha(90);
+    final bg = isPremium ? SkillDrillsColors.energyOrange.withAlpha(22) : theme.colorScheme.onPrimary.withAlpha(14);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+          decoration: BoxDecoration(
+            color: bg,
+            borderRadius: BorderRadius.circular(SkillDrillsRadius.sm),
+            border: Border.all(color: color.withAlpha(60)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                isPremium ? Icons.workspace_premium_rounded : Icons.person_rounded,
+                size: 11,
+                color: color,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                isPremium ? 'Premium' : 'Free',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 11,
+                  color: color,
+                  letterSpacing: 0.4,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

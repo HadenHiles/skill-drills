@@ -23,15 +23,14 @@ class Measurement {
   Measurement(this.role, this.type, this.label, this.order, this.value, this.target, this.reverse);
 
   Measurement.fromMap(Map<String, dynamic>? map, {this.reference})
-      : assert(map!['role'] != null),
-        assert(map!['type'] != null),
-        role = map!['role'],
-        type = map['type'],
-        label = map['label'],
-        order = map['order'],
+      : assert(map != null),
+        role = (map!['role'] as String?) ?? 'result',
+        type = (map['type'] as String?) ?? 'amount',
+        label = (map['label'] as String?) ?? '',
+        order = (map['order'] as int?) ?? 0,
         value = map['value'],
         target = map['target'],
-        reverse = map['reverse'] ?? false;
+        reverse = (map['reverse'] as bool?) ?? false;
 
   Map<String, dynamic> toMap() {
     return {

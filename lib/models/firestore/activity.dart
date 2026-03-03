@@ -4,19 +4,26 @@ import 'skill.dart';
 /// Activity – a named skill domain chosen by the user (e.g. "Hockey", "Guitar").
 /// Each Activity has a list of [skills] (sub-disciplines, e.g. "Shooting", "Passing")
 /// that are used to categorise drills.
+///
+/// [isActive] – whether this activity is currently active for the user.
+/// Free users may have at most [SkillDrillsUser.freeActiveActivityLimit] active
+/// activities at one time. Inactive activities are preserved (drills/history
+/// intact) but hidden from session start and drill authoring.
 class Activity {
   String? id;
   final String? title;
+  bool isActive;
   List<Skill>? skills;
   final String? createdBy;
   DocumentReference? reference;
 
-  Activity(this.title, this.createdBy);
+  Activity(this.title, this.createdBy, {this.isActive = true});
 
   Activity.fromMap(Map<String, dynamic>? map, {this.reference})
       : assert(map!['title'] != null),
         id = map!['id'],
         title = map['title'],
+        isActive = (map['is_active'] as bool?) ?? true,
         skills = [],
         createdBy = map['created_by'];
 
@@ -29,6 +36,7 @@ class Activity {
     return {
       'id': id,
       'title': title,
+      'is_active': isActive,
       'skills': skillMaps,
       'created_by': createdBy,
     };

@@ -70,6 +70,26 @@ class _RoutinesState extends State<Routines> with SingleTickerProviderStateMixin
                   style: Theme.of(context).textTheme.bodyMedium,
                   textAlign: TextAlign.center,
                 ),
+                const SizedBox(height: SkillDrillsSpacing.lg),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: SkillDrillsSpacing.md, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.tertiary.withAlpha(14),
+                    borderRadius: BorderRadius.circular(SkillDrillsRadius.md),
+                    border: Border.all(color: Theme.of(context).colorScheme.tertiary.withAlpha(40)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.info_outline_rounded, size: 14, color: Theme.of(context).colorScheme.tertiary),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Free plan includes 3 saved routines',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.tertiary),
+                      ),
+                    ],
+                  ),
+                ),
                 const SizedBox(height: SkillDrillsSpacing.xl),
                 OutlinedButton.icon(
                   onPressed: null,
