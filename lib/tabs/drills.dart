@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:skilldrills/models/firestore/drill.dart';
 import 'package:skilldrills/models/firestore/measurement.dart';
 import 'package:skilldrills/models/firestore/skill.dart';
+import 'package:skilldrills/services/factory.dart';
 import 'package:skilldrills/tabs/drills/drill_item.dart';
 import 'package:skilldrills/theme/theme.dart';
 
@@ -40,19 +41,69 @@ class _DrillsState extends State<Drills> with SingleTickerProviderStateMixin {
   }
 
   Widget _buildDrills(BuildContext context) {
-    return StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance.collection('drills').doc(auth.currentUser!.uid).collection('drills').orderBy('title', descending: false).snapshots(),
-        builder: (context, snapshot) {
-          if (!snapshot.hasData) {
-            return const Center(
-              child: CircularProgressIndicator(),
-            );
-          }
-          return _buildDrillList(context, snapshot.data!.docs.cast<DocumentSnapshot<Map<String, dynamic>>>());
-        });
+    return ValueListenableBuilder<bool>(
+      valueListenable: isBootstrapping,
+      builder: (context, bootstrapping, _) {
+        return StreamBuilder<QuerySnapshot>(
+          stream: FirebaseFirestore.instance.collection('drills').doc(auth.currentUser!.uid).collection('drills').orderBy('title', descending: false).snapshots(),
+          builder: (context, snapshot) {
+            // Still waiting for the first Firestore response
+            if (!snapshot.hasData) {
+              return _buildSetupLoadingState(context, bootstrapping);
+            }
+            return _buildDrillList(context, snapshot.data!.docs.cast<DocumentSnapshot<Map<String, dynamic>>>(), bootstrapping);
+          },
+        );
+      },
+    );
   }
 
-  Widget _buildDrillList(BuildContext context, List<DocumentSnapshot<Map<String, dynamic>>> snapshot) {
+  Widget _buildSetupLoadingState(BuildContext context, bool bootstrapping) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 40),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.secondary.withAlpha(18),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                bootstrapping ? Icons.construction_rounded : Icons.fitness_center_rounded,
+                size: 52,
+                color: Theme.of(context).colorScheme.secondary,
+              ),
+            ),
+            const SizedBox(height: SkillDrillsSpacing.lg),
+            Text(
+              bootstrapping ? 'Building Your Library…' : 'Loading Drills…',
+              style: Theme.of(context).textTheme.headlineSmall,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: SkillDrillsSpacing.sm),
+            Text(
+              bootstrapping
+                  ? 'Generating your default drill templates. This only happens once.'
+                  : 'Hang tight…',
+              style: Theme.of(context).textTheme.bodyMedium,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: SkillDrillsSpacing.lg),
+            const SizedBox(
+              width: 28,
+              height: 28,
+              child: CircularProgressIndicator(strokeWidth: 2.5),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDrillList(BuildContext context, List<DocumentSnapshot<Map<String, dynamic>>> snapshot, bool bootstrapping) {
     List<DrillItem> items = [];
 
     for (var docSnap in snapshot) {
@@ -75,6 +126,10 @@ class _DrillsState extends State<Drills> with SingleTickerProviderStateMixin {
     }
 
     if (items.isEmpty) {
+      // Bootstrap is still running — drills are being written to Firestore.
+      if (bootstrapping) {
+        return _buildSetupLoadingState(context, true);
+      }
       return Center(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 40),

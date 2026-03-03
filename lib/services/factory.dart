@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:skilldrills/models/firestore/activity.dart';
 import 'package:skilldrills/models/onboarding_preferences.dart';
@@ -14,26 +15,35 @@ import 'package:skilldrills/models/firestore/routine.dart';
 
 final FirebaseAuth auth = FirebaseAuth.instance;
 
+/// True while [bootstrap] is running. Widgets can listen to this to show a
+/// friendly loading state instead of a confusing empty state.
+final ValueNotifier<bool> isBootstrapping = ValueNotifier(false);
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Bootstrap entry point (called from Nav.initState)
 // ─────────────────────────────────────────────────────────────────────────────
 
 Future<void> bootstrap() async {
-  addUser();
+  isBootstrapping.value = true;
+  try {
+    addUser();
 
-  // Read one-time onboarding preferences (cleared after first apply).
-  final onboardingPrefs = await OnboardingPreferences.load();
+    // Read one-time onboarding preferences (cleared after first apply).
+    final onboardingPrefs = await OnboardingPreferences.load();
 
-  await Future.wait([
-    bootstrapActivities(selectedActivities: onboardingPrefs.selectedActivities),
-    bootstrapDrillTypes(includeDefault: onboardingPrefs.includeDefaultDrills),
-  ]);
-  await bootstrapDrills();
+    await Future.wait([
+      bootstrapActivities(selectedActivities: onboardingPrefs.selectedActivities),
+      bootstrapDrillTypes(includeDefault: onboardingPrefs.includeDefaultDrills),
+    ]);
+    await bootstrapDrills();
 
-  // Clear the per-activity selections now that they have been applied.
-  // The opted_out_default_drills flag is NOT cleared — it persists so future
-  // bootstrap runs continue to skip seeding.
-  await OnboardingPreferences.clearAfterApply();
+    // Clear the per-activity selections now that they have been applied.
+    // The opted_out_default_drills flag is NOT cleared — it persists so future
+    // bootstrap runs continue to skip seeding.
+    await OnboardingPreferences.clearAfterApply();
+  } finally {
+    isBootstrapping.value = false;
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
