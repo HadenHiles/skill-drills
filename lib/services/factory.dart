@@ -682,21 +682,27 @@ Future<void> bootstrapDrills() async {
   final existingDrills = await FirebaseFirestore.instance.collection('drills').doc(uid).collection('drills').limit(1).get();
   if (existingDrills.docs.isNotEmpty) return;
 
+  // ── Parallel reads ───────────────────────────────────────────────────────
   final actSnap = await FirebaseFirestore.instance.collection('activities').doc(uid).collection('activities').get();
+  final dtSnap = await FirebaseFirestore.instance.collection('drill_types').doc(uid).collection('drill_types').get();
+
+  // Fetch all activity-skills and drill-type-measurements in parallel.
+  final activitySkillFutures = actSnap.docs.map((doc) => doc.reference.collection('skills').get());
+  final dtMeasurementFutures = dtSnap.docs.map((doc) => doc.reference.collection('measurements').orderBy('order').get());
+  final activitySkillSnaps = await Future.wait(activitySkillFutures);
+  final dtMeasurementSnaps = await Future.wait(dtMeasurementFutures);
+
   final Map<String, Activity> activityMap = {};
-  for (var doc in actSnap.docs) {
-    final a = Activity.fromSnapshot(doc);
-    final skillSnap = await doc.reference.collection('skills').get();
-    a.skills = skillSnap.docs.map((s) => Skill.fromSnapshot(s)).toList();
+  for (var i = 0; i < actSnap.docs.length; i++) {
+    final a = Activity.fromSnapshot(actSnap.docs[i]);
+    a.skills = activitySkillSnaps[i].docs.map((s) => Skill.fromSnapshot(s)).toList();
     activityMap[a.title!] = a;
   }
 
-  final dtSnap = await FirebaseFirestore.instance.collection('drill_types').doc(uid).collection('drill_types').get();
   final Map<String, DrillType> drillTypeMap = {};
-  for (var doc in dtSnap.docs) {
-    final dt = DrillType.fromSnapshot(doc);
-    final mSnap = await doc.reference.collection('measurements').orderBy('order').get();
-    dt.measurements = mSnap.docs.map((m) => Measurement.fromSnapshot(m)).toList();
+  for (var i = 0; i < dtSnap.docs.length; i++) {
+    final dt = DrillType.fromSnapshot(dtSnap.docs[i]);
+    dt.measurements = dtMeasurementSnaps[i].docs.map((m) => Measurement.fromSnapshot(m)).toList();
     drillTypeMap[dt.id!] = dt;
   }
 
@@ -708,23 +714,48 @@ Future<void> bootstrapDrills() async {
     }
   }
 
+  // ── Batched writes ───────────────────────────────────────────────────────
+  // Firestore batches are capped at 500 operations. We auto-flush when close.
+  const batchLimit = 490;
+  var batch = FirebaseFirestore.instance.batch();
+  var opCount = 0;
+
+  Future<void> maybeFlush() async {
+    if (opCount >= batchLimit) {
+      await batch.commit();
+      batch = FirebaseFirestore.instance.batch();
+      opCount = 0;
+    }
+  }
+
   for (final spec in _defaultDrillSpecs()) {
     final activity = activityMap[spec.activityTitle];
     final drillType = drillTypeMap[spec.drillTypeId];
     if (activity == null || drillType == null) continue;
+
     final skills = spec.skillTitles.map((t) => findSkill(spec.activityTitle, t)).whereType<Skill>().toList();
     final actSnap2 = Activity(activity.title, activity.createdBy);
     actSnap2.id = activity.id;
     actSnap2.skills = skills;
+
     final newRef = FirebaseFirestore.instance.collection('drills').doc(uid).collection('drills').doc();
-    await newRef.set(Drill(spec.title, spec.description, actSnap2, drillType).toMap());
+    batch.set(newRef, Drill(spec.title, spec.description, actSnap2, drillType).toMap());
+    opCount++;
+    await maybeFlush();
+
     for (final m in spec.measurements) {
-      await newRef.collection('measurements').doc().set(m.toMap());
+      batch.set(newRef.collection('measurements').doc(), m.toMap());
+      opCount++;
+      await maybeFlush();
     }
     for (final s in skills) {
-      await newRef.collection('skills').doc().set(s.toMap());
+      batch.set(newRef.collection('skills').doc(), s.toMap());
+      opCount++;
+      await maybeFlush();
     }
   }
+
+  if (opCount > 0) await batch.commit();
 }
 
 List<_DrillSpec> _defaultDrillSpecs() => [

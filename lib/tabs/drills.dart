@@ -54,16 +54,22 @@ class _DrillsState extends State<Drills> with SingleTickerProviderStateMixin {
   void _toggle(String title) => setState(() => _expanded[title] = !_isExpanded(title));
 
   // ── Streams ──────────────────────────────────────────────────────────────
+  // These MUST be late final fields, not getters. StreamBuilder compares stream
+  // identity on every build — if a new Stream object is returned each time,
+  // StreamBuilder cancels the old subscription and re-subscribes, which resets
+  // it to ConnectionState.waiting and shows the loading spinner forever.
 
-  Stream<List<Activity>> get _activitiesStream => FirebaseFirestore.instance.collection('activities').doc(auth.currentUser!.uid).collection('activities').orderBy('title').snapshots().map((s) => s.docs.map(Activity.fromSnapshot).where((a) => a.isActive).toList());
-
-  Stream<List<Drill>> get _drillsStream => FirebaseFirestore.instance.collection('drills').doc(auth.currentUser!.uid).collection('drills').orderBy('title').snapshots().map((s) => s.docs.map((d) => Drill.fromSnapshot(d as DocumentSnapshot<Map<String, dynamic>>)).toList());
+  late final Stream<List<Activity>> _activitiesStream;
+  late final Stream<List<Drill>> _drillsStream;
 
   // ── Lifecycle ─────────────────────────────────────────────────────────────
 
   @override
   void initState() {
     super.initState();
+    final uid = auth.currentUser!.uid;
+    _activitiesStream = FirebaseFirestore.instance.collection('activities').doc(uid).collection('activities').orderBy('title').snapshots().map((s) => s.docs.map(Activity.fromSnapshot).where((a) => a.isActive).toList());
+    _drillsStream = FirebaseFirestore.instance.collection('drills').doc(uid).collection('drills').orderBy('title').snapshots().map((s) => s.docs.map((d) => Drill.fromSnapshot(d as DocumentSnapshot<Map<String, dynamic>>)).toList());
     _animController = AnimationController(vsync: this, duration: const Duration(milliseconds: 400));
     _fadeAnim = CurvedAnimation(parent: _animController, curve: Curves.easeOut);
     _slideAnim = Tween<Offset>(begin: const Offset(0, 0.08), end: Offset.zero).animate(CurvedAnimation(parent: _animController, curve: Curves.easeOutCubic));
