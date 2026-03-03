@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:skilldrills/models/firestore/activity.dart';
+import 'package:skilldrills/models/onboarding_preferences.dart';
 import 'package:skilldrills/models/firestore/skill.dart';
 import 'package:skilldrills/models/firestore/drill.dart';
 import 'package:skilldrills/models/firestore/drill_type.dart';
@@ -18,8 +20,20 @@ final FirebaseAuth auth = FirebaseAuth.instance;
 
 Future<void> bootstrap() async {
   addUser();
-  await Future.wait([bootstrapActivities(), bootstrapDrillTypes()]);
+
+  // Read one-time onboarding preferences (cleared after first apply).
+  final onboardingPrefs = await OnboardingPreferences.load();
+
+  await Future.wait([
+    bootstrapActivities(selectedActivities: onboardingPrefs.selectedActivities),
+    bootstrapDrillTypes(includeDefault: onboardingPrefs.includeDefaultDrills),
+  ]);
   await bootstrapDrills();
+
+  // Clear the per-activity selections now that they have been applied.
+  // The opted_out_default_drills flag is NOT cleared — it persists so future
+  // bootstrap runs continue to skip seeding.
+  await OnboardingPreferences.clearAfterApply();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -38,14 +52,14 @@ void addUser() {
 // ACTIVITIES
 // ─────────────────────────────────────────────────────────────────────────────
 
-Future<void> bootstrapActivities() async {
+Future<void> bootstrapActivities({List<String> selectedActivities = const []}) async {
   final snapshot = await FirebaseFirestore.instance.collection("activities").doc(auth.currentUser!.uid).collection("activities").get();
   if (snapshot.docs.isEmpty) {
-    await resetActivities();
+    await resetActivities(selectedActivities: selectedActivities);
   }
 }
 
-Future<void> resetActivities() async {
+Future<void> resetActivities({List<String> selectedActivities = const []}) async {
   final uid = auth.currentUser!.uid;
   final snapshot = await FirebaseFirestore.instance.collection("activities").doc(uid).collection("activities").get();
   for (var doc in snapshot.docs) {
@@ -72,7 +86,11 @@ Future<void> resetActivities() async {
     'Guitar': ['Scales', 'Chords', 'Strumming', 'Picking', 'Rhythm', 'Theory'],
   };
   for (var entry in activitySkills.entries) {
-    final a = Activity(entry.key, null);
+    // If the user selected specific activities during onboarding, mark all
+    // others as inactive so the UI is focused on their chosen domains.
+    // An empty selectedActivities list means "no preference" — all active.
+    final isActive = selectedActivities.isEmpty || selectedActivities.contains(entry.key);
+    final a = Activity(entry.key, null, isActive: isActive);
     final actDoc = FirebaseFirestore.instance.collection("activities").doc(uid).collection("activities").doc();
     a.id = actDoc.id;
     a.skills = [];
@@ -94,8 +112,21 @@ void _saveActivitySkill(DocumentReference actRef, Skill s) {
 // DRILL TYPES  (6 universal + 4 per activity × 14 activities = 62 total)
 // ─────────────────────────────────────────────────────────────────────────────
 
-Future<void> bootstrapDrillTypes() async {
+Future<void> bootstrapDrillTypes({bool includeDefault = true}) async {
   final uid = auth.currentUser!.uid;
+
+  // Persist the opted-out decision so future bootstraps also skip seeding.
+  if (!includeDefault) {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('opted_out_default_drills', true);
+    return;
+  }
+
+  // Respect a previously stored opt-out.
+  final prefs = await SharedPreferences.getInstance();
+  final optedOut = prefs.getBool('opted_out_default_drills') ?? false;
+  if (optedOut) return;
+
   final allTypes = _allDrillTypes();
   final snapshot = await FirebaseFirestore.instance.collection('drill_types').doc(uid).collection('drill_types').get();
   if (snapshot.docs.length == allTypes.length) return;

@@ -6,7 +6,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:skilldrills/models/onboarding_preferences.dart';
 import 'package:skilldrills/nav.dart';
+import 'package:skilldrills/onboarding/welcome_screen.dart';
 import 'package:skilldrills/services/session.dart';
 import 'package:skilldrills/theme/settings_state_notifier.dart';
 import 'package:skilldrills/theme/theme.dart';
@@ -17,6 +19,7 @@ import 'models/settings.dart';
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 Settings settings = Settings(true, false);
 final sessionService = SessionService();
+bool hasSeenWelcome = false;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -38,6 +41,7 @@ void main() async {
     prefs.getBool('vibrate') != null ? prefs.getBool('vibrate')! : false,
     prefs.getBool('dark_mode') != null ? prefs.getBool('dark_mode')! : false,
   );
+  hasSeenWelcome = await OnboardingPreferences.hasSeenWelcome();
 
   runApp(
     ChangeNotifierProvider<SettingsStateNotifier>(
@@ -49,8 +53,9 @@ void main() async {
 
 class SkillDrills extends StatelessWidget {
   final user = FirebaseAuth.instance.currentUser;
+  final bool seenWelcome;
 
-  SkillDrills({super.key});
+  SkillDrills({super.key}) : seenWelcome = hasSeenWelcome;
 
   // This widget is the root of your application.
   @override
@@ -71,7 +76,7 @@ class SkillDrills extends StatelessWidget {
           theme: SkillDrillsTheme.lightTheme,
           darkTheme: SkillDrillsTheme.darkTheme,
           themeMode: settingsState.settings.darkMode ? ThemeMode.dark : ThemeMode.system,
-          home: user != null ? const Nav() : const Login(),
+          home: !seenWelcome ? const WelcomeScreen() : (user != null ? const Nav() : const Login()),
         );
       },
     );
