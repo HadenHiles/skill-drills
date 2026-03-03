@@ -20,12 +20,13 @@ class RoutineItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final drillCount = routine.drills?.length ?? 0;
-    final subtitle = drillCount == 0 ? 'No drills added' : '$drillCount drill${drillCount == 1 ? '' : 's'}';
+    final label = routine.drillLabel.toLowerCase();
+    final subtitle = drillCount == 0 ? 'No ${label}s added' : '$drillCount $label${drillCount == 1 ? '' : 's'}';
 
     return AppListItem(
       title: routine.title,
       subtitle: routine.description.isNotEmpty ? routine.description : subtitle,
-      accentColor: SkillDrillsColors.energyOrange,
+      accentColor: SkillDrillsColors.brandBlue,
       trailing: IconButton(
         padding: EdgeInsets.zero,
         constraints: const BoxConstraints(minWidth: 36, minHeight: 36),

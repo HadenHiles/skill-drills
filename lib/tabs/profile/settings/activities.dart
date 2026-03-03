@@ -49,6 +49,7 @@ class _ActivitiesSettingsState extends State<ActivitiesSettings> {
         .map((data) => ActivityItem(
               sport: Activity.fromSnapshot(data),
               deleteCallback: _deleteActivity,
+              toggleCallback: _toggleActive,
             ))
         .toList();
 
@@ -69,6 +70,10 @@ class _ActivitiesSettingsState extends State<ActivitiesSettings> {
               ),
             ],
           );
+  }
+
+  void _toggleActive(Activity activity, bool isActive) {
+    FirebaseFirestore.instance.collection('activities').doc(auth.currentUser!.uid).collection('activities').doc(activity.reference!.id).update({'is_active': isActive});
   }
 
   void _deleteActivity(Activity activity) {
@@ -118,13 +123,6 @@ class _ActivitiesSettingsState extends State<ActivitiesSettings> {
                   title: Row(
                     children: [
                       const BasicTitle(title: "Activities"),
-                      Container(
-                        margin: const EdgeInsets.only(left: 10),
-                        child: Text(
-                          "(Activities)",
-                          style: Theme.of(context).textTheme.bodyMedium,
-                        ),
-                      ),
                     ],
                   ),
                   background: Container(
@@ -171,9 +169,9 @@ class _ActivitiesSettingsState extends State<ActivitiesSettings> {
                   dialog(
                     context,
                     SkillDrillsDialog(
-                      "Reset Sports?",
+                      "Reset Activities?",
                       const Text(
-                        "Are you sure you want to reset your sports?\n\nThis can't be undone.",
+                        "This will restore all default activities and their terminology.\n\nThis can't be undone.",
                         textAlign: TextAlign.center,
                       ),
                       "Cancel",

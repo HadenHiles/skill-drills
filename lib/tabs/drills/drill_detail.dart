@@ -184,13 +184,6 @@ class _DrillDetailState extends State<DrillDetail> {
                         });
                       }
 
-                      if (_activity!.title!.isNotEmpty && _selectedCategories!.isEmpty) {
-                        hasErrors = true;
-                        setState(() {
-                          _categoryError = true;
-                        });
-                      }
-
                       if (_drill!.drillType == null) {
                         hasErrors = true;
                         setState(() {

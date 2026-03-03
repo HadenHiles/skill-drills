@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:skilldrills/main.dart';
 import 'package:skilldrills/models/firestore/activity.dart';
 import 'package:skilldrills/models/firestore/drill.dart';
@@ -39,6 +40,11 @@ class _RoutineDetailState extends State<RoutineDetail> {
   /// The activity this routine belongs to.
   Activity? _selectedActivity;
   bool _activityError = false;
+
+  /// Terminology labels drawn from [_selectedActivity].
+  String _drillLabel = 'Drill';
+  String _setsLabel = 'Sets';
+  String _repsLabel = 'Reps';
 
   /// Full drill library (all activities); filtered to [_selectedActivity] in the picker.
   List<Drill> _allDrills = [];
@@ -99,6 +105,12 @@ class _RoutineDetailState extends State<RoutineDetail> {
           } catch (_) {
             // Activity may have been deactivated; keep null so user re-picks.
           }
+        }
+        // Sync terminology from pre-selected activity.
+        if (_selectedActivity != null) {
+          _drillLabel = _selectedActivity!.drillLabel;
+          _setsLabel = _selectedActivity!.setsLabel;
+          _repsLabel = _selectedActivity!.repsLabel;
         }
       });
     }
@@ -163,6 +175,7 @@ class _RoutineDetailState extends State<RoutineDetail> {
           _titleCtrl.text.trim(),
           _descCtrl.text.trim(),
           activityTitle: _selectedActivity!.title,
+          drillLabel: _selectedActivity!.drillLabel,
           drills: orderedDrills,
         )..reference = widget.routine!.reference;
         await firestore_factory.updateRoutine(updated);
@@ -172,6 +185,7 @@ class _RoutineDetailState extends State<RoutineDetail> {
           _titleCtrl.text.trim(),
           _descCtrl.text.trim(),
           activityTitle: _selectedActivity!.title,
+          drillLabel: _selectedActivity!.drillLabel,
           drills: orderedDrills,
           createdAt: DateTime.now(),
         );
@@ -271,6 +285,9 @@ class _RoutineDetailState extends State<RoutineDetail> {
                     setState(() {
                       _selectedActivity = activity;
                       _activityError = false;
+                      _drillLabel = activity.drillLabel;
+                      _setsLabel = activity.setsLabel;
+                      _repsLabel = activity.repsLabel;
                       // Clear drills when activity changes — they belong to the old activity.
                       if (changed) _selectedDrills.clear();
                     });
@@ -325,7 +342,7 @@ class _RoutineDetailState extends State<RoutineDetail> {
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: SkillDrillsSpacing.md),
                   child: Text(
-                    'Add a Drill',
+                    'Add a $_drillLabel',
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
                 ),
@@ -351,11 +368,11 @@ class _RoutineDetailState extends State<RoutineDetail> {
                       size: 20,
                     ),
                   ),
-                  title: const Text(
-                    'Create New Drill',
-                    style: TextStyle(fontWeight: FontWeight.w600),
+                  title: Text(
+                    'Create New $_drillLabel',
+                    style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
-                  subtitle: const Text('Build a new drill and add it here'),
+                  subtitle: Text('Build a new ${_drillLabel.toLowerCase()} and add it here'),
                   trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
                   onTap: () {
                     Navigator.of(ctx).pop();
@@ -370,7 +387,7 @@ class _RoutineDetailState extends State<RoutineDetail> {
                           child: Padding(
                             padding: const EdgeInsets.all(SkillDrillsSpacing.xl),
                             child: Text(
-                              !_allDrills.any((d) => d.activity?.title == _selectedActivity?.title) ? 'No drills for this activity yet. Use "Create New Drill" above to build one.' : 'All drills for this activity have already been added.',
+                              !_allDrills.any((d) => d.activity?.title == _selectedActivity?.title) ? 'No ${_drillLabel.toLowerCase()}s for this activity yet. Use "Create New $_drillLabel" above to build one.' : 'All ${_drillLabel.toLowerCase()}s for this activity have already been added.',
                               textAlign: TextAlign.center,
                               style: Theme.of(context).textTheme.bodyMedium,
                             ),
@@ -414,6 +431,112 @@ class _RoutineDetailState extends State<RoutineDetail> {
               ],
             );
           },
+        );
+      },
+    );
+  }
+
+  // ── Sets / Reps editor ───────────────────────────────────────────────────────
+
+  void _showSetsRepsEditor(int drillIndex) {
+    final rd = _selectedDrills[drillIndex];
+    final setsCtrl = TextEditingController(text: rd.sets?.toString() ?? '');
+    final repsCtrl = TextEditingController(text: rd.reps?.toString() ?? '');
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(SkillDrillsRadius.lg)),
+      ),
+      builder: (ctx) {
+        return Padding(
+          padding: EdgeInsets.only(
+            left: SkillDrillsSpacing.md,
+            right: SkillDrillsSpacing.md,
+            top: SkillDrillsSpacing.md,
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + SkillDrillsSpacing.lg,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Handle
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).dividerColor,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+              Text(
+                rd.title,
+                style: Theme.of(context).textTheme.titleLarge,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Set $_setsLabel and $_repsLabel for this ${_drillLabel.toLowerCase()}.',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.55),
+                    ),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: _NumberStepField(
+                      controller: setsCtrl,
+                      label: _setsLabel,
+                      hint: 'e.g. 3',
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _NumberStepField(
+                      controller: repsCtrl,
+                      label: _repsLabel,
+                      hint: 'e.g. 10',
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.of(ctx).pop(),
+                    child: const Text('Cancel'),
+                  ),
+                  const SizedBox(width: 8),
+                  FilledButton(
+                    onPressed: () {
+                      final sets = int.tryParse(setsCtrl.text.trim());
+                      final reps = int.tryParse(repsCtrl.text.trim());
+                      setState(() {
+                        _selectedDrills[drillIndex] = RoutineDrill(
+                          rd.drillId,
+                          rd.title,
+                          rd.order,
+                          sets: sets,
+                          reps: reps,
+                        );
+                      });
+                      Navigator.of(ctx).pop();
+                    },
+                    child: const Text('Done'),
+                  ),
+                ],
+              ),
+            ],
+          ),
         );
       },
     );
@@ -534,7 +657,7 @@ class _RoutineDetailState extends State<RoutineDetail> {
             children: [
               Expanded(
                 child: Text(
-                  'Drills',
+                  '${_drillLabel}s',
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(
                         color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.55),
                         letterSpacing: 0.8,
@@ -544,7 +667,7 @@ class _RoutineDetailState extends State<RoutineDetail> {
               TextButton.icon(
                 onPressed: (_loadingDrills || _selectedActivity == null) ? null : _showDrillPicker,
                 icon: const Icon(Icons.add, size: 18),
-                label: const Text('Add Drill'),
+                label: Text('Add $_drillLabel'),
               ),
             ],
           ),
@@ -563,7 +686,7 @@ class _RoutineDetailState extends State<RoutineDetail> {
                     const SizedBox(width: SkillDrillsSpacing.md),
                     Expanded(
                       child: Text(
-                        _selectedActivity == null ? 'Select an activity above before adding drills.' : 'No drills added yet.\nTap "Add Drill" to build your routine.',
+                        _selectedActivity == null ? 'Select an activity above before adding ${_drillLabel.toLowerCase()}s.' : 'No ${_drillLabel.toLowerCase()}s added yet.\nTap "Add $_drillLabel" to build your routine.',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                               color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.55),
                             ),
@@ -588,17 +711,20 @@ class _RoutineDetailState extends State<RoutineDetail> {
                 },
                 itemBuilder: (ctx, i) {
                   final rd = _selectedDrills[i];
+                  final setsText = rd.sets != null ? '${rd.sets}' : '—';
+                  final repsText = rd.reps != null ? '${rd.reps}' : '—';
                   return ListTile(
                     key: ValueKey('${rd.drillId}_$i'),
                     contentPadding: const EdgeInsets.only(
                       left: SkillDrillsSpacing.md,
                       right: 4,
                     ),
+                    onTap: () => _showSetsRepsEditor(i),
                     leading: Container(
                       width: 28,
                       height: 28,
                       decoration: BoxDecoration(
-                        color: SkillDrillsColors.energyOrange.withValues(alpha: 0.14),
+                        color: SkillDrillsColors.brandBlue.withValues(alpha: 0.14),
                         shape: BoxShape.circle,
                       ),
                       child: Center(
@@ -607,12 +733,34 @@ class _RoutineDetailState extends State<RoutineDetail> {
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
-                            color: SkillDrillsColors.energyOrange,
+                            color: SkillDrillsColors.brandBlue,
                           ),
                         ),
                       ),
                     ),
                     title: Text(rd.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+                    subtitle: GestureDetector(
+                      onTap: () => _showSetsRepsEditor(i),
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 3),
+                        child: Row(
+                          children: [
+                            _SetsRepsChip(
+                              label: _setsLabel,
+                              value: setsText,
+                              onTap: () => _showSetsRepsEditor(i),
+                            ),
+                            const SizedBox(width: 6),
+                            _SetsRepsChip(
+                              label: _repsLabel,
+                              value: repsText,
+                              onTap: () => _showSetsRepsEditor(i),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    isThreeLine: true,
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -716,6 +864,133 @@ class _RoutineDetailState extends State<RoutineDetail> {
           ),
         ),
       ),
+    );
+  }
+}
+
+// ── Helper widgets ────────────────────────────────────────────────────────────
+
+/// Small tappable chip that displays a sets or reps value alongside its label.
+class _SetsRepsChip extends StatelessWidget {
+  const _SetsRepsChip({
+    required this.label,
+    required this.value,
+    required this.onTap,
+  });
+
+  final String label;
+  final String value;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDash = value == '—';
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        decoration: BoxDecoration(
+          color: isDash ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.06) : SkillDrillsColors.brandBlue.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(SkillDrillsRadius.full),
+        ),
+        child: Text(
+          '$value $label',
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: isDash ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45) : SkillDrillsColors.brandBlue,
+                fontWeight: isDash ? FontWeight.normal : FontWeight.w600,
+              ),
+        ),
+      ),
+    );
+  }
+}
+
+/// An integer input field with — + stepper buttons.
+class _NumberStepField extends StatefulWidget {
+  const _NumberStepField({
+    required this.controller,
+    required this.label,
+    required this.hint,
+  });
+
+  final TextEditingController controller;
+  final String label;
+  final String hint;
+
+  @override
+  State<_NumberStepField> createState() => _NumberStepFieldState();
+}
+
+class _NumberStepFieldState extends State<_NumberStepField> {
+  void _step(int delta) {
+    final current = int.tryParse(widget.controller.text.trim()) ?? 0;
+    final next = (current + delta).clamp(0, 999);
+    widget.controller.text = next == 0 ? '' : '$next';
+    setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          widget.label,
+          style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+              ),
+        ),
+        const SizedBox(height: 6),
+        Row(
+          children: [
+            // Decrement
+            InkWell(
+              onTap: () => _step(-1),
+              borderRadius: BorderRadius.circular(SkillDrillsRadius.sm),
+              child: Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  border: Border.all(color: Theme.of(context).dividerColor),
+                  borderRadius: BorderRadius.circular(SkillDrillsRadius.sm),
+                ),
+                child: const Icon(Icons.remove, size: 18),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: TextFormField(
+                controller: widget.controller,
+                keyboardType: TextInputType.number,
+                textAlign: TextAlign.center,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                decoration: InputDecoration(
+                  hintText: widget.hint,
+                  isDense: true,
+                  border: const OutlineInputBorder(),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                ),
+                onChanged: (_) => setState(() {}),
+              ),
+            ),
+            const SizedBox(width: 8),
+            // Increment
+            InkWell(
+              onTap: () => _step(1),
+              borderRadius: BorderRadius.circular(SkillDrillsRadius.sm),
+              child: Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  border: Border.all(color: Theme.of(context).dividerColor),
+                  borderRadius: BorderRadius.circular(SkillDrillsRadius.sm),
+                ),
+                child: const Icon(Icons.add, size: 18),
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }

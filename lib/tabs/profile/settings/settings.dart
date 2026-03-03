@@ -152,7 +152,7 @@ class _ProfileSettingsState extends State<ProfileSettings> {
                 SettingsTile(
                   title: Text("Activities", style: Theme.of(context).textTheme.bodyLarge),
                   description: Text(
-                    '(Activities)',
+                    'Manage activities, skills & terminology',
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
                   leading: Icon(

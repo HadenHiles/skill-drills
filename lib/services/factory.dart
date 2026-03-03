@@ -2112,6 +2112,7 @@ Future<void> updateRoutine(Routine routine) async {
     'title': routine.title,
     'description': routine.description,
     'activity_title': routine.activityTitle,
+    'drill_label': routine.drillLabel,
   });
   // Replace drills subcollection.
   final oldDrills = await ref.collection('drills').get();
