@@ -181,7 +181,7 @@ class _IntroPage extends StatelessWidget {
               semanticsLabel: 'Skill Drills',
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
           const Text(
             'Level up your\npractice.',
             textAlign: TextAlign.center,
@@ -195,7 +195,7 @@ class _IntroPage extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            'Track drills, measure your progress,\nand build better habits—for any\nactivity or skill.',
+            'Track drills, measure your progress,\nand build better habits for any\nactivity or skill.',
             textAlign: TextAlign.center,
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.8),
@@ -203,7 +203,7 @@ class _IntroPage extends StatelessWidget {
               height: 1.5,
             ),
           ),
-          const SizedBox(height: 40),
+          const SizedBox(height: 16),
 
           // ── Feature cards ─────────────────────────────────────────────
           _FeatureCard(
@@ -223,11 +223,11 @@ class _IntroPage extends StatelessWidget {
             title: 'Build Routines',
             description: 'Save ordered drill sets and run focused practice sessions with a single tap.',
           ),
-          const SizedBox(height: 40),
+          const SizedBox(height: 24),
 
           // ── Continue button ───────────────────────────────────────────
           _ContinueButton(label: 'Get Started', onPressed: onNext),
-          const SizedBox(height: 16),
+          const SizedBox(height: 18),
         ],
       ),
     );
@@ -342,7 +342,7 @@ class _ActivityPickerPage extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                'Pick up to $_maxActivities activities. Free accounts get $_maxActivities active—you can unlock more later.',
+                'Pick up to $_maxActivities activities. Free accounts get $_maxActivities active.\nYou can unlock more later.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: Colors.white.withValues(alpha: 0.75),

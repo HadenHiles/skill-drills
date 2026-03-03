@@ -51,46 +51,22 @@ class _DrillsState extends State<Drills> with SingleTickerProviderStateMixin {
 
   bool _isExpanded(String title) => _expanded[title] ?? true;
 
-  void _toggle(String title) =>
-      setState(() => _expanded[title] = !_isExpanded(title));
+  void _toggle(String title) => setState(() => _expanded[title] = !_isExpanded(title));
 
   // ── Streams ──────────────────────────────────────────────────────────────
 
-  Stream<List<Activity>> get _activitiesStream => FirebaseFirestore.instance
-      .collection('activities')
-      .doc(auth.currentUser!.uid)
-      .collection('activities')
-      .orderBy('title')
-      .snapshots()
-      .map((s) => s.docs
-          .map(Activity.fromSnapshot)
-          .where((a) => a.isActive)
-          .toList());
+  Stream<List<Activity>> get _activitiesStream => FirebaseFirestore.instance.collection('activities').doc(auth.currentUser!.uid).collection('activities').orderBy('title').snapshots().map((s) => s.docs.map(Activity.fromSnapshot).where((a) => a.isActive).toList());
 
-  Stream<List<Drill>> get _drillsStream => FirebaseFirestore.instance
-      .collection('drills')
-      .doc(auth.currentUser!.uid)
-      .collection('drills')
-      .orderBy('title')
-      .snapshots()
-      .map((s) => s.docs
-          .map((d) => Drill.fromSnapshot(
-              d as DocumentSnapshot<Map<String, dynamic>>))
-          .toList());
+  Stream<List<Drill>> get _drillsStream => FirebaseFirestore.instance.collection('drills').doc(auth.currentUser!.uid).collection('drills').orderBy('title').snapshots().map((s) => s.docs.map((d) => Drill.fromSnapshot(d as DocumentSnapshot<Map<String, dynamic>>)).toList());
 
   // ── Lifecycle ─────────────────────────────────────────────────────────────
 
   @override
   void initState() {
     super.initState();
-    _animController = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 400));
-    _fadeAnim =
-        CurvedAnimation(parent: _animController, curve: Curves.easeOut);
-    _slideAnim =
-        Tween<Offset>(begin: const Offset(0, 0.08), end: Offset.zero).animate(
-            CurvedAnimation(
-                parent: _animController, curve: Curves.easeOutCubic));
+    _animController = AnimationController(vsync: this, duration: const Duration(milliseconds: 400));
+    _fadeAnim = CurvedAnimation(parent: _animController, curve: Curves.easeOut);
+    _slideAnim = Tween<Offset>(begin: const Offset(0, 0.08), end: Offset.zero).animate(CurvedAnimation(parent: _animController, curve: Curves.easeOutCubic));
     _animController.forward();
   }
 
@@ -141,14 +117,9 @@ class _DrillsState extends State<Drills> with SingleTickerProviderStateMixin {
 
                 // During bootstrap hide sections that are still empty so the
                 // list doesn't jump around as drills trickle in.
-                final visible = bootstrapping
-                    ? activities
-                        .where((a) => grouped[a.title!]!.isNotEmpty)
-                        .toList()
-                    : activities;
+                final visible = bootstrapping ? activities.where((a) => grouped[a.title!]!.isNotEmpty).toList() : activities;
 
-                final total = visible.fold<int>(
-                    0, (s, a) => s + grouped[a.title!]!.length);
+                final total = visible.fold<int>(0, (s, a) => s + grouped[a.title!]!.length);
 
                 if (total == 0 && bootstrapping) {
                   return _loadingState(context, true);
@@ -206,11 +177,7 @@ class _DrillsState extends State<Drills> with SingleTickerProviderStateMixin {
               child: Text(
                 'Only active activities are shown.\nManage them in Profile → Settings.',
                 textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context)
-                        .colorScheme
-                        .onSurface
-                        .withValues(alpha: 0.35)),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.35)),
               ),
             ),
           ),
@@ -230,14 +197,11 @@ class _DrillsState extends State<Drills> with SingleTickerProviderStateMixin {
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color:
-                    Theme.of(context).colorScheme.secondary.withAlpha(18),
+                color: Theme.of(context).colorScheme.secondary.withAlpha(18),
                 shape: BoxShape.circle,
               ),
               child: Icon(
-                bootstrapping
-                    ? Icons.construction_rounded
-                    : Icons.fitness_center_rounded,
+                bootstrapping ? Icons.construction_rounded : Icons.fitness_center_rounded,
                 size: 52,
                 color: Theme.of(context).colorScheme.secondary,
               ),
@@ -250,9 +214,7 @@ class _DrillsState extends State<Drills> with SingleTickerProviderStateMixin {
             ),
             const SizedBox(height: SkillDrillsSpacing.sm),
             Text(
-              bootstrapping
-                  ? 'Generating your default drill templates.\nThis only happens once.'
-                  : 'Hang tight…',
+              bootstrapping ? 'Generating your default drill templates.\nThis only happens once.' : 'Hang tight…',
               style: Theme.of(context).textTheme.bodyMedium,
               textAlign: TextAlign.center,
             ),
@@ -278,22 +240,15 @@ class _DrillsState extends State<Drills> with SingleTickerProviderStateMixin {
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color:
-                    Theme.of(context).colorScheme.secondary.withAlpha(18),
+                color: Theme.of(context).colorScheme.secondary.withAlpha(18),
                 shape: BoxShape.circle,
               ),
-              child: Icon(Icons.fitness_center_rounded,
-                  size: 52,
-                  color: Theme.of(context).colorScheme.secondary),
+              child: Icon(Icons.fitness_center_rounded, size: 52, color: Theme.of(context).colorScheme.secondary),
             ),
             const SizedBox(height: SkillDrillsSpacing.lg),
-            Text('No Drills Yet',
-                style: Theme.of(context).textTheme.headlineSmall,
-                textAlign: TextAlign.center),
+            Text('No Drills Yet', style: Theme.of(context).textTheme.headlineSmall, textAlign: TextAlign.center),
             const SizedBox(height: SkillDrillsSpacing.sm),
-            Text('Tap the + button to create your first drill',
-                style: Theme.of(context).textTheme.bodyMedium,
-                textAlign: TextAlign.center),
+            Text('Tap the + button to create your first drill', style: Theme.of(context).textTheme.bodyMedium, textAlign: TextAlign.center),
           ],
         ),
       ),
@@ -303,11 +258,7 @@ class _DrillsState extends State<Drills> with SingleTickerProviderStateMixin {
   // ── Delete ────────────────────────────────────────────────────────────────
 
   void _deleteDrill(Drill drill) {
-    final ref = FirebaseFirestore.instance
-        .collection('drills')
-        .doc(auth.currentUser!.uid)
-        .collection('drills')
-        .doc(drill.reference!.id);
+    final ref = FirebaseFirestore.instance.collection('drills').doc(auth.currentUser!.uid).collection('drills').doc(drill.reference!.id);
 
     ref.get().then((doc) {
       doc.reference.collection('measurements').get().then((snap) {
@@ -360,8 +311,7 @@ class _ActivitySection extends StatelessWidget {
           InkWell(
             onTap: onHeaderTap,
             child: Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
               child: Row(
                 children: [
                   Text(emoji, style: const TextStyle(fontSize: 22)),
@@ -369,10 +319,7 @@ class _ActivitySection extends StatelessWidget {
                   Expanded(
                     child: Text(
                       activityTitle,
-                      style: Theme.of(context)
-                          .textTheme
-                          .titleMedium
-                          ?.copyWith(
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
                             fontFamily: 'Choplin',
                             fontWeight: FontWeight.w700,
                           ),
@@ -381,11 +328,9 @@ class _ActivitySection extends StatelessWidget {
                   // Drill count badge
                   if (drills.isNotEmpty) ...[
                     Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 3),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
-                        color: SkillDrillsColors.brandBlue
-                            .withValues(alpha: 0.12),
+                        color: SkillDrillsColors.brandBlue.withValues(alpha: 0.12),
                         borderRadius: SkillDrillsRadius.fullBorderRadius,
                       ),
                       child: Text(
@@ -431,8 +376,7 @@ class _ActivitySection extends StatelessWidget {
                       if (drills.isEmpty) _emptyGroup(context),
                       for (int i = 0; i < drills.length; i++) ...[
                         Padding(
-                          padding:
-                              const EdgeInsets.symmetric(horizontal: 8),
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
                           child: DrillItem(
                             drill: drills[i],
                             deleteCallback: deleteCallback,
@@ -444,8 +388,7 @@ class _ActivitySection extends StatelessWidget {
                             thickness: 1,
                             indent: 16,
                             endIndent: 16,
-                            color: colorScheme.onSurface
-                                .withValues(alpha: 0.05),
+                            color: colorScheme.onSurface.withValues(alpha: 0.05),
                           ),
                       ],
                       if (drills.isNotEmpty) const SizedBox(height: 6),
@@ -464,20 +407,11 @@ class _ActivitySection extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.add_circle_outline_rounded,
-              size: 16,
-              color: Theme.of(context)
-                  .colorScheme
-                  .onSurface
-                  .withValues(alpha: 0.35)),
+          Icon(Icons.add_circle_outline_rounded, size: 16, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.35)),
           const SizedBox(width: 8),
           Text(
             'No drills yet — tap + to add one',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context)
-                    .colorScheme
-                    .onSurface
-                    .withValues(alpha: 0.45)),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45)),
           ),
         ],
       ),
