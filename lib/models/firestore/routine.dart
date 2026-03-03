@@ -26,7 +26,7 @@ class RoutineDrill {
   RoutineDrill.fromSnapshot(DocumentSnapshot<Map<String, dynamic>> snapshot) : this.fromMap(snapshot.data()!, reference: snapshot.reference);
 }
 
-/// A saved routine: an ordered sequence of drills.
+/// A saved routine: an ordered sequence of drills tied to one [activityTitle].
 ///
 /// Firestore path: `routines/{uid}/routines/{routineId}`
 /// Drills subcollection: `…/drills/{drillDocId}`
@@ -34,22 +34,29 @@ class Routine {
   String? id;
   final String title;
   final String description;
+
+  /// The activity this routine belongs to (e.g. "Hockey", "Guitar").
+  /// All drills in the routine must belong to the same activity.
+  final String? activityTitle;
+
   List<RoutineDrill>? drills;
   final DateTime? createdAt;
   DocumentReference? reference;
 
-  Routine(this.title, this.description, {this.drills, this.createdAt});
+  Routine(this.title, this.description, {this.activityTitle, this.drills, this.createdAt});
 
   Routine.fromMap(Map<String, dynamic> map, {this.reference})
       : assert(map['title'] != null),
         id = map['id'] as String?,
         title = map['title'] as String,
         description = (map['description'] as String?) ?? '',
+        activityTitle = map['activity_title'] as String?,
         createdAt = map['created_at'] != null ? (map['created_at'] as Timestamp).toDate() : null;
 
   Map<String, dynamic> toMap() => {
         'title': title,
         'description': description,
+        'activity_title': activityTitle,
         'created_at': createdAt != null ? Timestamp.fromDate(createdAt!) : FieldValue.serverTimestamp(),
       };
 

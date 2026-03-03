@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:skilldrills/main.dart';
+import 'package:skilldrills/models/firestore/activity.dart';
 import 'package:skilldrills/models/firestore/drill.dart';
 import 'package:skilldrills/models/firestore/routine.dart';
 import 'package:skilldrills/models/firestore/skill_drill_user.dart';
@@ -32,7 +33,14 @@ class _RoutineDetailState extends State<RoutineDetail> {
   /// The ordered list of drills the user has added to this routine.
   final List<RoutineDrill> _selectedDrills = [];
 
-  /// Full drill library for the picker.
+  /// Active activities available to assign to this routine.
+  List<Activity> _activeActivities = [];
+
+  /// The activity this routine belongs to.
+  Activity? _selectedActivity;
+  bool _activityError = false;
+
+  /// Full drill library (all activities); filtered to [_selectedActivity] in the picker.
   List<Drill> _allDrills = [];
   bool _loadingDrills = true;
   bool _saving = false;
@@ -50,7 +58,7 @@ class _RoutineDetailState extends State<RoutineDetail> {
       }
     }
 
-    _loadDrills();
+    _loadData();
   }
 
   @override
@@ -60,14 +68,38 @@ class _RoutineDetailState extends State<RoutineDetail> {
     super.dispose();
   }
 
-  Future<void> _loadDrills() async {
+  Future<void> _loadData() async {
     final uid = _auth.currentUser!.uid;
-    final snap = await FirebaseFirestore.instance.collection('drills').doc(uid).collection('drills').orderBy('title').get();
-    final drills = snap.docs.cast<DocumentSnapshot<Map<String, dynamic>>>().map(Drill.fromSnapshot).toList();
+
+    // Load active activities and all drills in parallel.
+    final results = await Future.wait([
+      FirebaseFirestore.instance.collection('activities').doc(uid).collection('activities').orderBy('title').get(),
+      FirebaseFirestore.instance.collection('drills').doc(uid).collection('drills').orderBy('title').get(),
+    ]);
+
+    final actSnap = results[0];
+    final drillSnap = results[1];
+
+    final activities = actSnap.docs.map((d) => Activity.fromSnapshot(d)).where((a) => a.isActive).toList();
+
+    final drills = drillSnap.docs.cast<DocumentSnapshot<Map<String, dynamic>>>().map(Drill.fromSnapshot).toList();
+
     if (mounted) {
       setState(() {
+        _activeActivities = activities;
         _allDrills = drills;
         _loadingDrills = false;
+
+        // Pre-select activity when editing.
+        if (widget.routine?.activityTitle != null) {
+          try {
+            _selectedActivity = activities.firstWhere(
+              (a) => a.title == widget.routine!.activityTitle,
+            );
+          } catch (_) {
+            // Activity may have been deactivated; keep null so user re-picks.
+          }
+        }
       });
     }
   }
@@ -111,6 +143,12 @@ class _RoutineDetailState extends State<RoutineDetail> {
       }
     }
 
+    // Validate activity selection
+    if (_selectedActivity == null) {
+      setState(() => _activityError = true);
+      return;
+    }
+
     setState(() => _saving = true);
 
     // Re-number drills by current list order
@@ -124,6 +162,7 @@ class _RoutineDetailState extends State<RoutineDetail> {
         final updated = Routine(
           _titleCtrl.text.trim(),
           _descCtrl.text.trim(),
+          activityTitle: _selectedActivity!.title,
           drills: orderedDrills,
         )..reference = widget.routine!.reference;
         await firestore_factory.updateRoutine(updated);
@@ -132,6 +171,7 @@ class _RoutineDetailState extends State<RoutineDetail> {
         final newRoutine = Routine(
           _titleCtrl.text.trim(),
           _descCtrl.text.trim(),
+          activityTitle: _selectedActivity!.title,
           drills: orderedDrills,
           createdAt: DateTime.now(),
         );
@@ -170,13 +210,80 @@ class _RoutineDetailState extends State<RoutineDetail> {
     if (created?.reference != null) {
       setState(() {
         _allDrills.add(created!);
-        _selectedDrills.add(RoutineDrill(
-          created.reference!.id,
-          created.title!,
-          _selectedDrills.length + 1,
-        ));
+        // Only auto-add to the routine if the drill belongs to this activity.
+        if (_selectedActivity == null || created.activity?.title == _selectedActivity!.title) {
+          _selectedDrills.add(RoutineDrill(
+            created.reference!.id,
+            created.title!,
+            _selectedDrills.length + 1,
+          ));
+        }
       });
     }
+  }
+
+  // ── Activity picker ─────────────────────────────────────────────────────────
+
+  void _showActivityPicker() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(SkillDrillsRadius.lg)),
+      ),
+      builder: (ctx) {
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 12),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Theme.of(context).dividerColor,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 14),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: SkillDrillsSpacing.md),
+              child: Text('Choose Activity', style: Theme.of(context).textTheme.titleLarge),
+            ),
+            const SizedBox(height: 8),
+            const Divider(height: 1),
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: _activeActivities.length,
+              separatorBuilder: (_, __) => const Divider(height: 1, indent: 16, endIndent: 16),
+              itemBuilder: (ctx, i) {
+                final activity = _activeActivities[i];
+                final selected = _selectedActivity?.title == activity.title;
+                return ListTile(
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: SkillDrillsSpacing.md,
+                    vertical: 4,
+                  ),
+                  title: Text(activity.title ?? ''),
+                  trailing: selected ? const Icon(Icons.check_rounded, color: SkillDrillsColors.brandBlue) : null,
+                  onTap: () {
+                    final changed = _selectedActivity?.title != activity.title;
+                    setState(() {
+                      _selectedActivity = activity;
+                      _activityError = false;
+                      // Clear drills when activity changes — they belong to the old activity.
+                      if (changed) _selectedDrills.clear();
+                    });
+                    Navigator.of(ctx).pop();
+                  },
+                );
+              },
+            ),
+            const SizedBox(height: 16),
+          ],
+        );
+      },
+    );
   }
 
   void _showDrillPicker() {
@@ -199,7 +306,8 @@ class _RoutineDetailState extends State<RoutineDetail> {
           maxChildSize: 0.9,
           expand: false,
           builder: (ctx, scrollController) {
-            final available = _allDrills.where((d) => !addedIds.contains(d.reference!.id)).toList();
+            // Filter drills to the selected activity, then exclude already-added ones.
+            final available = _allDrills.where((d) => _selectedActivity == null || d.activity?.title == _selectedActivity!.title).where((d) => !addedIds.contains(d.reference!.id)).toList();
 
             return Column(
               children: [
@@ -262,7 +370,7 @@ class _RoutineDetailState extends State<RoutineDetail> {
                           child: Padding(
                             padding: const EdgeInsets.all(SkillDrillsSpacing.xl),
                             child: Text(
-                              'All your existing drills have already been added.',
+                              !_allDrills.any((d) => d.activity?.title == _selectedActivity?.title) ? 'No drills for this activity yet. Use "Create New Drill" above to build one.' : 'All drills for this activity have already been added.',
                               textAlign: TextAlign.center,
                               style: Theme.of(context).textTheme.bodyMedium,
                             ),
@@ -314,6 +422,7 @@ class _RoutineDetailState extends State<RoutineDetail> {
   // ── UI sections ─────────────────────────────────────────────────────────────
 
   Widget _buildInfoSection() {
+    final hasActivity = _selectedActivity != null;
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         SkillDrillsSpacing.md,
@@ -362,6 +471,44 @@ class _RoutineDetailState extends State<RoutineDetail> {
                       maxLines: 2,
                       minLines: 1,
                     ),
+                    const Divider(height: 1),
+                    // ── Activity picker row ──────────────────────────
+                    InkWell(
+                      onTap: _loadingDrills ? null : _showActivityPicker,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                hasActivity ? _selectedActivity!.title! : 'Activity',
+                                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                      color: hasActivity
+                                          ? Theme.of(context).colorScheme.onSurface
+                                          : _activityError
+                                              ? Theme.of(context).colorScheme.error
+                                              : Theme.of(context).hintColor,
+                                    ),
+                              ),
+                            ),
+                            Icon(
+                              Icons.chevron_right_rounded,
+                              color: _activityError ? Theme.of(context).colorScheme.error : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.35),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    if (_activityError)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 6),
+                        child: Text(
+                          'Please select an activity',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: Theme.of(context).colorScheme.error,
+                              ),
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -395,7 +542,7 @@ class _RoutineDetailState extends State<RoutineDetail> {
                 ),
               ),
               TextButton.icon(
-                onPressed: _loadingDrills ? null : _showDrillPicker,
+                onPressed: (_loadingDrills || _selectedActivity == null) ? null : _showDrillPicker,
                 icon: const Icon(Icons.add, size: 18),
                 label: const Text('Add Drill'),
               ),
@@ -416,7 +563,7 @@ class _RoutineDetailState extends State<RoutineDetail> {
                     const SizedBox(width: SkillDrillsSpacing.md),
                     Expanded(
                       child: Text(
-                        'No drills added yet.\nTap "Add Drill" to build your routine.',
+                        _selectedActivity == null ? 'Select an activity above before adding drills.' : 'No drills added yet.\nTap "Add Drill" to build your routine.',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                               color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.55),
                             ),
