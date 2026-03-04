@@ -34,7 +34,12 @@ const _features = [
 /// Push as a `fullscreenDialog: true` route so the OS-standard dismiss
 /// gesture works on both platforms.
 class PaywallScreen extends StatefulWidget {
-  const PaywallScreen({super.key});
+  /// When `true`, the footer shows a "Skip" button instead of "Restore
+  /// Purchases". Use this when presenting the paywall during onboarding so
+  /// new users can dismiss it without being prompted to restore.
+  final bool showSkip;
+
+  const PaywallScreen({super.key, this.showSkip = false});
 
   @override
   State<PaywallScreen> createState() => _PaywallScreenState();
@@ -291,6 +296,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
           selectedPackage: _selectedPackage,
           onPurchase: _purchase,
           onRestore: _restore,
+          onSkip: widget.showSkip ? () => Navigator.of(context).pop(false) : null,
           isDark: isDark,
         ),
       ],
@@ -623,6 +629,8 @@ class _Footer extends StatelessWidget {
   final Package? selectedPackage;
   final VoidCallback onPurchase;
   final VoidCallback onRestore;
+  /// When non-null, renders a "Skip" button instead of "Restore Purchases".
+  final VoidCallback? onSkip;
   final bool isDark;
 
   const _Footer({
@@ -631,6 +639,7 @@ class _Footer extends StatelessWidget {
     required this.selectedPackage,
     required this.onPurchase,
     required this.onRestore,
+    required this.onSkip,
     required this.isDark,
   });
 
@@ -687,25 +696,29 @@ class _Footer extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
-          // Restore purchases
+          // Restore purchases / Skip
           TextButton(
-            onPressed: restoring ? null : onRestore,
+            onPressed: onSkip != null
+                ? onSkip
+                : (restoring ? null : onRestore),
             style: TextButton.styleFrom(
               foregroundColor: isDark ? SkillDrillsColors.darkOnSurfaceMuted : SkillDrillsColors.lightOnSurfaceMuted,
               padding: const EdgeInsets.symmetric(vertical: 4),
               minimumSize: const Size(0, 36),
               textStyle: const TextStyle(fontSize: 13),
             ),
-            child: restoring
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(
-                      color: SkillDrillsColors.brandBlue,
-                      strokeWidth: 2,
-                    ),
-                  )
-                : const Text('Restore Purchases'),
+            child: onSkip != null
+                ? const Text('Skip')
+                : (restoring
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          color: SkillDrillsColors.brandBlue,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : const Text('Restore Purchases')),
           ),
           const SizedBox(height: 2),
           // Terms & Privacy

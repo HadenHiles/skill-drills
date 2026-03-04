@@ -197,7 +197,7 @@ class _NavState extends State<Nav> {
           navigatorKey.currentState!.push(
             MaterialPageRoute(
               fullscreenDialog: true,
-              builder: (_) => const PaywallScreen(),
+              builder: (_) => const PaywallScreen(showSkip: true),
             ),
           );
         }
