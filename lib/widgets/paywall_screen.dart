@@ -100,24 +100,29 @@ class _PaywallScreenState extends State<PaywallScreen> {
   Future<void> _purchase() async {
     if (_selectedPackage == null || _purchasing) return;
     setState(() => _purchasing = true);
-    final info = await purchasePackage(_selectedPackage!);
+    final result = await purchasePackage(_selectedPackage!);
     if (!mounted) return;
     setState(() => _purchasing = false);
-    if (info != null && info.entitlements.active.containsKey(kProEntitlement)) {
+    if (result.info != null && result.info!.entitlements.active.containsKey(kProEntitlement)) {
       _showSuccess('Welcome to Skill Drills Pro! 🎉');
       Navigator.of(context).pop(true);
+    } else if (result.errorMessage != null) {
+      _showError(result.errorMessage!);
     }
+    // errorMessage == null and info == null means user cancelled — do nothing
   }
 
   Future<void> _restore() async {
     if (_restoring) return;
     setState(() => _restoring = true);
-    final info = await restorePurchases();
+    final result = await restorePurchases();
     if (!mounted) return;
     setState(() => _restoring = false);
-    if (info != null && info.entitlements.active.containsKey(kProEntitlement)) {
+    if (result.info != null && result.info!.entitlements.active.containsKey(kProEntitlement)) {
       _showSuccess('Pro subscription restored!');
       Navigator.of(context).pop(true);
+    } else if (result.errorMessage != null) {
+      _showError(result.errorMessage!);
     } else {
       _showMessage('No active subscription found for this account.');
     }
@@ -129,6 +134,16 @@ class _PaywallScreenState extends State<PaywallScreen> {
         content: Text(message),
         backgroundColor: SkillDrillsColors.success,
         duration: const Duration(seconds: 4),
+      ),
+    );
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: SkillDrillsColors.error,
+        duration: const Duration(seconds: 5),
       ),
     );
   }

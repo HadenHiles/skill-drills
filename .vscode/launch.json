@@ -10,24 +10,28 @@
             "flutterMode": "debug",
             "request": "launch",
             "deviceId": "R3CX20HFZJL",
+            "args": ["--dart-define-from-file=dart_defines.json"]
         },
 
         {
             "name": "skilldrills",
             "request": "launch",
-            "type": "dart"
+            "type": "dart",
+            "args": ["--dart-define-from-file=dart_defines.json"]
         },
         {
             "name": "skilldrills (profile mode)",
             "request": "launch",
             "type": "dart",
-            "flutterMode": "profile"
+            "flutterMode": "profile",
+            "args": ["--dart-define-from-file=dart_defines.json"]
         },
         {
             "name": "skilldrills (release mode)",
             "request": "launch",
             "type": "dart",
-            "flutterMode": "release"
+            "flutterMode": "release",
+            "args": ["--dart-define-from-file=dart_defines.json"]
         }
     ]
 }

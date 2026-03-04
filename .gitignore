@@ -41,11 +41,13 @@ app.*.map.json
 android/app/google-services.json
 ios/Runner/GoogleService-Info.plist
 
+# Build-time secrets — never commit
+dart_defines.json
+
 # Ignore vscode files
 .vscode/*
 !.vscode/settings.json
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json
-/.vscode
 flutter.groovy alias

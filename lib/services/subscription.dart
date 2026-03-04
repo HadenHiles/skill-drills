@@ -19,6 +19,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:purchases_ui_flutter/purchases_ui_flutter.dart';
 
@@ -47,13 +48,25 @@ bool get _rcSupported => Platform.isIOS || Platform.isAndroid;
 ///
 /// Call this **once** from `main()` after `Firebase.initializeApp`, before
 /// calling `runApp`. Safe to call on unsupported platforms (no-op).
+///
+/// API keys are injected at build time via `--dart-define-from-file=dart_defines.json`
+/// (or individual `--dart-define` flags in CI). Never hardcode them in source.
 Future<void> initializeRevenueCat() async {
   if (!_rcSupported) return;
 
-  // Same test key for both platforms — replace with production keys before
-  // shipping.  Use separate iOS / Android keys if your RevenueCat project has
-  // different app entries per platform.
-  const apiKey = 'test_OpSHyTwjtuWPWDinlceOpCBhGLA';
+  // Keys are compiled into the binary via --dart-define-from-file.
+  // They are never stored in source code or bundled as readable assets.
+  // See dart_defines.json (git-ignored) and the README for setup instructions.
+  const iosKey = String.fromEnvironment('RC_API_KEY_IOS');
+  const androidKey = String.fromEnvironment('RC_API_KEY_ANDROID');
+  final apiKey = Platform.isIOS ? iosKey : androidKey;
+
+  assert(
+    apiKey.isNotEmpty,
+    'RevenueCat API key is empty. '
+    'Run flutter with --dart-define-from-file=dart_defines.json or '
+    'set RC_API_KEY_IOS / RC_API_KEY_ANDROID via --dart-define.',
+  );
 
   final config = PurchasesConfiguration(apiKey);
   await Purchases.configure(config);
@@ -149,35 +162,60 @@ Future<Offerings?> getOfferings() async {
   }
 }
 
-/// Purchase [package] and return the updated [CustomerInfo] on success.
+/// Purchase [package] and return a result record.
 ///
-/// Returns `null` if the user cancels or an error occurs. Cancellation is
-/// treated silently (no error logged to avoid noise in telemetry).
-Future<CustomerInfo?> purchasePackage(Package package) async {
-  if (!_rcSupported) return null;
+/// - `(info: CustomerInfo, errorMessage: null)` — purchase succeeded.
+/// - `(info: null, errorMessage: null)` — user cancelled (silent).
+/// - `(info: null, errorMessage: String)` — a real error occurred; the string
+///   is suitable for display to the user.
+Future<({CustomerInfo? info, String? errorMessage})> purchasePackage(
+  Package package,
+) async {
+  if (!_rcSupported) return (info: null, errorMessage: null);
   try {
     final result = await Purchases.purchase(PurchaseParams.package(package));
-    return result.customerInfo;
-  } catch (e) {
-    // Suppress cancellation noise; log everything else.
-    final msg = e.toString();
-    if (!msg.contains('purchaseCancelled') && !msg.contains('1')) {
-      debugPrint('[RevenueCat] purchasePackage error: $e');
+    return (info: result.customerInfo, errorMessage: null);
+  } on PlatformException catch (e) {
+    final code = PurchasesErrorHelper.getErrorCode(e);
+    if (code == PurchasesErrorCode.purchaseCancelledError) {
+      return (info: null, errorMessage: null);
     }
-    return null;
+    debugPrint('[RevenueCat] purchasePackage error ($code): $e');
+    return (info: null, errorMessage: _purchaseErrorMessage(code));
+  } catch (e, st) {
+    debugPrint('[RevenueCat] purchasePackage unexpected error: $e\n$st');
+    return (info: null, errorMessage: 'Something went wrong. Please try again.');
   }
+}
+
+String _purchaseErrorMessage(PurchasesErrorCode code) {
+  return switch (code) {
+    PurchasesErrorCode.networkError => 'Network error. Check your connection and try again.',
+    PurchasesErrorCode.purchaseNotAllowedError || PurchasesErrorCode.insufficientPermissionsError => 'Purchases are not allowed on this device.',
+    PurchasesErrorCode.paymentPendingError => 'Your payment is pending. Check back soon.',
+    PurchasesErrorCode.productAlreadyPurchasedError => 'You already own this subscription.',
+    _ => 'Purchase failed. Please try again.',
+  };
 }
 
 /// Restore prior App Store / Play Store purchases.
 ///
-/// Returns the updated [CustomerInfo] on success, or `null` on error.
-Future<CustomerInfo?> restorePurchases() async {
-  if (!_rcSupported) return null;
+/// - `(info: CustomerInfo, errorMessage: null)` — restore succeeded.
+/// - `(info: null, errorMessage: String)` — a real error occurred; the string
+///   is suitable for display to the user.
+Future<({CustomerInfo? info, String? errorMessage})> restorePurchases() async {
+  if (!_rcSupported) return (info: null, errorMessage: null);
   try {
-    return await Purchases.restorePurchases();
+    final info = await Purchases.restorePurchases();
+    return (info: info, errorMessage: null);
+  } on PlatformException catch (e) {
+    final code = PurchasesErrorHelper.getErrorCode(e);
+    debugPrint('[RevenueCat] restorePurchases error ($code): $e');
+    final message = code == PurchasesErrorCode.networkError ? 'Network error. Check your connection and try again.' : 'Could not restore purchases. Please try again.';
+    return (info: null, errorMessage: message);
   } catch (e, st) {
-    debugPrint('[RevenueCat] restorePurchases error: $e\n$st');
-    return null;
+    debugPrint('[RevenueCat] restorePurchases unexpected error: $e\n$st');
+    return (info: null, errorMessage: 'Could not restore purchases. Please try again.');
   }
 }
 

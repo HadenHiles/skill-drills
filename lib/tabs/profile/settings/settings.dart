@@ -233,7 +233,7 @@ class _ProfileSettingsState extends State<ProfileSettings> {
                     title: Text(
                       'Upgrade to Skill Drills Pro',
                       style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                            color: Theme.of(context).colorScheme.primary,
+                            color: Theme.of(context).primaryColor,
                             fontWeight: FontWeight.w600,
                           ),
                     ),
@@ -243,7 +243,7 @@ class _ProfileSettingsState extends State<ProfileSettings> {
                     ),
                     leading: Icon(
                       Icons.star_rounded,
-                      color: Theme.of(context).colorScheme.primary,
+                      color: Theme.of(context).colorScheme.onPrimary,
                     ),
                     onPressed: (_) => navigatorKey.currentState!.push(
                       MaterialPageRoute(
@@ -260,13 +260,18 @@ class _ProfileSettingsState extends State<ProfileSettings> {
                   ),
                   onPressed: (_) async {
                     final messenger = ScaffoldMessenger.of(context);
-                    final info = await restorePurchases();
-                    final restored = info != null && info.entitlements.active.containsKey(kProEntitlement);
+                    final result = await restorePurchases();
+                    final String message;
+                    if (result.errorMessage != null) {
+                      message = result.errorMessage!;
+                    } else if (result.info != null && result.info!.entitlements.active.containsKey(kProEntitlement)) {
+                      message = 'Pro subscription restored!';
+                    } else {
+                      message = 'No active subscription found.';
+                    }
                     messenger.showSnackBar(
                       SnackBar(
-                        content: Text(
-                          restored ? 'Pro subscription restored!' : 'No active subscription found.',
-                        ),
+                        content: Text(message),
                         duration: const Duration(seconds: 4),
                       ),
                     );
