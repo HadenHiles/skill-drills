@@ -1,7 +1,12 @@
+import 'dart:async';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:duration_picker/duration_picker.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:skilldrills/main.dart';
+import 'package:skilldrills/models/firestore/activity.dart';
 import 'package:skilldrills/models/firestore/session.dart' as session_model;
 import 'package:skilldrills/models/skill_drills_dialog.dart';
 import 'package:skilldrills/services/dialogs.dart';
@@ -183,14 +188,6 @@ class _SessionState extends State<Session> with SingleTickerProviderStateMixin {
     return '${s}s';
   }
 
-  static String _formatDuration(Duration d) {
-    final h = d.inHours;
-    final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
-    final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
-    if (h > 0) return '$h:$m:$s';
-    return '$m:$s';
-  }
-
   // ── Build ─────────────────────────────────────────────────────────────────
 
   @override
@@ -227,14 +224,6 @@ class _SessionState extends State<Session> with SingleTickerProviderStateMixin {
                       fontWeight: FontWeight.w600,
                       fontFamily: 'Choplin',
                     ),
-                  ),
-                  const Spacer(),
-                  Text(
-                    _formatDuration(sessionService.currentDuration ?? Duration.zero),
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          fontFamily: 'Choplin',
-                          fontWeight: FontWeight.w700,
-                        ),
                   ),
                 ],
               ),
@@ -467,34 +456,7 @@ class _SessionState extends State<Session> with SingleTickerProviderStateMixin {
 
   // ── Empty state ───────────────────────────────────────────────────────────
 
-  Widget _buildEmptyState(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(SkillDrillsSpacing.xl),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: Theme.of(context).primaryColor.withAlpha(18),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(Icons.add_rounded, size: 44, color: Theme.of(context).primaryColor),
-            ),
-            const SizedBox(height: SkillDrillsSpacing.md),
-            Text('No drills yet', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontFamily: 'Choplin')),
-            const SizedBox(height: 4),
-            Text(
-              'Tap "Add Drill" below to log your first drill',
-              style: Theme.of(context).textTheme.bodyMedium,
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  Widget _buildEmptyState(BuildContext context) => const _EmptyDrillsState();
 
   // ── Bottom bar ────────────────────────────────────────────────────────────
 
@@ -937,6 +899,101 @@ class _SetRow extends StatelessWidget {
           onChanged: (v) => sessionService.updateSetMeasurementValue(drillIndex, setIndex, measIndex, v),
         );
     }
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Empty drills state – cycles through active activity icons every 5 s
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _EmptyDrillsState extends StatefulWidget {
+  const _EmptyDrillsState();
+
+  @override
+  State<_EmptyDrillsState> createState() => _EmptyDrillsStateState();
+}
+
+class _EmptyDrillsStateState extends State<_EmptyDrillsState> with SingleTickerProviderStateMixin {
+  late final AnimationController _fadeCtrl;
+  late final Animation<double> _fadeAnim;
+  Timer? _timer;
+
+  List<String> _icons = [];
+  int _index = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _fadeCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 500));
+    _fadeAnim = CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeInOut);
+    _fadeCtrl.value = 1.0;
+    _loadIcons();
+  }
+
+  Future<void> _loadIcons() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    final snap = await FirebaseFirestore.instance.collection('activities').doc(uid).collection('activities').get();
+    final icons = snap.docs.map((d) => Activity.fromSnapshot(d)).where((a) => a.isActive).map((a) => a.icon).toList();
+    if (!mounted || icons.isEmpty) return;
+    setState(() => _icons = icons);
+    _startTimer();
+  }
+
+  void _startTimer() {
+    _timer = Timer.periodic(const Duration(seconds: 5), (_) async {
+      await _fadeCtrl.reverse();
+      if (!mounted) return;
+      setState(() => _index = (_index + 1) % _icons.length);
+      _fadeCtrl.forward();
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _fadeCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final icon = _icons.isNotEmpty ? _icons[_index] : null;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(SkillDrillsSpacing.xl),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 92,
+              height: 92,
+              decoration: BoxDecoration(
+                color: Theme.of(context).primaryColor.withAlpha(18),
+                shape: BoxShape.circle,
+              ),
+              child: FadeTransition(
+                opacity: _fadeAnim,
+                child: Center(
+                  child: icon != null ? Text(icon, style: const TextStyle(fontSize: 40)) : Icon(Icons.add_rounded, size: 44, color: Theme.of(context).primaryColor),
+                ),
+              ),
+            ),
+            const SizedBox(height: SkillDrillsSpacing.md),
+            Text(
+              'No drills yet',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(fontFamily: 'Choplin'),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Tap "Add Drill" below to log your first drill',
+              style: Theme.of(context).textTheme.bodyMedium,
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
