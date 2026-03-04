@@ -10,6 +10,7 @@ import 'package:skilldrills/models/firestore/skill_drill_user.dart';
 import 'package:skilldrills/models/skill_drills_dialog.dart';
 import 'package:skilldrills/services/dialogs.dart';
 import 'package:skilldrills/services/factory.dart' as firestore_factory;
+import 'package:skilldrills/services/subscription.dart';
 import 'package:skilldrills/tabs/drills/drill_detail.dart';
 import 'package:skilldrills/theme/theme.dart';
 import 'package:skilldrills/widgets/basic_title.dart';
@@ -145,37 +146,33 @@ class _RoutineDetailState extends State<RoutineDetail> {
 
     // Enforce free-tier routine limit on new routine creation only
     if (widget.routine?.reference == null) {
-      final uid = _auth.currentUser!.uid;
-      final userDoc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
-      if (userDoc.exists) {
-        final user = SkillDrillsUser.fromSnapshot(userDoc);
-        if (!user.isPremium) {
-          final count = await firestore_factory.routineCount();
-          if (count >= SkillDrillsUser.freeRoutineLimit) {
-            if (mounted) {
-              dialog(
-                context,
-                SkillDrillsDialog(
-                  'Routine Limit Reached',
-                  Text(
-                    'Free plan users can save up to ${SkillDrillsUser.freeRoutineLimit} routines.\n\nUpgrade to Premium for unlimited routines.',
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                  'Not Now',
-                  () => Navigator.of(context).pop(),
-                  'Upgrade',
-                  () {
-                    Navigator.of(context).pop();
-                    navigatorKey.currentState!.push(MaterialPageRoute(builder: (_) => const PaywallScreen()));
-                  },
-                  icon: Icons.workspace_premium_rounded,
-                  isDangerous: false,
+      final subscribed = await hasActiveSubscription();
+      if (!subscribed) {
+        final count = await firestore_factory.routineCount();
+        if (count >= SkillDrillsUser.freeRoutineLimit) {
+          if (mounted) {
+            dialog(
+              context,
+              SkillDrillsDialog(
+                'Routine Limit Reached',
+                Text(
+                  'Free plan users can save up to ${SkillDrillsUser.freeRoutineLimit} routines.\n\nUpgrade to Premium for unlimited routines.',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodyMedium,
                 ),
-              );
-            }
-            return;
+                'Not Now',
+                () => Navigator.of(context).pop(),
+                'Upgrade',
+                () {
+                  Navigator.of(context).pop();
+                  navigatorKey.currentState!.push(MaterialPageRoute(builder: (_) => const PaywallScreen()));
+                },
+                icon: Icons.workspace_premium_rounded,
+                isDangerous: false,
+              ),
+            );
           }
+          return;
         }
       }
     }

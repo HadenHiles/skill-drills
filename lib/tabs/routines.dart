@@ -7,6 +7,7 @@ import 'package:skilldrills/models/skill_drills_dialog.dart';
 import 'package:skilldrills/services/dialogs.dart';
 import 'package:skilldrills/main.dart';
 import 'package:skilldrills/services/factory.dart' as firestore_factory;
+import 'package:skilldrills/services/subscription.dart';
 import 'package:skilldrills/tabs/routines/routine_item.dart';
 import 'package:skilldrills/theme/theme.dart';
 import 'package:skilldrills/widgets/paywall_screen.dart';
@@ -26,6 +27,7 @@ class _RoutinesState extends State<Routines> with SingleTickerProviderStateMixin
   late Animation<Offset> _slideAnim;
 
   SkillDrillsUser? _currentUser;
+  bool _isPro = false;
 
   @override
   void initState() {
@@ -51,10 +53,16 @@ class _RoutinesState extends State<Routines> with SingleTickerProviderStateMixin
 
   Future<void> _loadUser() async {
     final uid = _auth.currentUser!.uid;
-    final doc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
-    if (doc.exists && mounted) {
+    final results = await Future.wait([
+      FirebaseFirestore.instance.collection('users').doc(uid).get(),
+      hasActiveSubscription(),
+    ]);
+    final doc = results[0] as DocumentSnapshot;
+    final isPro = results[1] as bool;
+    if (mounted) {
       setState(() {
-        _currentUser = SkillDrillsUser.fromSnapshot(doc);
+        if (doc.exists) _currentUser = SkillDrillsUser.fromSnapshot(doc as DocumentSnapshot<Map<String, dynamic>>);
+        _isPro = isPro || (_currentUser?.isPremium ?? false);
       });
     }
   }
@@ -94,8 +102,7 @@ class _RoutinesState extends State<Routines> with SingleTickerProviderStateMixin
 
   /// Builds the tier badge shown to free-plan users.
   Widget _buildTierBadge(int routineCount) {
-    final isPremium = _currentUser?.isPremium ?? false;
-    if (isPremium) return const SizedBox.shrink();
+    if (_isPro) return const SizedBox.shrink();
 
     final atLimit = routineCount >= SkillDrillsUser.freeRoutineLimit;
     final color = atLimit ? SkillDrillsColors.warning : Theme.of(context).colorScheme.tertiary;
