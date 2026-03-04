@@ -578,12 +578,10 @@ class _DrillDetailState extends State<DrillDetail> {
                         return null;
                       },
                       controller: _titleFieldController,
-                      cursorColor: Theme.of(context).colorScheme.onPrimary,
                       decoration: InputDecoration(
                         labelText: 'Title',
                         hintText: 'e.g. Wall passes, Scale runs, Free throws',
                         hintStyle: Theme.of(context).textTheme.bodyMedium,
-                        labelStyle: TextStyle(color: Theme.of(context).colorScheme.onPrimary),
                       ),
                       style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                       onChanged: (value) {
@@ -595,12 +593,10 @@ class _DrillDetailState extends State<DrillDetail> {
                     const SizedBox(height: SkillDrillsSpacing.sm),
                     TextFormField(
                       controller: _descriptionFieldController,
-                      cursorColor: Theme.of(context).colorScheme.onPrimary,
                       decoration: InputDecoration(
                         labelText: 'Description',
                         hintText: 'Optional — what does this drill practice?',
                         hintStyle: Theme.of(context).textTheme.bodyMedium,
-                        labelStyle: TextStyle(color: Theme.of(context).colorScheme.onPrimary),
                       ),
                       minLines: 2,
                       maxLines: 4,

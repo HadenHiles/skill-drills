@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'firebase_options.dart';
 import 'package:flutter/material.dart';
@@ -22,7 +23,8 @@ final sessionService = SessionService();
 bool hasSeenWelcome = false;
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+  final widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
+  FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
 
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
@@ -49,6 +51,7 @@ void main() async {
     prefs.getBool('dark_mode') != null ? prefs.getBool('dark_mode')! : false,
   );
   hasSeenWelcome = await OnboardingPreferences.hasSeenWelcome();
+  FlutterNativeSplash.remove();
 
   runApp(
     ChangeNotifierProvider<SettingsStateNotifier>(
@@ -83,6 +86,11 @@ class SkillDrills extends StatelessWidget {
           theme: SkillDrillsTheme.lightTheme,
           darkTheme: SkillDrillsTheme.darkTheme,
           themeMode: settingsState.settings.darkMode ? ThemeMode.dark : ThemeMode.system,
+          builder: (context, child) => GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+            child: child,
+          ),
           home: !seenWelcome ? const WelcomeScreen() : (user != null ? const Nav() : const Login()),
         );
       },

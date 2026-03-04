@@ -172,8 +172,7 @@ class _ActivityDetailState extends State<ActivityDetail> {
         setsLabel: _effectiveSetsLabel(),
         repsLabel: _effectiveRepsLabel(),
       );
-      DocumentReference activity =
-          FirebaseFirestore.instance.collection("activities").doc(user!.uid).collection("activities").doc();
+      DocumentReference activity = FirebaseFirestore.instance.collection("activities").doc(user!.uid).collection("activities").doc();
       a.id = activity.id;
       a.skills = _categories;
       activity.set(a.toMap());
@@ -207,13 +206,7 @@ class _ActivityDetailState extends State<ActivityDetail> {
           }
 
           for (var c in _categories) {
-            DocumentReference category = FirebaseFirestore.instance
-                .collection("activities")
-                .doc(user!.uid)
-                .collection("activities")
-                .doc(widget.sport!.id)
-                .collection('skills')
-                .doc();
+            DocumentReference category = FirebaseFirestore.instance.collection("activities").doc(user!.uid).collection("activities").doc(widget.sport!.id).collection('skills').doc();
             c.id = category.id;
             category.set(c.toMap());
           }
@@ -293,10 +286,8 @@ class _ActivityDetailState extends State<ActivityDetail> {
                       return null;
                     },
                     controller: titleFieldController,
-                    cursorColor: Theme.of(context).colorScheme.onPrimary,
-                    decoration: InputDecoration(
+                    decoration: const InputDecoration(
                       labelText: "Title",
-                      labelStyle: TextStyle(color: Theme.of(context).colorScheme.onPrimary),
                     ),
                     style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                   ),
@@ -394,10 +385,8 @@ class _ActivityDetailState extends State<ActivityDetail> {
                     },
                     controller: categoryTitleFieldController,
                     focusNode: _categoryTitleFocusNode,
-                    cursorColor: Theme.of(context).colorScheme.onPrimary,
                     decoration: InputDecoration(
                       labelText: _editingCategoryIndex != null ? "Edit Skill" : "Add Skill",
-                      labelStyle: TextStyle(color: Theme.of(context).colorScheme.onPrimary, fontSize: 14),
                       suffixIcon: IconButton(
                         icon: Icon(
                           _editingCategoryIndex != null ? Icons.check_circle : Icons.add_circle,

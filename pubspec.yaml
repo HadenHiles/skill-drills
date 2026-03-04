@@ -46,6 +46,7 @@ dependencies:
   vibration: ^3.1.8
   flutter_isolate: ^2.0.4
   sliding_up_panel: ^2.0.0+1
+  flutter_native_splash: ^2.4.4
 
   flutter: # Required for every Flutter project
     sdk: flutter # Required for every Flutter project
@@ -58,20 +59,34 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_launcher_icons: ^0.14.2
+  flutter_launcher_icons: ^0.14.3
   flutter_lints: ^6.0.0
 
-flutter_icons:
+# ── App icon generation (flutter pub run flutter_launcher_icons) ──────────────
+flutter_launcher_icons:
   android: "launcher_icon"
   ios: true
+  remove_alpha_ios: true
   image_path: "assets/images/icons/icon-512.png"
+  adaptive_icon_background: "#02A4DD"
+  adaptive_icon_foreground: "assets/images/icons/icon.png"
+  web:
+    generate: false
+  windows:
+    generate: false
+  macos:
+    generate: false
 
-  # The "flutter_lints" package below contains a set of recommended lints to
-  # encourage good coding practices. The lint set provided by the package is
-  # activated in the `analysis_options.yaml` file located at the root of your
-  # package. See that file for information about deactivating specific lint
-  # rules and activating additional ones.
-  flutter_lints: ^2.0.0
+# ── Splash screen generation (flutter pub run flutter_native_splash:create) ───
+flutter_native_splash:
+  color: "#02A4DD"
+  image: "assets/images/logo/SkillDrillsDark.png"
+  android_12:
+    image: "assets/images/logo/SkillDrillsDark.png"
+    color: "#02A4DD"
+    icon_background_color: "#02A4DD"
+  ios: true
+  android: true
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

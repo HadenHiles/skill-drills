@@ -325,6 +325,13 @@ class SkillDrillsTheme {
       ),
     ),
 
+    // Text selection / cursor
+    textSelectionTheme: const TextSelectionThemeData(
+      cursorColor: SkillDrillsColors.lightOnSurface,
+      selectionColor: Color(0x3302A4DD), // brandBlue ~20% opacity
+      selectionHandleColor: SkillDrillsColors.brandBlue,
+    ),
+
     // Color scheme
     colorScheme: const ColorScheme.light(
       primary: SkillDrillsColors.lightAppBar,
@@ -588,6 +595,13 @@ class SkillDrillsTheme {
     ),
 
     // Color scheme
+    // Text selection / cursor
+    textSelectionTheme: const TextSelectionThemeData(
+      cursorColor: SkillDrillsColors.darkOnSurface,
+      selectionColor: Color(0x4402A4DD), // brandBlue ~27% opacity
+      selectionHandleColor: SkillDrillsColors.brandBlue,
+    ),
+
     colorScheme: const ColorScheme.dark(
       primary: SkillDrillsColors.darkAppBar,
       onPrimary: SkillDrillsColors.darkOnSurfaceMuted,

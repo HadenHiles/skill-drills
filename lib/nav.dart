@@ -225,15 +225,19 @@ class _NavState extends State<Nav> {
                       title: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(
-                            "Wednesday Session",
-                            style: TextStyle(
-                              color: Theme.of(context).colorScheme.onSecondary,
-                              fontFamily: "Choplin",
-                              fontSize: 20,
-                              fontWeight: FontWeight.w700,
+                          Expanded(
+                            child: Text(
+                              sessionService.sessionTitle ?? SessionService.defaultSessionTitle(),
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.onSecondary,
+                                fontFamily: "Choplin",
+                                fontSize: 20,
+                                fontWeight: FontWeight.w700,
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
+                          const SizedBox(width: 12),
                           Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: <Widget>[
@@ -271,8 +275,10 @@ class _NavState extends State<Nav> {
                         }
                       },
                     ),
-                    Session(
-                      sessionPanelController: sessionPanelController,
+                    Expanded(
+                      child: Session(
+                        sessionPanelController: sessionPanelController,
+                      ),
                     ),
                   ],
                 ),

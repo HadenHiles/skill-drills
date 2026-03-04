@@ -37,6 +37,9 @@ class _RoutineDetailState extends State<RoutineDetail> {
   /// Active activities available to assign to this routine.
   List<Activity> _activeActivities = [];
 
+  /// Total activity count (active + inactive) — used for the "X of Y active" hint.
+  int _totalActivityCount = 0;
+
   /// The activity this routine belongs to.
   Activity? _selectedActivity;
   bool _activityError = false;
@@ -55,13 +58,15 @@ class _RoutineDetailState extends State<RoutineDetail> {
   void initState() {
     super.initState();
 
-    // Pre-populate form when editing
+    // Pre-populate form when editing; default title for new routines
     if (widget.routine != null) {
       _titleCtrl.text = widget.routine!.title;
       _descCtrl.text = widget.routine!.description;
       if (widget.routine!.drills != null) {
         _selectedDrills.addAll(widget.routine!.drills!);
       }
+    } else {
+      _titleCtrl.text = '${_weekdayName(DateTime.now().weekday)} Routine';
     }
 
     _loadData();
@@ -72,6 +77,20 @@ class _RoutineDetailState extends State<RoutineDetail> {
     _titleCtrl.dispose();
     _descCtrl.dispose();
     super.dispose();
+  }
+
+  /// Returns the English weekday name for a given [DateTime.weekday] value (1 = Monday).
+  static String _weekdayName(int weekday) {
+    const names = [
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+      'Sunday',
+    ];
+    return names[(weekday - 1).clamp(0, 6)];
   }
 
   Future<void> _loadData() async {
@@ -86,12 +105,14 @@ class _RoutineDetailState extends State<RoutineDetail> {
     final actSnap = results[0];
     final drillSnap = results[1];
 
-    final activities = actSnap.docs.map((d) => Activity.fromSnapshot(d)).where((a) => a.isActive).toList();
+    final allActivities = actSnap.docs.map((d) => Activity.fromSnapshot(d)).toList();
+    final activities = allActivities.where((a) => a.isActive).toList();
 
     final drills = drillSnap.docs.cast<DocumentSnapshot<Map<String, dynamic>>>().map(Drill.fromSnapshot).toList();
 
     if (mounted) {
       setState(() {
+        _totalActivityCount = allActivities.length;
         _activeActivities = activities;
         _allDrills = drills;
         _loadingDrills = false;
@@ -296,6 +317,18 @@ class _RoutineDetailState extends State<RoutineDetail> {
                 );
               },
             ),
+            // Show "N of X active" hint only when some activities are inactive.
+            if (_totalActivityCount > 0 && _activeActivities.length < _totalActivityCount)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(SkillDrillsSpacing.md, 10, SkillDrillsSpacing.md, 4),
+                child: Text(
+                  '${_activeActivities.length} of $_totalActivityCount activities active · Manage in Settings',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.50),
+                      ),
+                ),
+              ),
             const SizedBox(height: 16),
           ],
         );
@@ -568,7 +601,7 @@ class _RoutineDetailState extends State<RoutineDetail> {
             child: Padding(
               padding: const EdgeInsets.symmetric(
                 horizontal: SkillDrillsSpacing.md,
-                vertical: SkillDrillsSpacing.sm,
+                vertical: SkillDrillsSpacing.md,
               ),
               child: Form(
                 key: _formKey,
@@ -577,61 +610,54 @@ class _RoutineDetailState extends State<RoutineDetail> {
                     TextFormField(
                       controller: _titleCtrl,
                       textCapitalization: TextCapitalization.words,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Title',
+                        labelStyle: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45),
+                        ),
                         border: InputBorder.none,
                       ),
                       validator: (v) => v == null || v.trim().isEmpty ? 'Title is required' : null,
                     ),
-                    const Divider(height: 1),
+                    const SizedBox(height: 8),
                     TextFormField(
                       controller: _descCtrl,
                       textCapitalization: TextCapitalization.sentences,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Description (optional)',
+                        labelStyle: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45),
+                        ),
                         border: InputBorder.none,
                       ),
                       maxLines: 2,
                       minLines: 1,
                     ),
-                    const Divider(height: 1),
+                    const SizedBox(height: 8),
                     // ── Activity picker row ──────────────────────────
                     InkWell(
                       onTap: _loadingDrills ? null : _showActivityPicker,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                hasActivity ? _selectedActivity!.title! : 'Activity',
-                                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                      color: hasActivity
-                                          ? Theme.of(context).colorScheme.onSurface
-                                          : _activityError
-                                              ? Theme.of(context).colorScheme.error
-                                              : Theme.of(context).hintColor,
-                                    ),
-                              ),
-                            ),
-                            Icon(
-                              Icons.chevron_right_rounded,
-                              color: _activityError ? Theme.of(context).colorScheme.error : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.35),
-                            ),
-                          ],
+                      child: InputDecorator(
+                        decoration: InputDecoration(
+                          labelText: 'Activity',
+                          labelStyle: TextStyle(
+                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45),
+                          ),
+                          border: InputBorder.none,
+                          errorText: _activityError ? 'Please select an activity' : null,
+                          suffixIcon: Icon(
+                            Icons.arrow_drop_down_rounded,
+                            size: 26,
+                            color: _activityError ? Theme.of(context).colorScheme.error : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45),
+                          ),
+                        ),
+                        isEmpty: !hasActivity,
+                        child: Text(
+                          hasActivity ? (_selectedActivity!.title ?? '') : '',
+                          style: Theme.of(context).textTheme.bodyLarge,
                         ),
                       ),
                     ),
-                    if (_activityError)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 6),
-                        child: Text(
-                          'Please select an activity',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: Theme.of(context).colorScheme.error,
-                              ),
-                        ),
-                      ),
                   ],
                 ),
               ),
