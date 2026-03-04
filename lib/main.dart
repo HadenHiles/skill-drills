@@ -11,6 +11,7 @@ import 'package:skilldrills/models/onboarding_preferences.dart';
 import 'package:skilldrills/nav.dart';
 import 'package:skilldrills/onboarding/welcome_screen.dart';
 import 'package:skilldrills/services/session.dart';
+import 'package:skilldrills/services/subscription.dart';
 import 'package:skilldrills/theme/settings_state_notifier.dart';
 import 'package:skilldrills/theme/theme.dart';
 import 'login.dart';
@@ -29,6 +30,16 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  // Initialize RevenueCat for in-app subscriptions.
+  await initializeRevenueCat();
+
+  // If the user is already signed in, associate their Firebase UID with
+  // RevenueCat so their entitlements are available immediately.
+  final currentUser = FirebaseAuth.instance.currentUser;
+  if (currentUser != null) {
+    await loginRevenueCatUser(currentUser.uid);
+  }
 
   // Initialize Google Sign In (7.x singleton pattern).
   // serverClientId is the Web Client ID (client_type 3) from google-services.json,

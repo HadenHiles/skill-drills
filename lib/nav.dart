@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:skilldrills/services/subscription.dart';
 import 'package:skilldrills/session.dart';
 import 'package:skilldrills/main.dart';
 import 'package:skilldrills/services/session.dart';
@@ -22,7 +23,12 @@ final PanelController sessionPanelController = PanelController();
 
 // This is the stateful widget that the main application instantiates.
 class Nav extends StatefulWidget {
-  const Nav({super.key});
+  /// When `true`, the RevenueCat paywall is presented on the first frame if
+  /// the user does not already hold the Pro entitlement.  Set to `true` after
+  /// a fresh sign-in or sign-up.
+  final bool showPaywall;
+
+  const Nav({super.key, this.showPaywall = false});
 
   @override
   State<Nav> createState() => _NavState();
@@ -180,6 +186,15 @@ class _NavState extends State<Nav> {
     });
 
     bootstrap();
+
+    // Show paywall on first frame after a fresh sign-in / sign-up so the app
+    // is fully rendered before the sheet appears.  presentPaywallIfNeeded is
+    // a no-op for existing subscribers.
+    if (widget.showPaywall) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        presentPaywallIfNeeded();
+      });
+    }
   }
 
   @override

@@ -55,6 +55,8 @@ dependencies:
 
   cupertino_icons: ^1.0.6 # Only required if you use Cupertino (iOS style) icons
   better_lints: ^5.0.0
+  purchases_flutter: ^9.13.0
+  purchases_ui_flutter: ^9.13.0
 
 dev_dependencies:
   flutter_test:

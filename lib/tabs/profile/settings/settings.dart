@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:settings_ui/settings_ui.dart';
@@ -6,6 +8,7 @@ import 'package:skilldrills/login.dart';
 import 'package:skilldrills/main.dart';
 import 'package:skilldrills/models/settings.dart';
 import 'package:skilldrills/services/auth.dart';
+import 'package:skilldrills/services/subscription.dart';
 import 'package:skilldrills/tabs/profile/settings/activities.dart';
 import 'package:skilldrills/theme/settings_state_notifier.dart';
 import 'package:skilldrills/widgets/basic_title.dart';
@@ -22,11 +25,36 @@ class _ProfileSettingsState extends State<ProfileSettings> {
   bool _vibrate = settings.vibrate;
   bool _darkMode = settings.darkMode;
 
+  // Subscription state
+  bool? _isPro;
+  StreamSubscription<dynamic>? _customerInfoSub;
+
   @override
   void initState() {
     super.initState();
 
     _loadSettings();
+    _loadSubscriptionStatus();
+  }
+
+  Future<void> _loadSubscriptionStatus() async {
+    final isPro = await hasActiveSubscription();
+    if (mounted) setState(() => _isPro = isPro);
+
+    // Keep the UI in sync with live subscription state changes.
+    _customerInfoSub = customerInfoStream.listen((info) {
+      if (mounted) {
+        setState(() {
+          _isPro = info.entitlements.active.containsKey(kProEntitlement);
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _customerInfoSub?.cancel();
+    super.dispose();
   }
 
   //Loading counter value on start
@@ -169,6 +197,79 @@ class _ProfileSettingsState extends State<ProfileSettings> {
             ),
             SettingsSection(
               title: Text(
+                'Skill Drills Pro',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              tiles: [
+                if (_isPro == true) ...[
+                  SettingsTile(
+                    title: Text(
+                      'You\'re a Pro member!',
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                            color: Theme.of(context).colorScheme.primary,
+                            fontWeight: FontWeight.w700,
+                          ),
+                    ),
+                    leading: Icon(
+                      Icons.verified,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                  ),
+                  SettingsTile(
+                    title: Text('Manage Subscription', style: Theme.of(context).textTheme.bodyLarge),
+                    description: Text(
+                      'Cancel, change plan, or request support',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                    leading: Icon(
+                      Icons.manage_accounts_outlined,
+                      color: Theme.of(context).colorScheme.onPrimary,
+                    ),
+                    onPressed: (_) => presentCustomerCenter(),
+                  ),
+                ] else
+                  SettingsTile(
+                    title: Text(
+                      'Upgrade to Skill Drills Pro',
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                            color: Theme.of(context).colorScheme.primary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                    ),
+                    description: Text(
+                      'Unlock unlimited activities, routines & analytics',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                    leading: Icon(
+                      Icons.star_rounded,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    onPressed: (_) => presentPaywall(),
+                  ),
+                SettingsTile(
+                  title: Text('Restore Purchases', style: Theme.of(context).textTheme.bodyLarge),
+                  leading: Icon(
+                    Icons.restore_rounded,
+                    color: Theme.of(context).colorScheme.onPrimary,
+                  ),
+                  onPressed: (_) async {
+                    final messenger = ScaffoldMessenger.of(context);
+                    final info = await restorePurchases();
+                    final restored = info != null && info.entitlements.active.containsKey(kProEntitlement);
+                    messenger.showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          restored ? 'Pro subscription restored!' : 'No active subscription found.',
+                        ),
+                        duration: const Duration(seconds: 4),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+            SettingsSection(
+              title: Text(
                 'Account',
                 style: Theme.of(context).textTheme.titleLarge,
               ),
@@ -186,6 +287,7 @@ class _ProfileSettingsState extends State<ProfileSettings> {
                     color: Theme.of(context).colorScheme.error,
                   ),
                   onPressed: (BuildContext context) async {
+                    await logoutRevenueCatUser();
                     await signOut();
 
                     navigatorKey.currentState!.pushAndRemoveUntil(

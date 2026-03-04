@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:skilldrills/services/auth.dart';
+import 'package:skilldrills/services/subscription.dart';
 import 'package:skilldrills/theme/theme.dart';
 import 'nav.dart';
 
@@ -96,10 +97,14 @@ class _LoginState extends State<Login> {
                           ),
                           onPressed: () async {
                             try {
-                              await signInWithGoogle();
+                              final credential = await signInWithGoogle();
+                              final uid = credential.user?.uid;
+                              if (uid != null) {
+                                await loginRevenueCatUser(uid);
+                              }
                               if (context.mounted) {
                                 Navigator.of(context).pushAndRemoveUntil(
-                                  MaterialPageRoute(builder: (_) => const Nav()),
+                                  MaterialPageRoute(builder: (_) => const Nav(showPaywall: true)),
                                   (route) => false,
                                 );
                               }
@@ -362,13 +367,17 @@ class _SignInScreenState extends State<_SignInScreen> {
 
   Future<void> _signIn() async {
     try {
-      await FirebaseAuth.instance.signInWithEmailAndPassword(
+      final credential = await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: _email.text,
         password: _pass.text,
       );
+      final uid = credential.user?.uid;
+      if (uid != null) {
+        await loginRevenueCatUser(uid);
+      }
       if (mounted) {
         Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const Nav()),
+          MaterialPageRoute(builder: (_) => const Nav(showPaywall: true)),
           (route) => false,
         );
       }
@@ -546,13 +555,17 @@ class _SignUpScreenState extends State<_SignUpScreen> {
 
   Future<void> _signUp() async {
     try {
-      await FirebaseAuth.instance.createUserWithEmailAndPassword(
+      final credential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: _email.text,
         password: _pass.text,
       );
+      final uid = credential.user?.uid;
+      if (uid != null) {
+        await loginRevenueCatUser(uid);
+      }
       if (mounted) {
         Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const Nav()),
+          MaterialPageRoute(builder: (_) => const Nav(showPaywall: true)),
           (route) => false,
         );
       }
