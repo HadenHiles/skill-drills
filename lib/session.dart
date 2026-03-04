@@ -965,7 +965,24 @@ class _EmptyDrillsStateState extends State<_EmptyDrillsState> with SingleTickerP
     _fadeCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 500));
     _fadeAnim = CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeInOut);
     _fadeCtrl.value = 1.0;
-    _loadIcons();
+    sessionService.addListener(_onSessionChanged);
+    // Only cycle through all icons when no specific activity has been chosen
+    if (sessionService.preferredActivityIcon == null) {
+      _loadIcons();
+    }
+  }
+
+  void _onSessionChanged() {
+    if (!mounted) return;
+    if (sessionService.preferredActivityIcon != null) {
+      // A specific activity was selected — stop cycling
+      _timer?.cancel();
+      _timer = null;
+    } else if (_icons.isNotEmpty && _timer == null) {
+      // Activity selection was cleared — resume cycling
+      _startTimer();
+    }
+    setState(() {});
   }
 
   Future<void> _loadIcons() async {
@@ -975,7 +992,10 @@ class _EmptyDrillsStateState extends State<_EmptyDrillsState> with SingleTickerP
     final icons = snap.docs.map((d) => Activity.fromSnapshot(d)).where((a) => a.isActive).map((a) => a.icon).toList();
     if (!mounted || icons.isEmpty) return;
     setState(() => _icons = icons);
-    _startTimer();
+    // Don't start cycling if an activity was chosen while we were loading
+    if (sessionService.preferredActivityIcon == null) {
+      _startTimer();
+    }
   }
 
   void _startTimer() {
@@ -989,6 +1009,7 @@ class _EmptyDrillsStateState extends State<_EmptyDrillsState> with SingleTickerP
 
   @override
   void dispose() {
+    sessionService.removeListener(_onSessionChanged);
     _timer?.cancel();
     _fadeCtrl.dispose();
     super.dispose();
@@ -996,7 +1017,8 @@ class _EmptyDrillsStateState extends State<_EmptyDrillsState> with SingleTickerP
 
   @override
   Widget build(BuildContext context) {
-    final icon = _icons.isNotEmpty ? _icons[_index] : null;
+    // If an activity has been chosen, always show its icon; otherwise cycle.
+    final icon = sessionService.preferredActivityIcon ?? (_icons.isNotEmpty ? _icons[_index] : null);
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(SkillDrillsSpacing.xl),
