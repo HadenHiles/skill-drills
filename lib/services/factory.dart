@@ -377,23 +377,19 @@ List<DrillType> _weightTrainingDrillTypes() => [
           MeasurementResult('amount', 'Sets', 1, null) as Measurement,
           MeasurementResult('amount', 'Reps', 2, null) as Measurement,
           MeasurementResult('amount', 'Weight (kg)', 3, null) as Measurement,
-          MeasurementResult('rpe', 'RPE (1–10)', 4, null) as Measurement,
-          MeasurementResult('rir', 'RIR', 5, null) as Measurement,
-          MeasurementTarget('amount', 'Target Weight (kg)', 6, null, false) as Measurement,
-          MeasurementTarget('amount', 'Target Reps', 7, null, false) as Measurement,
-          MeasurementTarget('rpe', 'Target RPE', 8, null, false) as Measurement,
-          MeasurementTarget('rir', 'Target RIR', 9, null, false) as Measurement,
+          MeasurementResult('rir', 'RIR', 4, null) as Measurement,
+          MeasurementTarget('amount', 'Target Weight (kg)', 5, null, false) as Measurement,
+          MeasurementTarget('amount', 'Target Reps', 6, null, false) as Measurement,
+          MeasurementTarget('rir', 'Target RIR', 7, null, false) as Measurement,
         ],
       DrillType('weight_isolation', 'Isolation Exercise', 'Single-joint dumbbell or cable exercise', 0, 28, activityKey: 'Weight Training')
         ..measurements = [
           MeasurementResult('amount', 'Sets', 1, null) as Measurement,
           MeasurementResult('amount', 'Reps', 2, null) as Measurement,
           MeasurementResult('amount', 'Weight (kg)', 3, null) as Measurement,
-          MeasurementResult('rpe', 'RPE (1–10)', 4, null) as Measurement,
-          MeasurementResult('rir', 'RIR', 5, null) as Measurement,
-          MeasurementTarget('amount', 'Target Reps', 6, null, false) as Measurement,
-          MeasurementTarget('rpe', 'Target RPE', 7, null, false) as Measurement,
-          MeasurementTarget('rir', 'Target RIR', 8, null, false) as Measurement,
+          MeasurementResult('rir', 'RIR', 4, null) as Measurement,
+          MeasurementTarget('amount', 'Target Reps', 5, null, false) as Measurement,
+          MeasurementTarget('rir', 'Target RIR', 6, null, false) as Measurement,
         ],
       DrillType('weight_bodyweight', 'Bodyweight Exercise', 'No-equipment exercise — push-ups, pull-ups, dips, etc.', 0, 29, activityKey: 'Weight Training')
         ..measurements = [
@@ -407,9 +403,7 @@ List<DrillType> _weightTrainingDrillTypes() => [
         ..measurements = [
           MeasurementResult('duration', 'Duration', 1, null) as Measurement,
           MeasurementResult('amount', 'Distance (km)', 2, null) as Measurement,
-          MeasurementResult('rpe', 'RPE (1–10)', 3, null) as Measurement,
-          MeasurementTarget('duration', 'Target Duration', 4, null, false) as Measurement,
-          MeasurementTarget('rpe', 'Target RPE', 5, null, false) as Measurement,
+          MeasurementTarget('duration', 'Target Duration', 3, null, false) as Measurement,
         ],
     ];
 

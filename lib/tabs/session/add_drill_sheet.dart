@@ -58,6 +58,11 @@ class _AddDrillSheetState extends State<_AddDrillSheet> {
   /// Drill IDs currently loading (awaiting measurement fetch).
   final Set<String> _loading = {};
 
+  /// The activity currently selected in the filter bar.
+  /// When null, all activities are shown (grouped).
+  /// When non-null, only that activity's drills are shown.
+  Activity? _filterActivity;
+
   @override
   void initState() {
     super.initState();
@@ -87,6 +92,17 @@ class _AddDrillSheetState extends State<_AddDrillSheet> {
       _activities = activities;
       _drills = drills;
     });
+
+    // If the session already has a drill, auto-lock the filter to that
+    // activity so the user can only add matching drills.
+    final lockedTitle = sessionService.lockedActivityTitle;
+    if (lockedTitle != null && mounted) {
+      final locked = activities.cast<Activity?>().firstWhere(
+            (a) => a?.title == lockedTitle,
+            orElse: () => null,
+          );
+      if (locked != null) setState(() => _filterActivity = locked);
+    }
   }
 
   // ── Drill selection ─────────────────────────────────────────────────────────
@@ -157,7 +173,26 @@ class _AddDrillSheetState extends State<_AddDrillSheet> {
     }).toList();
   }
 
-  bool get _hasResults => _activities.any((a) => _drillsFor(a.title!).isNotEmpty);
+  /// Whether the session is locked to a specific activity (a drill has already
+  /// been added). When locked, the filter cannot be changed by the user.
+  bool get _isLocked => sessionService.lockedActivityTitle != null;
+
+  /// Drills matching [_filterActivity] (and current query) as a flat list.
+  /// Only meaningful when [_filterActivity] != null.
+  List<Drill> get _filteredDrills {
+    final act = _filterActivity;
+    if (act == null) return [];
+    return _drills.where((d) {
+      if (d.activity?.title != act.title) return false;
+      if (_query.isEmpty) return true;
+      return (d.title?.toLowerCase().contains(_query) ?? false) || (d.description?.toLowerCase().contains(_query) ?? false);
+    }).toList();
+  }
+
+  bool get _hasResults {
+    if (_filterActivity != null) return _filteredDrills.isNotEmpty;
+    return _activities.any((a) => _drillsFor(a.title!).isNotEmpty);
+  }
 
   // ── Build ───────────────────────────────────────────────────────────────────
 
@@ -213,7 +248,7 @@ class _AddDrillSheetState extends State<_AddDrillSheet> {
 
               // ── Search bar
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
                 child: TextField(
                   controller: _searchCtrl,
                   autofocus: false,
@@ -231,38 +266,112 @@ class _AddDrillSheetState extends State<_AddDrillSheet> {
                 ),
               ),
 
+              // ── Activity filter bar (when unlocked) or lock banner (when locked)
+              if (_activities.isNotEmpty) _isLocked ? _buildLockedBanner(context) : _buildActivityFilterBar(context),
+              const SizedBox(height: 8),
+
               // ── List
               Expanded(
                 child: _activities.isEmpty
                     ? _buildEmptyState()
-                    : !_hasResults && _query.isNotEmpty
+                    : !_hasResults && (_query.isNotEmpty || _filterActivity != null)
                         ? _buildNoResults()
-                        : ListView.builder(
-                            controller: scrollController,
-                            padding: const EdgeInsets.only(bottom: 32),
-                            itemCount: _activities.length + 1, // +1 for "Create new drill"
-                            itemBuilder: (context, i) {
-                              if (i == 0) {
-                                return _buildCreateDrillTile(context);
-                              }
-                              final activity = _activities[i - 1];
-                              final sectionDrills = _drillsFor(activity.title!);
-                              if (sectionDrills.isEmpty) {
-                                return const SizedBox.shrink();
-                              }
-                              return _ActivitySection(
-                                activity: activity,
-                                drills: sectionDrills,
-                                loading: _loading,
-                                onSelect: _selectDrill,
-                              );
-                            },
-                          ),
+                        : _filterActivity != null
+                            // ── Filtered: flat list for the selected activity
+                            ? ListView.builder(
+                                controller: scrollController,
+                                padding: const EdgeInsets.only(bottom: 32),
+                                itemCount: _filteredDrills.length + 1, // +1 for create tile
+                                itemBuilder: (context, i) {
+                                  if (i == 0) return _buildCreateDrillTile(context);
+                                  final drill = _filteredDrills[i - 1];
+                                  return _DrillTile(
+                                    drill: drill,
+                                    activity: _filterActivity!,
+                                    isLoading: _loading.contains(drill.reference?.id ?? ''),
+                                    onTap: () => _selectDrill(drill, _filterActivity!),
+                                  );
+                                },
+                              )
+                            // ── Unfiltered: all activities grouped / collapsed
+                            : ListView.builder(
+                                controller: scrollController,
+                                padding: const EdgeInsets.only(bottom: 32),
+                                itemCount: _activities.length + 1, // +1 for "Create new drill"
+                                itemBuilder: (context, i) {
+                                  if (i == 0) {
+                                    return _buildCreateDrillTile(context);
+                                  }
+                                  final activity = _activities[i - 1];
+                                  final sectionDrills = _drillsFor(activity.title!);
+                                  if (sectionDrills.isEmpty) {
+                                    return const SizedBox.shrink();
+                                  }
+                                  return _ActivitySection(
+                                    key: ValueKey('${activity.title}-${_query.isEmpty}'),
+                                    activity: activity,
+                                    drills: sectionDrills,
+                                    loading: _loading,
+                                    onSelect: _selectDrill,
+                                    isSearching: _query.isNotEmpty,
+                                  );
+                                },
+                              ),
               ),
             ],
           ),
         );
       },
+    );
+  }
+
+  // ── Activity filter bar (shown when no lock) ────────────────────────────────
+
+  Widget _buildActivityFilterBar(BuildContext context) {
+    return SizedBox(
+      height: 38,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        children: [
+          _ActivityChip(
+            icon: null,
+            label: 'All drills',
+            selected: _filterActivity == null,
+            onTap: () => setState(() => _filterActivity = null),
+          ),
+          ..._activities.map((a) => _ActivityChip(
+                icon: a.icon,
+                label: a.title!,
+                selected: _filterActivity?.title == a.title,
+                onTap: () => setState(
+                  () => _filterActivity = _filterActivity?.title == a.title ? null : a,
+                ),
+              )),
+        ],
+      ),
+    );
+  }
+
+  // ── Locked activity banner (shown when session already has a drill) ─────────
+
+  Widget _buildLockedBanner(BuildContext context) {
+    final a = _filterActivity;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+      child: Row(
+        children: [
+          Icon(Icons.lock_outline_rounded, size: 13, color: Theme.of(context).colorScheme.onPrimary),
+          const SizedBox(width: 5),
+          if (a != null)
+            Text(
+              '${a.icon} ${a.title} drills only',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onPrimary,
+                  ),
+            ),
+        ],
+      ),
     );
   }
 
@@ -360,10 +469,12 @@ class _AddDrillSheetState extends State<_AddDrillSheet> {
 
 class _ActivitySection extends StatelessWidget {
   const _ActivitySection({
+    super.key,
     required this.activity,
     required this.drills,
     required this.loading,
     required this.onSelect,
+    this.isSearching = false,
   });
 
   final Activity activity;
@@ -371,38 +482,52 @@ class _ActivitySection extends StatelessWidget {
   final Set<String> loading;
   final Future<void> Function(Drill, Activity) onSelect;
 
+  /// When true (i.e. the user is actively searching) the section starts
+  /// expanded so results are immediately visible. When false it starts
+  /// collapsed so the full list is not overwhelming.
+  final bool isSearching;
+
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Section header
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
-          child: Row(
-            children: [
-              Text(
-                activity.icon,
-                style: const TextStyle(fontSize: 16),
-              ),
-              const SizedBox(width: 6),
-              Text(
-                activity.title!.toUpperCase(),
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1.1,
-                    ),
-              ),
-            ],
-          ),
+    return Theme(
+      // Remove the default ExpansionTile divider lines.
+      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+      child: ExpansionTile(
+        initiallyExpanded: isSearching,
+        tilePadding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+        childrenPadding: EdgeInsets.zero,
+        title: Row(
+          children: [
+            Text(
+              activity.icon,
+              style: const TextStyle(fontSize: 16),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              activity.title!.toUpperCase(),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.1,
+                  ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              '${drills.length}',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onPrimary,
+                  ),
+            ),
+          ],
         ),
-        ...drills.map((drill) => _DrillTile(
-              drill: drill,
-              activity: activity,
-              isLoading: loading.contains(drill.reference?.id ?? ''),
-              onTap: () => onSelect(drill, activity),
-            )),
-      ],
+        children: drills
+            .map((drill) => _DrillTile(
+                  drill: drill,
+                  activity: activity,
+                  isLoading: loading.contains(drill.reference?.id ?? ''),
+                  onTap: () => onSelect(drill, activity),
+                ))
+            .toList(),
+      ),
     );
   }
 }
@@ -480,6 +605,60 @@ class _DrillTile extends StatelessWidget {
                 color: Theme.of(context).primaryColor,
               ),
           ],
+        ),
+      ),
+    );
+  }
+}
+// ─────────────────────────────────────────────────────────────────────────────
+// Compact activity chip used in the filter bar
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _ActivityChip extends StatelessWidget {
+  const _ActivityChip({
+    required this.icon,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String? icon;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: selected ? Theme.of(context).primaryColor : Theme.of(context).primaryColor.withAlpha(14),
+            borderRadius: SkillDrillsRadius.fullBorderRadius,
+            border: Border.all(
+              color: selected ? Theme.of(context).primaryColor : Theme.of(context).dividerColor,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (icon != null) ...[
+                Text(icon!, style: const TextStyle(fontSize: 13)),
+                const SizedBox(width: 5),
+              ],
+              Text(
+                label,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: selected ? Colors.white : Theme.of(context).colorScheme.onSurface,
+                      fontWeight: FontWeight.w600,
+                    ),
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -6,6 +6,7 @@ import 'package:skilldrills/models/firestore/activity.dart';
 import 'package:skilldrills/models/skill_drills_dialog.dart';
 import 'package:skilldrills/services/dialogs.dart';
 import 'package:skilldrills/services/factory.dart';
+import 'package:skilldrills/services/subscription.dart';
 import 'package:skilldrills/tabs/profile/settings/activity_detail.dart';
 import 'package:skilldrills/tabs/profile/settings/activity_item.dart';
 import 'package:skilldrills/widgets/basic_title.dart';
@@ -21,6 +22,10 @@ class ActivitiesSettings extends StatefulWidget {
 }
 
 class _ActivitiesSettingsState extends State<ActivitiesSettings> {
+  /// Latest snapshot of all activities — kept in state so [_toggleActive]
+  /// can count how many are currently active without an extra Firestore read.
+  List<DocumentSnapshot<Map<String, dynamic>>> _activitiesSnapshot = [];
+
   @override
   void initState() {
     super.initState();
@@ -40,7 +45,12 @@ class _ActivitiesSettingsState extends State<ActivitiesSettings> {
             );
           }
 
-          return _buildActivityList(context, snapshot.data!.docs.cast<DocumentSnapshot<Map<String, dynamic>>>());
+          final docs = snapshot.data!.docs.cast<DocumentSnapshot<Map<String, dynamic>>>();
+          // Keep a local copy so _toggleActive can count active items.
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) setState(() => _activitiesSnapshot = docs);
+          });
+          return _buildActivityList(context, docs);
         });
   }
 
@@ -72,7 +82,43 @@ class _ActivitiesSettingsState extends State<ActivitiesSettings> {
           );
   }
 
-  void _toggleActive(Activity activity, bool isActive) {
+  /// Toggles the [isActive] flag on [activity].
+  ///
+  /// When enabling an activity, checks whether the user has already reached
+  /// [kFreeActiveActivityLimit] active activities and, if so, verifies they
+  /// hold an active subscription before allowing the change.  Non-subscribed
+  /// users who are at the limit are shown an upgrade prompt instead.
+  Future<void> _toggleActive(Activity activity, bool isActive) async {
+    if (isActive) {
+      final activeCount = _activitiesSnapshot.map((doc) => Activity.fromSnapshot(doc)).where((a) => a.isActive && a.reference?.id != activity.reference?.id).length;
+
+      if (activeCount >= kFreeActiveActivityLimit) {
+        final subscribed = await hasActiveSubscription();
+        if (!subscribed) {
+          if (!mounted) return;
+          dialog(
+            context,
+            SkillDrillsDialog(
+              "Upgrade to unlock more",
+              Text(
+                "Free accounts can have up to $kFreeActiveActivityLimit active activities.\n\nUpgrade to a paid plan to unlock unlimited active activities.",
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              "Not now",
+              () => Navigator.of(context).pop(),
+              "Upgrade",
+              () {
+                Navigator.of(context).pop();
+                // TODO: Navigate to the subscription / upgrade screen.
+              },
+            ),
+          );
+          return;
+        }
+      }
+    }
+
     FirebaseFirestore.instance.collection('activities').doc(auth.currentUser!.uid).collection('activities').doc(activity.reference!.id).update({'is_active': isActive});
   }
 

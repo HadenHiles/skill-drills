@@ -60,11 +60,9 @@ class _StartState extends State<Start> with SingleTickerProviderStateMixin {
     super.dispose();
   }
 
-  void _handleQuickStart() {
-    if (!sessionService.isRunning) {
-      sessionService.start(title: SessionService.defaultSessionTitle());
-      widget.sessionPanelController?.open();
-    } else {
+  Future<void> _handleQuickStart() async {
+    if (sessionService.isRunning) {
+      if (!mounted) return;
       dialog(
         context,
         SkillDrillsDialog(
@@ -79,14 +77,36 @@ class _StartState extends State<Start> with SingleTickerProviderStateMixin {
           () {
             sessionService.reset();
             Navigator.of(context).pop();
-            sessionService.start(title: SessionService.defaultSessionTitle());
-            widget.sessionPanelController?.open();
+            _pickActivityAndStart();
           },
           isDangerous: false,
           icon: Icons.swap_horiz_rounded,
         ),
       );
+      return;
     }
+    await _pickActivityAndStart();
+  }
+
+  Future<void> _pickActivityAndStart() async {
+    if (!mounted) return;
+    final activity = await showModalBottomSheet<Activity>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => const _ActivityPickerSheet(),
+    );
+    if (activity == null || !mounted) return;
+
+    final terminology = ActivityTerminology.defaultsFor(activity.title);
+    sessionService.start(
+      title: SessionService.defaultSessionTitle(),
+      activityTitle: activity.title,
+      activityIcon: activity.icon,
+      setsLabel: activity.setsLabel.isNotEmpty ? activity.setsLabel : terminology.setsLabel,
+      repsLabel: activity.repsLabel.isNotEmpty ? activity.repsLabel : terminology.repsLabel,
+    );
+    widget.sessionPanelController?.open();
   }
 
   Future<void> _startFromRoutine(Routine routine) async {
@@ -481,6 +501,136 @@ class _Chip extends StatelessWidget {
       style: Theme.of(context).textTheme.bodySmall?.copyWith(
             color: Theme.of(context).colorScheme.onPrimary,
           ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Activity picker bottom sheet – shown when starting an empty session.
+// Never caches the selection; always starts fresh each time.
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _ActivityPickerSheet extends StatefulWidget {
+  const _ActivityPickerSheet();
+
+  @override
+  State<_ActivityPickerSheet> createState() => _ActivityPickerSheetState();
+}
+
+class _ActivityPickerSheetState extends State<_ActivityPickerSheet> {
+  List<Activity> _activities = [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) {
+      if (mounted) setState(() => _loading = false);
+      return;
+    }
+    final snap = await FirebaseFirestore.instance.collection('activities').doc(uid).collection('activities').orderBy('title').get();
+    if (!mounted) return;
+    setState(() {
+      _activities = snap.docs.map(Activity.fromSnapshot).where((a) => a.isActive).toList();
+      _loading = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(SkillDrillsRadius.lg)),
+      ),
+      padding: EdgeInsets.fromLTRB(20, 12, 20, 24 + MediaQuery.of(context).padding.bottom),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Handle
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                color: Theme.of(context).dividerColor,
+                borderRadius: SkillDrillsRadius.fullBorderRadius,
+              ),
+            ),
+          ),
+          Text(
+            'Choose Activity',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontFamily: 'Choplin',
+                  fontWeight: FontWeight.w700,
+                ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'What are you training today?',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onPrimary,
+                ),
+          ),
+          const SizedBox(height: 16),
+          if (_loading)
+            const Center(child: Padding(padding: EdgeInsets.symmetric(vertical: 32), child: CircularProgressIndicator()))
+          else if (_activities.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 32),
+              child: Center(
+                child: Text(
+                  'No active activities found.\nAdd activities in your profile first.',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+              ),
+            )
+          else
+            ...(_activities.map(
+              (a) => InkWell(
+                onTap: () => Navigator.of(context).pop(a),
+                borderRadius: SkillDrillsRadius.mdBorderRadius,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).primaryColor.withAlpha(18),
+                          borderRadius: SkillDrillsRadius.smBorderRadius,
+                        ),
+                        child: Center(
+                          child: Text(a.icon, style: const TextStyle(fontSize: 22)),
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Text(
+                          a.title ?? '',
+                          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                fontFamily: 'Choplin',
+                                fontWeight: FontWeight.w600,
+                              ),
+                        ),
+                      ),
+                      Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Theme.of(context).colorScheme.onPrimary),
+                    ],
+                  ),
+                ),
+              ),
+            )),
+        ],
+      ),
     );
   }
 }

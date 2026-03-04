@@ -471,27 +471,28 @@ class _SessionState extends State<Session> with SingleTickerProviderStateMixin {
       ),
       child: Row(
         children: [
+          Expanded(
+            flex: 1,
+            child: OutlinedButton(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Theme.of(context).colorScheme.error,
+                side: BorderSide(color: Theme.of(context).colorScheme.error.withAlpha(120)),
+              ),
+              onPressed: saving ? null : _cancelSession,
+              child: const Text('Cancel', style: TextStyle(fontFamily: 'Choplin', fontWeight: FontWeight.w700)),
+            ),
+          ),
+          const SizedBox(width: SkillDrillsSpacing.sm),
           if (drills.isEmpty)
             Expanded(
+              flex: 2,
               child: ElevatedButton.icon(
                 icon: const Icon(Icons.add_rounded, size: 18),
                 label: const Text('Add Drill'),
                 onPressed: saving ? null : _addDrill,
               ),
             )
-          else ...[
-            Expanded(
-              flex: 1,
-              child: OutlinedButton(
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Theme.of(context).colorScheme.error,
-                  side: BorderSide(color: Theme.of(context).colorScheme.error.withAlpha(120)),
-                ),
-                onPressed: saving ? null : _cancelSession,
-                child: const Text('Cancel', style: TextStyle(fontFamily: 'Choplin', fontWeight: FontWeight.w700)),
-              ),
-            ),
-            const SizedBox(width: SkillDrillsSpacing.sm),
+          else
             Expanded(
               flex: 2,
               child: ElevatedButton(
@@ -505,7 +506,6 @@ class _SessionState extends State<Session> with SingleTickerProviderStateMixin {
                     : const Text('Finish Session', style: TextStyle(fontFamily: 'Choplin', fontWeight: FontWeight.w700)),
               ),
             ),
-          ],
         ],
       ),
     );
@@ -562,13 +562,13 @@ class _DrillPage extends StatelessWidget {
           ),
         ),
 
-        // Column headers
-        if (hasMeasurements)
+        // Column headers — only show when there are sets to display
+        if (hasMeasurements && sets.isNotEmpty)
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
             child: _SetRowHeader(measurements: drillResult.measurementResults),
           ),
-        const Divider(height: 1),
+        if (sets.isNotEmpty) const Divider(height: 1),
 
         // Set rows + Add set button (inline, right below last set)
         Expanded(
@@ -726,42 +726,52 @@ class _SetRowHeader extends StatelessWidget {
 
   final List<dynamic> measurements;
 
+  static String _labelFor(dynamic m) {
+    if ((m.label as String?)?.isNotEmpty == true) return m.label as String;
+    return (m.type as String?) == 'duration' ? 'Time' : 'Value';
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        SizedBox(
-          width: 36,
+    final style = Theme.of(context).textTheme.bodySmall?.copyWith(
+          fontWeight: FontWeight.w600,
+          color: Theme.of(context).colorScheme.onPrimary,
+        );
+
+    Expanded labelCell(dynamic m) => Expanded(
           child: Text(
-            '#',
+            _labelFor(m),
             textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: Theme.of(context).colorScheme.onPrimary,
-                ),
+            overflow: TextOverflow.ellipsis,
+            style: style,
           ),
-        ),
-        ...measurements.map((m) {
-          final label = (m.label as String?)?.isNotEmpty == true
-              ? m.label as String
-              : m.type == 'duration'
-                  ? 'Time'
-                  : 'Value';
-          return Expanded(
-            child: Text(
-              label,
-              textAlign: TextAlign.center,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: Theme.of(context).colorScheme.onPrimary,
-                  ),
-            ),
-          );
-        }),
+        );
+
+    if (measurements.length <= 3) {
+      return Row(children: [
+        SizedBox(width: 36, child: Text('#', textAlign: TextAlign.center, style: style)),
+        ...measurements.map(labelCell),
         const SizedBox(width: 42),
-      ],
-    );
+      ]);
+    }
+
+    // Grid: 2 labels per row
+    final rows = <Widget>[];
+    for (var i = 0; i < measurements.length; i += 2) {
+      final chunk = measurements.sublist(i, (i + 2).clamp(0, measurements.length));
+      rows.add(Padding(
+        padding: EdgeInsets.only(top: i > 0 ? 3 : 0),
+        child: Row(children: [
+          ...chunk.map(labelCell),
+          if (chunk.length == 1) const Expanded(child: SizedBox()),
+        ]),
+      ));
+    }
+    return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      SizedBox(width: 36, child: Text('#', textAlign: TextAlign.center, style: style)),
+      Expanded(child: Column(children: rows)),
+      const SizedBox(width: 42),
+    ]);
   }
 }
 
@@ -787,6 +797,99 @@ class _SetRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isComplete = setResult.isComplete;
+    final measurements = setResult.measurementResults;
+
+    // ── Shared sub-widgets ──────────────────────────────────────────────────────
+    final setNumWidget = SizedBox(
+      width: 36,
+      child: Text(
+        '${setIndex + 1}',
+        textAlign: TextAlign.center,
+        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+              fontFamily: 'Choplin',
+              color: isComplete ? Theme.of(context).disabledColor : null,
+            ),
+      ),
+    );
+
+    final doneCheckbox = SizedBox(
+      width: 42,
+      child: Checkbox(
+        value: isComplete,
+        onChanged: (checked) {
+          if (isComplete) {
+            sessionService.toggleSetComplete(drillIndex, setIndex);
+            return;
+          }
+          final allFilled = measurements.isEmpty || measurements.every((m) => m.value != null && !(m.type == 'duration' && m.value == 0));
+          if (!allFilled) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Enter all values before marking this set as done'),
+                behavior: SnackBarBehavior.floating,
+                duration: Duration(seconds: 2),
+              ),
+            );
+            return;
+          }
+          sessionService.toggleSetComplete(drillIndex, setIndex);
+        },
+        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        visualDensity: VisualDensity.compact,
+      ),
+    );
+
+    Widget inputCell(int mi) {
+      final m = measurements[mi];
+      return Expanded(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: AbsorbPointer(
+            absorbing: isComplete,
+            child: Opacity(
+              opacity: isComplete ? 0.4 : 1.0,
+              child: _buildInput(context, m, mi),
+            ),
+          ),
+        ),
+      );
+    }
+
+    // ── Layout ────────────────────────────────────────────────────────────────
+    Widget rowContent;
+    if (!hasMeasurements || measurements.length <= 3) {
+      rowContent = Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          setNumWidget,
+          if (hasMeasurements) ...List.generate(measurements.length, inputCell) else const Expanded(child: SizedBox()),
+          doneCheckbox,
+        ],
+      );
+    } else {
+      // ≥ 4 measurements: 2-per-row grid — keeps inputs legible on narrower screens
+      final gridRows = <Widget>[];
+      for (var i = 0; i < measurements.length; i += 2) {
+        final end = (i + 2).clamp(0, measurements.length);
+        gridRows.add(Padding(
+          padding: EdgeInsets.only(top: i > 0 ? 4 : 0),
+          child: Row(children: [
+            for (var mi = i; mi < end; mi++) inputCell(mi),
+            if ((end - i) == 1) const Expanded(child: SizedBox()),
+          ]),
+        ));
+      }
+      rowContent = Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          setNumWidget,
+          Expanded(child: Column(children: gridRows)),
+          doneCheckbox,
+        ],
+      );
+    }
+
     return Dismissible(
       key: ValueKey('set_${drillIndex}_$setIndex'),
       direction: DismissDirection.endToStart,
@@ -802,72 +905,7 @@ class _SetRow extends StatelessWidget {
       onDismissed: (_) => sessionService.removeSet(drillIndex, setIndex),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 6),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            // Set number
-            SizedBox(
-              width: 36,
-              child: Text(
-                '${setIndex + 1}',
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      fontFamily: 'Choplin',
-                      color: isComplete ? Theme.of(context).disabledColor : null,
-                    ),
-              ),
-            ),
-            // Measurement inputs (dimmed + blocked when set is complete)
-            if (hasMeasurements)
-              ...List.generate(setResult.measurementResults.length, (mi) {
-                final m = setResult.measurementResults[mi];
-                return Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: AbsorbPointer(
-                      absorbing: isComplete,
-                      child: Opacity(
-                        opacity: isComplete ? 0.4 : 1.0,
-                        child: _buildInput(context, m, mi),
-                      ),
-                    ),
-                  ),
-                );
-              })
-            else
-              const Expanded(child: SizedBox()),
-            // Done checkbox
-            SizedBox(
-              width: 42,
-              child: Checkbox(
-                value: isComplete,
-                onChanged: (checked) {
-                  // Always allow unchecking a completed set
-                  if (isComplete) {
-                    sessionService.toggleSetComplete(drillIndex, setIndex);
-                    return;
-                  }
-                  // Block completion if any measurement value is missing/zero
-                  final allFilled = setResult.measurementResults.isEmpty || setResult.measurementResults.every((m) => m.value != null && !(m.type == 'duration' && m.value == 0));
-                  if (!allFilled) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Enter all values before marking this set as done'),
-                        behavior: SnackBarBehavior.floating,
-                        duration: Duration(seconds: 2),
-                      ),
-                    );
-                    return;
-                  }
-                  sessionService.toggleSetComplete(drillIndex, setIndex);
-                },
-                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                visualDensity: VisualDensity.compact,
-              ),
-            ),
-          ],
-        ),
+        child: rowContent,
       ),
     );
   }
@@ -1052,17 +1090,16 @@ class _AmountInput extends StatelessWidget {
         border: Border.all(color: Theme.of(context).dividerColor),
       ),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           _CountBtn(icon: Icons.remove, onTap: value > 0 ? () => onChanged(value - 1) : null),
-          GestureDetector(
-            onTap: () => _editDialog(context),
-            child: SizedBox(
-              width: 38,
+          Flexible(
+            child: GestureDetector(
+              onTap: () => _editDialog(context),
               child: Text(
                 '$value',
                 textAlign: TextAlign.center,
+                overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.titleSmall?.copyWith(
                       fontFamily: 'Choplin',
                       fontWeight: FontWeight.w700,
@@ -1223,7 +1260,9 @@ class _ScaleInput extends StatelessWidget {
         ),
         child: Center(
           child: Text(
-            v != null ? '$_label\u2009$v' : _label,
+            // Show just the number when selected — column headers already
+            // identify the measurement type (RIR / RPE).
+            v != null ? '$v' : _label,
             style: TextStyle(
               fontSize: 11,
               fontFamily: 'Choplin',
@@ -1295,11 +1334,15 @@ class _ScalePickerState extends State<_ScalePicker> with SingleTickerProviderSta
     super.dispose();
   }
 
-  List<int> get _values => widget.type == 'rir' ? List.generate(6, (i) => i) : List.generate(10, (i) => i + 1);
+  // RIR: show 5 (very easy/green) first, 0 (to failure/red) last.
+  // RPE: show 1 (very easy) first, 10 (maximum effort) last.
+  List<int> get _values => widget.type == 'rir'
+      ? List.generate(6, (i) => 5 - i) // 5, 4, 3, 2, 1, 0
+      : List.generate(10, (i) => i + 1); // 1..10
 
   String get _hint {
     if (widget.type == 'rpe') return '1 = very easy  ·  10 = maximum effort';
-    return '0 = to failure  ·  5 = very easy';
+    return '0 = to failure  ·  5+ = very easy';
   }
 
   @override
@@ -1381,7 +1424,9 @@ class _ScalePickerState extends State<_ScalePicker> with SingleTickerProviderSta
                           ),
                           child: Center(
                             child: Text(
-                              '$v',
+                              // For RIR, the top value (5) is labelled "5+" to
+                              // convey "5 or more reps in reserve" (very fresh).
+                              widget.type == 'rir' && v == 5 ? '5+' : '$v',
                               style: TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w800,

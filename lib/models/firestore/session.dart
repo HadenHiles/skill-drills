@@ -68,6 +68,12 @@ class DrillResult {
   /// Each set the athlete performs. One row in the session UI per entry.
   List<SetResult> setResults;
 
+  /// Per-set default values loaded from the most recent session history.
+  /// Indexed as [setIndex][measIndex] → value. Not persisted to Firestore.
+  /// Used by SessionService.addSet() so newly-added sets default to the last
+  /// recorded value for that position in history.
+  final List<List<num?>> historicSetValues;
+
   DocumentReference? reference;
 
   DrillResult(
@@ -83,8 +89,10 @@ class DrillResult {
     this.restTimerSeconds,
     List<MeasurementResult>? measurementResults,
     List<SetResult>? setResults,
+    List<List<num?>>? historicSetValues,
   })  : measurementResults = measurementResults ?? [],
-        setResults = setResults ?? [];
+        setResults = setResults ?? [],
+        historicSetValues = historicSetValues ?? [];
 
   // ── Computed helpers ───────────────────────────────────────────────────────
 
@@ -121,7 +129,8 @@ class DrillResult {
         reps = map['reps'] != null ? (map['reps'] as num).toInt() : null,
         restTimerSeconds = map['rest_timer_seconds'] != null ? (map['rest_timer_seconds'] as num).toInt() : null,
         measurementResults = (map['measurement_results'] as List?)?.map((m) => MeasurementResult.fromMap(m as Map<String, dynamic>)).toList() ?? [],
-        setResults = (map['set_results'] as List?)?.map((s) => SetResult.fromMap(s as Map<String, dynamic>)).toList() ?? [];
+        setResults = (map['set_results'] as List?)?.map((s) => SetResult.fromMap(s as Map<String, dynamic>)).toList() ?? [],
+        historicSetValues = []; // not persisted
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

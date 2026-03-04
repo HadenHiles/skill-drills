@@ -31,6 +31,23 @@ class SessionService extends ChangeNotifier {
 
   List<session_model.DrillResult> get drillResults => List.unmodifiable(_drillResults);
 
+  // ── Preferred activity (set at session start for empty sessions) ───────────
+  // Stored in memory only — never persisted, cleared on reset so there is no
+  // cross-session caching.
+  String? _preferredActivityTitle;
+  String? _preferredActivityIcon;
+  String? _preferredSetsLabel;
+  String? _preferredRepsLabel;
+
+  String? get preferredActivityTitle => _preferredActivityTitle;
+  String? get preferredActivityIcon => _preferredActivityIcon;
+  String? get preferredSetsLabel => _preferredSetsLabel;
+  String? get preferredRepsLabel => _preferredRepsLabel;
+
+  /// The activity title the session is locked to. Returns the preferred activity
+  /// when set (before any drills are added), then derives it from the first drill.
+  String? get lockedActivityTitle => _drillResults.isNotEmpty ? _drillResults.first.activityTitle : _preferredActivityTitle;
+
   // ── Active drill index (drives the tab bar + PageView) ────────────────────
   int _currentDrillIndex = 0;
   int get currentDrillIndex => _currentDrillIndex;
@@ -102,11 +119,27 @@ class SessionService extends ChangeNotifier {
   // ── Lifecycle ──────────────────────────────────────────────────────────────
 
   /// Start a new session. Clears any previous state.
-  void start({String? title, String? routineId, String? routineTitle}) {
+  ///
+  /// [activityTitle], [activityIcon], [setsLabel], [repsLabel] can be supplied
+  /// for "empty" sessions so the drill-picker is pre-filtered (and locked) to
+  /// the chosen activity without requiring an initial drill to be added first.
+  void start({
+    String? title,
+    String? routineId,
+    String? routineTitle,
+    String? activityTitle,
+    String? activityIcon,
+    String? setsLabel,
+    String? repsLabel,
+  }) {
     _sessionTitle = title ?? defaultSessionTitle();
     _startedAt = DateTime.now();
     _routineId = routineId;
     _routineTitle = routineTitle;
+    _preferredActivityTitle = activityTitle;
+    _preferredActivityIcon = activityIcon;
+    _preferredSetsLabel = setsLabel;
+    _preferredRepsLabel = repsLabel;
     _drillResults.clear();
     _watch!.reset();
     _timer = Timer.periodic(const Duration(seconds: 1), _onTick);
@@ -132,6 +165,10 @@ class SessionService extends ChangeNotifier {
     _startedAt = null;
     _routineId = null;
     _routineTitle = null;
+    _preferredActivityTitle = null;
+    _preferredActivityIcon = null;
+    _preferredSetsLabel = null;
+    _preferredRepsLabel = null;
     _drillResults.clear();
     _currentDrillIndex = 0;
     _restTimer?.cancel();
@@ -162,11 +199,30 @@ class SessionService extends ChangeNotifier {
 
   // ── Set management ─────────────────────────────────────────────────────────
 
-  /// Appends a new blank set to the drill, using its measurement template.
+  /// Appends a new set to the drill, pre-filled with the historic values for
+  /// that set's position. If no historic values exist for the new index,
+  /// copies the last set's values as a sensible within-session default.
   void addSet(int drillIndex) {
     if (drillIndex < _drillResults.length) {
       final drill = _drillResults[drillIndex];
-      drill.setResults.add(session_model.SetResult.fromTemplate(drill.measurementResults));
+      final sets = drill.setResults;
+      final newIndex = sets.length; // the index of the set we're about to add
+
+      List<num?> historicVals = [];
+      if (newIndex < drill.historicSetValues.length) {
+        historicVals = drill.historicSetValues[newIndex];
+      } else if (sets.isNotEmpty) {
+        // No history for this index – copy last set's values as default.
+        historicVals = sets.last.measurementResults.map((m) => m.value).toList();
+      }
+
+      final newMeas = <MeasurementResult>[];
+      for (var mi = 0; mi < drill.measurementResults.length; mi++) {
+        final template = drill.measurementResults[mi];
+        final val = mi < historicVals.length ? historicVals[mi] : 0;
+        newMeas.add(MeasurementResult(template.type, template.label, template.order, val ?? 0));
+      }
+      sets.add(session_model.SetResult(measurementResults: newMeas));
       notifyListeners();
     }
   }
@@ -305,6 +361,10 @@ class SessionServiceProvider extends InheritedWidget {
 
 /// Fetches the measurements subcollection for [drillId] and constructs a
 /// [session_model.DrillResult] ready to be added to the in-progress session.
+///
+/// Deduplicates measurements by (type, label) to guard against double-saved
+/// Firestore documents. Also pre-fills set values from the most recent session
+/// history so each set defaults to the last recorded value for that position.
 Future<session_model.DrillResult> buildDrillResultForSession({
   required String drillId,
   required String drillTitle,
@@ -317,15 +377,31 @@ Future<session_model.DrillResult> buildDrillResultForSession({
   int? reps,
 }) async {
   final uid = FirebaseAuth.instance.currentUser!.uid;
-  final measSnap = await FirebaseFirestore.instance.collection('drills').doc(uid).collection('drills').doc(drillId).collection('measurements').orderBy('order').get();
 
+  // Fetch measurements and last session history in parallel.
+  final results = await Future.wait([
+    FirebaseFirestore.instance.collection('drills').doc(uid).collection('drills').doc(drillId).collection('measurements').orderBy('order').get(),
+    FirebaseFirestore.instance.collection('sessions').doc(uid).collection('sessions').orderBy('started_at', descending: true).limit(20).get(),
+  ]);
+
+  final measSnap = results[0];
+  final sessSnap = results[1];
+
+  // Build deduplicated measurement template.
+  // Use a set of "type|label" keys to skip exact duplicates.
+  final seen = <String>{};
   final measurementResults = measSnap.docs
       .map((doc) {
         final data = doc.data();
         if ((data['role'] as String?) == 'result') {
+          final type = (data['type'] as String?) ?? 'amount';
+          final label = (data['label'] as String?) ?? '';
+          final key = '$type|$label';
+          if (seen.contains(key)) return null; // skip duplicate
+          seen.add(key);
           return MeasurementResult(
-            (data['type'] as String?) ?? 'amount',
-            (data['label'] as String?) ?? '',
+            type,
+            label,
             (data['order'] as int?) ?? 0,
             null, // starts null – recorded during session
           );
@@ -334,6 +410,48 @@ Future<session_model.DrillResult> buildDrillResultForSession({
       })
       .whereType<MeasurementResult>()
       .toList();
+
+  // Find the most recent session that contains this drill and extract
+  // per-set defaults indexed by set position.
+  List<List<num?>> historicSetValues = []; // historicSetValues[setIndex][measIndex]
+  for (final sessionDoc in sessSnap.docs) {
+    final data = sessionDoc.data();
+    final drillResultsList = data['drill_results'] as List?;
+    if (drillResultsList == null) continue;
+    final matchingDrill = drillResultsList.cast<Map<String, dynamic>>().cast<Map<String, dynamic>?>().firstWhere(
+          (d) => d?['drill_id'] == drillId,
+          orElse: () => null,
+        );
+    if (matchingDrill == null) continue;
+
+    final setResultsList = matchingDrill['set_results'] as List?;
+    if (setResultsList == null || setResultsList.isEmpty) continue;
+
+    historicSetValues = setResultsList.map<List<num?>>((s) {
+      final measList = (s as Map<String, dynamic>)['measurement_results'] as List?;
+      if (measList == null) return [];
+      return measList.map<num?>((m) => (m as Map<String, dynamic>)['value'] as num?).toList();
+    }).toList();
+    break; // use the most recent match only
+  }
+
+  // Build a set pre-filled with historic values for the given set position.
+  // Falls back to 0 for each measurement when no history exists.
+  session_model.SetResult makeSet(int setIndex) {
+    final meas = <MeasurementResult>[];
+    for (var mi = 0; mi < measurementResults.length; mi++) {
+      final m = measurementResults[mi];
+      num? defaultVal;
+      if (setIndex < historicSetValues.length) {
+        final vals = historicSetValues[setIndex];
+        if (mi < vals.length) defaultVal = vals[mi];
+      }
+      // Default to 0 when no history (per spec).
+      defaultVal ??= 0;
+      meas.add(MeasurementResult(m.type, m.label, m.order, defaultVal));
+    }
+    return session_model.SetResult(measurementResults: meas);
+  }
 
   return session_model.DrillResult(
     drillId,
@@ -346,8 +464,9 @@ Future<session_model.DrillResult> buildDrillResultForSession({
     sets: sets,
     reps: reps,
     measurementResults: measurementResults,
+    historicSetValues: historicSetValues,
     // Seed the first set from the measurement template so the user is
     // immediately shown a set row to fill in.
-    setResults: [session_model.SetResult.fromTemplate(measurementResults)],
+    setResults: [makeSet(0)],
   );
 }
