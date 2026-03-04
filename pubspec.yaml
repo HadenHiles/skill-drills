@@ -80,9 +80,9 @@ flutter_launcher_icons:
 # ── Splash screen generation (flutter pub run flutter_native_splash:create) ───
 flutter_native_splash:
   color: "#02A4DD"
-  image: "assets/images/logo/SkillDrillsDark.png"
+  image: "assets/images/icons/icon-512.png"
   android_12:
-    image: "assets/images/logo/SkillDrillsDark.png"
+    image: "assets/images/icons/icon-512.png"
     color: "#02A4DD"
     icon_background_color: "#02A4DD"
   ios: true
