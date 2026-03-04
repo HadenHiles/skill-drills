@@ -5,16 +5,20 @@ allprojects {
     }
 }
 
-// Suppress "source/target value 8 is obsolete" warnings from plugin dependencies
-// by lifting all subprojects to Java 11 at the Gradle level.
+// Align all subprojects to Java 17 to match Kotlin's default JVM target.
 subprojects {
     afterEvaluate { project ->
         if (project.hasProperty('android')) {
             project.android {
                 if (it.compileOptions) {
                     compileOptions {
-                        sourceCompatibility JavaVersion.VERSION_11
-                        targetCompatibility JavaVersion.VERSION_11
+                        sourceCompatibility JavaVersion.VERSION_17
+                        targetCompatibility JavaVersion.VERSION_17
+                    }
+                }
+                if (it.hasProperty('kotlinOptions')) {
+                    kotlinOptions {
+                        jvmTarget = '17'
                     }
                 }
             }
