@@ -63,10 +63,28 @@ void addUser() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 Future<void> bootstrapActivities({List<String> selectedActivities = const []}) async {
-  final snapshot = await FirebaseFirestore.instance.collection("activities").doc(auth.currentUser!.uid).collection("activities").get();
+  final uid = auth.currentUser!.uid;
+  final snapshot = await FirebaseFirestore.instance.collection("activities").doc(uid).collection("activities").get();
+
   if (snapshot.docs.isEmpty) {
+    // New user — seed the full activity list respecting onboarding selections.
     await resetActivities(selectedActivities: selectedActivities);
+    return;
   }
+
+  if (selectedActivities.isEmpty) return;
+
+  // Returning user who went through the welcome screen again (e.g. fresh
+  // install). Update each existing activity's is_active flag to reflect the
+  // selections made during onboarding, without touching any other fields.
+  final batch = FirebaseFirestore.instance.batch();
+  for (final doc in snapshot.docs) {
+    final title = doc.data()['title'] as String?;
+    if (title == null) continue;
+    final shouldBeActive = selectedActivities.contains(title);
+    batch.update(doc.reference, {'is_active': shouldBeActive});
+  }
+  await batch.commit();
 }
 
 Future<void> resetActivities({List<String> selectedActivities = const []}) async {
