@@ -207,13 +207,13 @@ class _ProfileSettingsState extends State<ProfileSettings> {
                     title: Text(
                       'You\'re a Pro member!',
                       style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                            color: Theme.of(context).colorScheme.primary,
+                            color: Theme.of(context).primaryColor,
                             fontWeight: FontWeight.w700,
                           ),
                     ),
                     leading: Icon(
                       Icons.verified,
-                      color: Theme.of(context).colorScheme.primary,
+                      color: Theme.of(context).colorScheme.onPrimary,
                     ),
                   ),
                   SettingsTile(
