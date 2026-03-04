@@ -5,6 +5,26 @@ allprojects {
     }
 }
 
+// Suppress "source/target value 8 is obsolete" warnings from plugin dependencies
+// by lifting all subprojects to Java 11 at the Gradle level.
+subprojects {
+    afterEvaluate { project ->
+        if (project.hasProperty('android')) {
+            project.android {
+                if (it.compileOptions) {
+                    compileOptions {
+                        sourceCompatibility JavaVersion.VERSION_11
+                        targetCompatibility JavaVersion.VERSION_11
+                    }
+                }
+            }
+        }
+        project.tasks.withType(JavaCompile).configureEach {
+            options.compilerArgs += ['-Xlint:-options']
+        }
+    }
+}
+
 rootProject.buildDir = '../build'
 subprojects {
     project.buildDir = "${rootProject.buildDir}/${project.name}"
