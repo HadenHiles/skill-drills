@@ -17,9 +17,13 @@ import 'package:skilldrills/theme/theme.dart';
 final FirebaseAuth auth = FirebaseAuth.instance;
 
 class DrillDetail extends StatefulWidget {
-  const DrillDetail({super.key, this.drill});
+  const DrillDetail({super.key, this.drill, this.initialActivity});
 
   final Drill? drill;
+
+  /// When set, the Activity selector is pre-populated with this value.
+  /// Used when launching DrillDetail from an active session.
+  final Activity? initialActivity;
 
   @override
   State<DrillDetail> createState() => _DrillDetailState();
@@ -50,6 +54,12 @@ class _DrillDetailState extends State<DrillDetail> {
   void initState() {
     super.initState();
 
+    // Pre-populate activity when provided (e.g. launched from a session)
+    if (widget.initialActivity != null) {
+      _activity = widget.initialActivity;
+      _drill = Drill(_drill!.title, _drill!.description, widget.initialActivity, _drill!.drillType);
+    }
+
     // Load the activities first
     FirebaseFirestore.instance.collection("activities").doc(auth.currentUser!.uid).collection("activities").get().then((snapshot) async {
       List<Activity> activities = [];
@@ -59,9 +69,12 @@ class _DrillDetailState extends State<DrillDetail> {
           await _getCategories(doc.reference).then((categories) {
             a.skills = categories;
 
-            if (widget.drill?.reference != null && a == widget.drill!.activity) {
+            final preselect = widget.initialActivity ?? widget.drill?.activity;
+            if (preselect != null && a == preselect) {
+              // Replace the stub with the fully-loaded activity (includes skills)
               setState(() {
-                _activity!.skills = a.skills;
+                _activity = a;
+                _drill = Drill(_drill!.title, _drill!.description, a, _drill!.drillType);
               });
             }
 
@@ -70,7 +83,6 @@ class _DrillDetailState extends State<DrillDetail> {
         }).then((_) {
           setState(() {
             _activities = activities;
-            _activity = _activity;
           });
         });
       }

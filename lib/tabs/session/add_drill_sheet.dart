@@ -134,9 +134,18 @@ class _AddDrillSheetState extends State<_AddDrillSheet> {
   // ── Create new drill ───────────────────────────────────────────────────────
 
   Future<void> _createNewDrill() async {
+    // Pass the locked/preferred activity so DrillDetail pre-selects it
+    final lockedTitle = sessionService.lockedActivityTitle;
+    final Activity? initialActivity = lockedTitle != null
+        ? _activities.cast<Activity?>().firstWhere(
+              (a) => a?.title == lockedTitle,
+              orElse: () => null,
+            )
+        : null;
+
     final newDrill = await navigatorKey.currentState!.push<Drill?>(
       PageRouteBuilder(
-        pageBuilder: (ctx, anim, _) => const DrillDetail(),
+        pageBuilder: (ctx, anim, _) => DrillDetail(initialActivity: initialActivity),
         transitionDuration: const Duration(milliseconds: 320),
         transitionsBuilder: (ctx, anim, _, child) {
           final slide = Tween<Offset>(
