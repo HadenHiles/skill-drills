@@ -1,0 +1,5 @@
+{
+  "java.jdt.ls.java.home": "/Applications/Android Studio.app/Contents/jbr/Contents/Home",
+  "gradle.javaHome": "/Applications/Android Studio.app/Contents/jbr/Contents/Home",
+  "java.jdt.ls.vmargs": "-XX:+UseParallelGC -XX:GCTimeRatio=4 -XX:AdaptiveSizePolicyWeight=90 -Dsun.zip.disableMemoryMapping=true -Xmx4G -Xms100m -Xlog:disable"
+}
