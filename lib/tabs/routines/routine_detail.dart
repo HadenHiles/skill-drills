@@ -13,6 +13,7 @@ import 'package:skilldrills/services/factory.dart' as firestore_factory;
 import 'package:skilldrills/tabs/drills/drill_detail.dart';
 import 'package:skilldrills/theme/theme.dart';
 import 'package:skilldrills/widgets/basic_title.dart';
+import 'package:skilldrills/widgets/paywall_screen.dart';
 
 final FirebaseAuth _auth = FirebaseAuth.instance;
 
@@ -164,7 +165,10 @@ class _RoutineDetailState extends State<RoutineDetail> {
                   'Not Now',
                   () => Navigator.of(context).pop(),
                   'Upgrade',
-                  () => Navigator.of(context).pop(), // TODO: navigate to paywall
+                  () {
+                    Navigator.of(context).pop();
+                    navigatorKey.currentState!.push(MaterialPageRoute(builder: (_) => const PaywallScreen()));
+                  },
                   icon: Icons.workspace_premium_rounded,
                   isDangerous: false,
                 ),

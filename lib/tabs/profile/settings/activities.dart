@@ -10,6 +10,7 @@ import 'package:skilldrills/services/subscription.dart';
 import 'package:skilldrills/tabs/profile/settings/activity_detail.dart';
 import 'package:skilldrills/tabs/profile/settings/activity_item.dart';
 import 'package:skilldrills/widgets/basic_title.dart';
+import 'package:skilldrills/widgets/paywall_screen.dart';
 
 final FirebaseAuth auth = FirebaseAuth.instance;
 final user = FirebaseAuth.instance.currentUser;
@@ -110,7 +111,7 @@ class _ActivitiesSettingsState extends State<ActivitiesSettings> {
               "Upgrade",
               () {
                 Navigator.of(context).pop();
-                // TODO: Navigate to the subscription / upgrade screen.
+                navigatorKey.currentState!.push(MaterialPageRoute(builder: (_) => const PaywallScreen()));
               },
             ),
           );

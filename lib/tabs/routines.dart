@@ -5,9 +5,11 @@ import 'package:skilldrills/models/firestore/routine.dart';
 import 'package:skilldrills/models/firestore/skill_drill_user.dart';
 import 'package:skilldrills/models/skill_drills_dialog.dart';
 import 'package:skilldrills/services/dialogs.dart';
+import 'package:skilldrills/main.dart';
 import 'package:skilldrills/services/factory.dart' as firestore_factory;
 import 'package:skilldrills/tabs/routines/routine_item.dart';
 import 'package:skilldrills/theme/theme.dart';
+import 'package:skilldrills/widgets/paywall_screen.dart';
 
 final FirebaseAuth _auth = FirebaseAuth.instance;
 
@@ -78,7 +80,10 @@ class _RoutinesState extends State<Routines> with SingleTickerProviderStateMixin
         'Not Now',
         () => Navigator.of(context).pop(),
         'Upgrade',
-        () => Navigator.of(context).pop(), // TODO: navigate to paywall
+        () {
+          Navigator.of(context).pop();
+          navigatorKey.currentState!.push(MaterialPageRoute(builder: (_) => const PaywallScreen()));
+        },
         icon: Icons.workspace_premium_rounded,
         isDangerous: false,
       ),
