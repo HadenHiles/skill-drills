@@ -29,8 +29,45 @@ class SessionService extends ChangeNotifier {
   // ── In-progress drill results ──────────────────────────────────────────────
   final List<session_model.DrillResult> _drillResults = [];
 
-  List<session_model.DrillResult> get drillResults =>
-      List.unmodifiable(_drillResults);
+  List<session_model.DrillResult> get drillResults => List.unmodifiable(_drillResults);
+
+  // ── Active drill index (drives the tab bar + PageView) ────────────────────
+  int _currentDrillIndex = 0;
+  int get currentDrillIndex => _currentDrillIndex;
+
+  void setCurrentDrillIndex(int index) {
+    _currentDrillIndex = index.clamp(0, _drillResults.isEmpty ? 0 : _drillResults.length - 1);
+    notifyListeners();
+  }
+
+  // ── Rest-timer countdown ───────────────────────────────────────────────────
+  int? _restCountdown;
+  Timer? _restTimer;
+
+  int? get restCountdown => _restCountdown;
+
+  void startRestCountdown(int seconds) {
+    _restTimer?.cancel();
+    _restCountdown = seconds;
+    notifyListeners();
+    _restTimer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (_restCountdown != null && _restCountdown! > 0) {
+        _restCountdown = _restCountdown! - 1;
+        notifyListeners();
+      } else {
+        t.cancel();
+        _restCountdown = null;
+        notifyListeners();
+      }
+    });
+  }
+
+  void clearRestCountdown() {
+    _restTimer?.cancel();
+    _restTimer = null;
+    _restCountdown = null;
+    notifyListeners();
+  }
 
   /// True while [finishSession] is persisting to Firestore.
   bool _saving = false;
@@ -51,8 +88,13 @@ class SessionService extends ChangeNotifier {
 
   static String defaultSessionTitle() {
     const days = [
-      'Monday', 'Tuesday', 'Wednesday', 'Thursday',
-      'Friday', 'Saturday', 'Sunday',
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+      'Sunday',
     ];
     return '${days[DateTime.now().weekday - 1]} Session';
   }
@@ -91,6 +133,10 @@ class SessionService extends ChangeNotifier {
     _routineId = null;
     _routineTitle = null;
     _drillResults.clear();
+    _currentDrillIndex = 0;
+    _restTimer?.cancel();
+    _restTimer = null;
+    _restCountdown = null;
     notifyListeners();
   }
 
@@ -104,21 +150,90 @@ class SessionService extends ChangeNotifier {
   void removeDrill(int index) {
     if (index >= 0 && index < _drillResults.length) {
       _drillResults.removeAt(index);
+      // Keep currentDrillIndex in bounds
+      if (_currentDrillIndex >= _drillResults.length && _drillResults.isNotEmpty) {
+        _currentDrillIndex = _drillResults.length - 1;
+      } else if (_drillResults.isEmpty) {
+        _currentDrillIndex = 0;
+      }
       notifyListeners();
     }
   }
 
-  // ── Measurement updates ────────────────────────────────────────────────────
+  // ── Set management ─────────────────────────────────────────────────────────
+
+  /// Appends a new blank set to the drill, using its measurement template.
+  void addSet(int drillIndex) {
+    if (drillIndex < _drillResults.length) {
+      final drill = _drillResults[drillIndex];
+      drill.setResults.add(session_model.SetResult.fromTemplate(drill.measurementResults));
+      notifyListeners();
+    }
+  }
+
+  void removeSet(int drillIndex, int setIndex) {
+    if (drillIndex < _drillResults.length) {
+      final sets = _drillResults[drillIndex].setResults;
+      if (setIndex >= 0 && setIndex < sets.length) {
+        sets.removeAt(setIndex);
+        notifyListeners();
+      }
+    }
+  }
+
+  /// Toggles the completion flag on a set. If the set is marked complete and
+  /// the drill has a rest timer configured, starts the countdown. If all sets
+  /// in the drill are complete, auto-advances to the next drill after a delay.
+  void toggleSetComplete(int drillIndex, int setIndex) {
+    if (drillIndex >= _drillResults.length) return;
+    final drill = _drillResults[drillIndex];
+    if (setIndex >= drill.setResults.length) return;
+
+    drill.setResults[setIndex].isComplete = !drill.setResults[setIndex].isComplete;
+
+    // Start rest countdown when a set is checked complete
+    if (drill.setResults[setIndex].isComplete && drill.restTimerSeconds != null) {
+      startRestCountdown(drill.restTimerSeconds!);
+    }
+
+    // Auto-advance when all sets in this drill are done
+    if (drill.allSetsComplete && _currentDrillIndex < _drillResults.length - 1) {
+      Future.delayed(const Duration(milliseconds: 700), () {
+        _currentDrillIndex = drillIndex + 1;
+        notifyListeners();
+      });
+    }
+
+    notifyListeners();
+  }
+
+  /// Updates a measurement value within a specific set of a drill.
+  void updateSetMeasurementValue(int drillIndex, int setIndex, int measIndex, num? value) {
+    if (drillIndex < _drillResults.length) {
+      final sets = _drillResults[drillIndex].setResults;
+      if (setIndex < sets.length && measIndex < sets[setIndex].measurementResults.length) {
+        sets[setIndex].measurementResults[measIndex].value = value;
+        notifyListeners();
+      }
+    }
+  }
+
+  /// Sets the rest-timer duration for a drill (null = no rest timer).
+  void setDrillRestTimer(int drillIndex, int? seconds) {
+    if (drillIndex < _drillResults.length) {
+      _drillResults[drillIndex].restTimerSeconds = seconds;
+      notifyListeners();
+    }
+  }
+
+  // ── Legacy measurement / sets updates (kept for compatibility) ─────────────
 
   void updateMeasurementValue(int drillIndex, int measIndex, num? value) {
-    if (drillIndex < _drillResults.length &&
-        measIndex < _drillResults[drillIndex].measurementResults.length) {
+    if (drillIndex < _drillResults.length && measIndex < _drillResults[drillIndex].measurementResults.length) {
       _drillResults[drillIndex].measurementResults[measIndex].value = value;
       notifyListeners();
     }
   }
-
-  // ── Sets / Reps updates ────────────────────────────────────────────────────
 
   void updateDrillSets(int drillIndex, int? sets) {
     if (drillIndex < _drillResults.length) {
@@ -156,11 +271,7 @@ class SessionService extends ChangeNotifier {
 
     try {
       final uid = FirebaseAuth.instance.currentUser!.uid;
-      await FirebaseFirestore.instance
-          .collection('sessions')
-          .doc(uid)
-          .collection('sessions')
-          .add(session.toMap());
+      await FirebaseFirestore.instance.collection('sessions').doc(uid).collection('sessions').add(session.toMap());
     } finally {
       _saving = false;
       reset();
@@ -170,8 +281,7 @@ class SessionService extends ChangeNotifier {
   // ── Provider ───────────────────────────────────────────────────────────────
 
   static SessionService of(BuildContext context) {
-    final provider = context
-        .dependOnInheritedWidgetOfExactType<SessionServiceProvider>()!;
+    final provider = context.dependOnInheritedWidgetOfExactType<SessionServiceProvider>()!;
     return provider.service;
   }
 }
@@ -186,8 +296,7 @@ class SessionServiceProvider extends InheritedWidget {
   final SessionService service;
 
   @override
-  bool updateShouldNotify(SessionServiceProvider oldWidget) =>
-      service != oldWidget.service;
+  bool updateShouldNotify(SessionServiceProvider oldWidget) => service != oldWidget.service;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -208,14 +317,7 @@ Future<session_model.DrillResult> buildDrillResultForSession({
   int? reps,
 }) async {
   final uid = FirebaseAuth.instance.currentUser!.uid;
-  final measSnap = await FirebaseFirestore.instance
-      .collection('drills')
-      .doc(uid)
-      .collection('drills')
-      .doc(drillId)
-      .collection('measurements')
-      .orderBy('order')
-      .get();
+  final measSnap = await FirebaseFirestore.instance.collection('drills').doc(uid).collection('drills').doc(drillId).collection('measurements').orderBy('order').get();
 
   final measurementResults = measSnap.docs
       .map((doc) {
@@ -244,5 +346,8 @@ Future<session_model.DrillResult> buildDrillResultForSession({
     sets: sets,
     reps: reps,
     measurementResults: measurementResults,
+    // Seed the first set from the measurement template so the user is
+    // immediately shown a set row to fill in.
+    setResults: [session_model.SetResult.fromTemplate(measurementResults)],
   );
 }

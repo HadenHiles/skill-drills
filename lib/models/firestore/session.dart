@@ -1,11 +1,46 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:skilldrills/models/firestore/measurement_result.dart';
 
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// SetResult – the recorded data for one set within a [DrillResult].
+///
+/// Each set has its own [measurementResults] (deep-copied from the drill's
+/// measurement template) and a completion flag.
+class SetResult {
+  bool isComplete;
+
+  /// One [MeasurementResult] per result-role measurement, deep-copied from the
+  /// drill's measurement template when the set is created. Values start null.
+  List<MeasurementResult> measurementResults;
+
+  SetResult({
+    this.isComplete = false,
+    List<MeasurementResult>? measurementResults,
+  }) : measurementResults = measurementResults ?? [];
+
+  /// Create a blank set by deep-copying the drill's measurement template.
+  factory SetResult.fromTemplate(List<MeasurementResult> template) => SetResult(
+        measurementResults: template.map((m) => MeasurementResult(m.type, m.label, m.order, null)).toList(),
+      );
+
+  Map<String, dynamic> toMap() => {
+        'is_complete': isComplete,
+        'measurement_results': measurementResults.map((m) => m.toMap()).toList(),
+      };
+
+  SetResult.fromMap(Map<String, dynamic> map)
+      : isComplete = (map['is_complete'] as bool?) ?? false,
+        measurementResults = (map['measurement_results'] as List?)?.map((m) => MeasurementResult.fromMap(m as Map<String, dynamic>)).toList() ?? [];
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 /// DrillResult – all recorded data for one drill within a session.
 /// Embedded as a list inside the [Session] document.
 ///
-/// [setsLabel] / [repsLabel] are denormalised from the parent Activity so the
-/// History UI can display the correct terminology without a secondary lookup.
+/// [setsLabel] is denormalised from the parent Activity so the History UI can
+/// display the correct terminology without a secondary lookup.
 class DrillResult {
   final String drillId;
   final String drillTitle;
@@ -19,15 +54,21 @@ class DrillResult {
   final String setsLabel;
   final String repsLabel;
 
-  /// How many sets the athlete performed for this drill.
+  // Legacy fields – preserved for backward-compat with old Firestore documents.
   int? sets;
-
-  /// How many reps per set.
   int? reps;
 
-  /// One [MeasurementResult] per result-role measurement defined on this drill.
-  /// Values are null until the athlete records them.
+  /// Optional rest period in seconds shown between sets / after this drill.
+  int? restTimerSeconds;
+
+  /// Measurement template (role="result"). Values are always null here; this
+  /// list defines type/label/order for creating new [SetResult]s.
   List<MeasurementResult> measurementResults;
+
+  /// Each set the athlete performs. One row in the session UI per entry.
+  List<SetResult> setResults;
+
+  DocumentReference? reference;
 
   DrillResult(
     this.drillId,
@@ -39,8 +80,17 @@ class DrillResult {
     this.repsLabel = 'Reps',
     this.sets,
     this.reps,
+    this.restTimerSeconds,
     List<MeasurementResult>? measurementResults,
-  }) : measurementResults = measurementResults ?? [];
+    List<SetResult>? setResults,
+  })  : measurementResults = measurementResults ?? [],
+        setResults = setResults ?? [];
+
+  // ── Computed helpers ───────────────────────────────────────────────────────
+
+  bool get allSetsComplete => setResults.isNotEmpty && setResults.every((s) => s.isComplete);
+
+  int get completedSetCount => setResults.where((s) => s.isComplete).length;
 
   // ── Serialisation ──────────────────────────────────────────────────────────
 
@@ -54,7 +104,9 @@ class DrillResult {
         'reps_label': repsLabel,
         if (sets != null) 'sets': sets,
         if (reps != null) 'reps': reps,
+        if (restTimerSeconds != null) 'rest_timer_seconds': restTimerSeconds,
         'measurement_results': measurementResults.map((m) => m.toMap()).toList(),
+        'set_results': setResults.map((s) => s.toMap()).toList(),
       };
 
   DrillResult.fromMap(Map<String, dynamic> map)
@@ -67,7 +119,9 @@ class DrillResult {
         repsLabel = (map['reps_label'] as String?) ?? 'Reps',
         sets = map['sets'] != null ? (map['sets'] as num).toInt() : null,
         reps = map['reps'] != null ? (map['reps'] as num).toInt() : null,
-        measurementResults = (map['measurement_results'] as List?)?.map((m) => MeasurementResult.fromMap(m as Map<String, dynamic>)).toList() ?? [];
+        restTimerSeconds = map['rest_timer_seconds'] != null ? (map['rest_timer_seconds'] as num).toInt() : null,
+        measurementResults = (map['measurement_results'] as List?)?.map((m) => MeasurementResult.fromMap(m as Map<String, dynamic>)).toList() ?? [],
+        setResults = (map['set_results'] as List?)?.map((s) => SetResult.fromMap(s as Map<String, dynamic>)).toList() ?? [];
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -118,7 +172,12 @@ class Session {
 
   int get totalMeasurementsRecorded => drillResults.fold<int>(
         0,
-        (acc, d) => acc + d.measurementResults.where((m) => m.value != null).length,
+        (acc, d) =>
+            acc +
+            d.setResults.fold<int>(
+              0,
+              (sAcc, s) => sAcc + s.measurementResults.where((m) => m.value != null).length,
+            ),
       );
 
   List<String> get activityTitles => drillResults.map((d) => d.activityTitle).toSet().toList();
