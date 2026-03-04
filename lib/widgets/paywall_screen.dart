@@ -629,6 +629,7 @@ class _Footer extends StatelessWidget {
   final Package? selectedPackage;
   final VoidCallback onPurchase;
   final VoidCallback onRestore;
+
   /// When non-null, renders a "Skip" button instead of "Restore Purchases".
   final VoidCallback? onSkip;
   final bool isDark;
@@ -698,9 +699,7 @@ class _Footer extends StatelessWidget {
           const SizedBox(height: 8),
           // Restore purchases / Skip
           TextButton(
-            onPressed: onSkip != null
-                ? onSkip
-                : (restoring ? null : onRestore),
+            onPressed: onSkip ?? (restoring ? null : onRestore),
             style: TextButton.styleFrom(
               foregroundColor: isDark ? SkillDrillsColors.darkOnSurfaceMuted : SkillDrillsColors.lightOnSurfaceMuted,
               padding: const EdgeInsets.symmetric(vertical: 4),
