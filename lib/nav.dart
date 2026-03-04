@@ -172,14 +172,14 @@ class _NavState extends State<Nav> {
 
   @override
   void initState() {
+    super.initState();
+
     setState(() {
       _title = lightLogo;
       _actions = [];
     });
 
     bootstrap();
-
-    super.initState();
   }
 
   @override
