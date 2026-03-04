@@ -220,61 +220,63 @@ class _NavState extends State<Nav> {
                 ),
                 child: Column(
                   children: [
-                    ListTile(
-                      tileColor: Theme.of(context).primaryColor,
-                      title: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              sessionService.sessionTitle ?? SessionService.defaultSessionTitle(),
-                              style: TextStyle(
-                                color: Theme.of(context).colorScheme.onSecondary,
-                                fontFamily: "Choplin",
-                                fontSize: 20,
-                                fontWeight: FontWeight.w700,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: <Widget>[
-                              Text(
-                                printDuration(sessionService.currentDuration),
-                                style: TextStyle(
-                                  color: Theme.of(context).colorScheme.onSecondary,
+                    Material(
+                      color: Theme.of(context).primaryColor,
+                      child: ListTile(
+                        title: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                sessionService.sessionTitle ?? SessionService.defaultSessionTitle(),
+                                style: const TextStyle(
+                                  color: Colors.white,
                                   fontFamily: "Choplin",
-                                  fontSize: 18,
+                                  fontSize: 20,
                                   fontWeight: FontWeight.w700,
                                 ),
+                                overflow: TextOverflow.ellipsis,
                               ),
-                            ],
-                          ),
-                        ],
-                      ),
-                      trailing: InkWell(
-                        child: Icon(
-                          _sessionPanelState == PanelState.CLOSED ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
-                          color: Theme.of(context).colorScheme.onSecondary,
+                            ),
+                            const SizedBox(width: 12),
+                            Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: <Widget>[
+                                Text(
+                                  printDuration(sessionService.currentDuration),
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontFamily: "Choplin",
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(vertical: 5, horizontal: 20),
-                      onTap: () {
-                        if (sessionPanelController.isPanelClosed) {
-                          sessionPanelController.open();
-                          setState(() {
-                            _sessionPanelState = PanelState.OPEN;
-                          });
-                        } else {
-                          sessionPanelController.close();
-                          setState(() {
-                            _sessionPanelState = PanelState.CLOSED;
-                          });
-                        }
-                      },
-                    ),
+                        trailing: InkWell(
+                          child: Icon(
+                            _sessionPanelState == PanelState.CLOSED ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                            color: Colors.white,
+                          ),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(vertical: 5, horizontal: 20),
+                        onTap: () {
+                          if (sessionPanelController.isPanelClosed) {
+                            sessionPanelController.open();
+                            setState(() {
+                              _sessionPanelState = PanelState.OPEN;
+                            });
+                          } else {
+                            sessionPanelController.close();
+                            setState(() {
+                              _sessionPanelState = PanelState.CLOSED;
+                            });
+                          }
+                        },
+                      ), // ListTile
+                    ), // Material
                     Expanded(
                       child: Session(
                         sessionPanelController: sessionPanelController,

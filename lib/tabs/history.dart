@@ -1,9 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:skilldrills/models/firestore/routine.dart';
 import 'package:skilldrills/models/firestore/session.dart';
 import 'package:skilldrills/models/skill_drills_dialog.dart';
 import 'package:skilldrills/services/dialogs.dart';
+import 'package:skilldrills/services/factory.dart' as firestore_factory;
 import 'package:skilldrills/theme/theme.dart';
 
 final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -218,6 +220,69 @@ class _SessionCard extends StatefulWidget {
 
 class _SessionCardState extends State<_SessionCard> {
   bool _expanded = false;
+  bool _savingRoutine = false;
+
+  Future<void> _createRoutineFromSession() async {
+    final session = widget.session;
+    if (session.drillResults.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No drills in this session to save as a routine.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    final titleCtrl = TextEditingController(text: session.title);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Save as Routine', style: TextStyle(fontFamily: 'Choplin')),
+        content: TextField(
+          controller: titleCtrl,
+          autofocus: true,
+          textCapitalization: TextCapitalization.sentences,
+          decoration: const InputDecoration(labelText: 'Routine name'),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Save')),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    final routineTitle = titleCtrl.text.trim().isEmpty ? session.title : titleCtrl.text.trim();
+    final firstDrill = session.drillResults.first;
+    final activityTitle = firstDrill.activityTitle.isNotEmpty ? firstDrill.activityTitle : null;
+
+    final drills = session.drillResults.asMap().entries.map((e) {
+      return RoutineDrill(e.value.drillId, e.value.drillTitle, e.key + 1);
+    }).toList();
+
+    final routine = Routine(
+      routineTitle,
+      '',
+      activityTitle: activityTitle,
+      drills: drills,
+      createdAt: DateTime.now(),
+    );
+
+    if (mounted) setState(() => _savingRoutine = true);
+    try {
+      await firestore_factory.saveRoutine(routine);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('"$routineTitle" saved as a routine!'),
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => _savingRoutine = false);
+    }
+  }
 
   String _formatTime(DateTime dt) {
     final hour = dt.hour % 12 == 0 ? 12 : dt.hour % 12;
@@ -292,19 +357,31 @@ class _SessionCardState extends State<_SessionCard> {
               child: Column(
                 children: [
                   ...session.drillResults.map((d) => _DrillResultTile(drillResult: d)),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton.icon(
-                      style: TextButton.styleFrom(
-                        foregroundColor: Theme.of(context).colorScheme.error,
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        minimumSize: Size.zero,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      TextButton.icon(
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        icon: _savingRoutine ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.event_note_rounded, size: 16),
+                        label: const Text('Save as Routine'),
+                        onPressed: _savingRoutine ? null : _createRoutineFromSession,
                       ),
-                      icon: const Icon(Icons.delete_outline_rounded, size: 16),
-                      label: const Text('Delete session'),
-                      onPressed: widget.onDelete,
-                    ),
+                      TextButton.icon(
+                        style: TextButton.styleFrom(
+                          foregroundColor: Theme.of(context).colorScheme.error,
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        icon: const Icon(Icons.delete_outline_rounded, size: 16),
+                        label: const Text('Delete session'),
+                        onPressed: widget.onDelete,
+                      ),
+                    ],
                   ),
                 ],
               ),

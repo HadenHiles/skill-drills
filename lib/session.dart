@@ -278,11 +278,11 @@ class _SessionState extends State<Session> with SingleTickerProviderStateMixin {
   Widget _buildDrillTabBar(BuildContext context, List<session_model.DrillResult> drills) {
     final active = sessionService.currentDrillIndex;
     return SizedBox(
-      height: 68,
+      height: 92,
       child: ListView.builder(
         controller: _tabScrollCtrl,
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: const EdgeInsets.fromLTRB(12, 6, 12, 6),
         itemCount: drills.length + 1,
         itemBuilder: (context, i) {
           if (i == drills.length) {
@@ -291,18 +291,37 @@ class _SessionState extends State<Session> with SingleTickerProviderStateMixin {
               padding: const EdgeInsets.only(right: 8),
               child: GestureDetector(
                 onTap: _addDrill,
-                child: Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Theme.of(context).primaryColor.withAlpha(12),
-                    border: Border.all(
-                      color: Theme.of(context).primaryColor.withAlpha(80),
-                      width: 1.5,
-                    ),
+                child: SizedBox(
+                  width: 56,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const SizedBox(height: 16), // align circle with drill circles
+                      Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Theme.of(context).primaryColor.withAlpha(12),
+                          border: Border.all(
+                            color: Theme.of(context).primaryColor.withAlpha(80),
+                            width: 1.5,
+                          ),
+                        ),
+                        child: Icon(Icons.add_rounded, color: Theme.of(context).primaryColor, size: 20),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Add',
+                        style: TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w600,
+                          fontFamily: 'Choplin',
+                          color: Theme.of(context).primaryColor,
+                        ),
+                      ),
+                    ],
                   ),
-                  child: Icon(Icons.add_rounded, color: Theme.of(context).primaryColor, size: 20),
                 ),
               ),
             );
@@ -326,38 +345,80 @@ class _SessionState extends State<Session> with SingleTickerProviderStateMixin {
                     curve: Curves.easeInOut,
                   );
                 },
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: isDone
-                        ? SkillDrillsColors.success.withAlpha(30)
-                        : isActive
-                            ? Theme.of(context).primaryColor
-                            : Theme.of(context).primaryColor.withAlpha(18),
-                    border: Border.all(
-                      color: isDone
-                          ? SkillDrillsColors.success
-                          : isActive
-                              ? Theme.of(context).primaryColor
-                              : Theme.of(context).dividerColor,
-                      width: isActive || isDone ? 2.0 : 1.0,
-                    ),
-                  ),
-                  child: Center(
-                    child: isDone
-                        ? Icon(Icons.check_rounded, color: SkillDrillsColors.success, size: 20)
-                        : Text(
-                            _initials(drill.drillTitle),
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w800,
-                              fontFamily: 'Choplin',
-                              color: isActive ? Colors.white : Theme.of(context).textTheme.bodyMedium?.color,
-                            ),
+                child: SizedBox(
+                  width: 56,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // Number label
+                      Text(
+                        '#${i + 1}',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          fontFamily: 'Choplin',
+                          color: isDone
+                              ? SkillDrillsColors.success
+                              : isActive
+                                  ? Theme.of(context).primaryColor
+                                  : Theme.of(context).colorScheme.onPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      // Circle
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: isDone
+                              ? SkillDrillsColors.success.withAlpha(30)
+                              : isActive
+                                  ? Theme.of(context).primaryColor
+                                  : Theme.of(context).primaryColor.withAlpha(18),
+                          border: Border.all(
+                            color: isDone
+                                ? SkillDrillsColors.success
+                                : isActive
+                                    ? Theme.of(context).primaryColor
+                                    : Theme.of(context).dividerColor,
+                            width: isActive || isDone ? 2.0 : 1.0,
                           ),
+                        ),
+                        child: Center(
+                          child: isDone
+                              ? Icon(Icons.check_rounded, color: SkillDrillsColors.success, size: 20)
+                              : Text(
+                                  _initials(drill.drillTitle),
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w800,
+                                    fontFamily: 'Choplin',
+                                    color: isActive ? Colors.white : Theme.of(context).textTheme.bodyMedium?.color,
+                                  ),
+                                ),
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      // Drill name label
+                      Text(
+                        drill.drillTitle,
+                        style: TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w600,
+                          fontFamily: 'Choplin',
+                          color: isDone
+                              ? SkillDrillsColors.success
+                              : isActive
+                                  ? Theme.of(context).primaryColor
+                                  : Theme.of(context).colorScheme.onPrimary,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -547,38 +608,53 @@ class _DrillPage extends StatelessWidget {
           ),
         const Divider(height: 1),
 
-        // Set rows
+        // Set rows + Add set button (inline, right below last set)
         Expanded(
-          child: sets.isEmpty
-              ? Center(
-                  child: Text(
-                    'No sets yet — tap "Add $setLabel" below',
-                    style: Theme.of(context).textTheme.bodyMedium,
+          child: ListView.builder(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+            itemCount: sets.isEmpty ? 2 : sets.length + 1,
+            itemBuilder: (context, index) {
+              // Empty state message (only when no sets)
+              if (sets.isEmpty && index == 0) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 24),
+                  child: Center(
+                    child: Text(
+                      'No ${setLabel}s yet',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
                   ),
-                )
-              : ListView.separated(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                  itemCount: sets.length,
-                  separatorBuilder: (_, __) => const Divider(height: 1),
-                  itemBuilder: (context, setIndex) => _SetRow(
+                );
+              }
+              // "Add set" button — last item always
+              if (index == sets.length) {
+                return Padding(
+                  padding: EdgeInsets.only(top: sets.isEmpty ? 0 : 8),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      icon: const Icon(Icons.add_rounded, size: 16),
+                      label: Text('Add $setLabel'),
+                      onPressed: () => sessionService.addSet(drillIndex),
+                    ),
+                  ),
+                );
+              }
+              // Set row with divider between rows
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (index > 0) const Divider(height: 1),
+                  _SetRow(
                     drillIndex: drillIndex,
-                    setIndex: setIndex,
-                    setResult: sets[setIndex],
+                    setIndex: index,
+                    setResult: sets[index],
                     hasMeasurements: hasMeasurements,
+                    activityTitle: drillResult.activityTitle,
                   ),
-                ),
-        ),
-
-        // Add set button
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-          child: SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              icon: const Icon(Icons.add_rounded, size: 16),
-              label: Text('Add $setLabel'),
-              onPressed: () => sessionService.addSet(drillIndex),
-            ),
+                ],
+              );
+            },
           ),
         ),
       ],
@@ -737,12 +813,14 @@ class _SetRow extends StatelessWidget {
     required this.setIndex,
     required this.setResult,
     required this.hasMeasurements,
+    required this.activityTitle,
   });
 
   final int drillIndex;
   final int setIndex;
   final session_model.SetResult setResult;
   final bool hasMeasurements;
+  final String activityTitle;
 
   @override
   Widget build(BuildContext context) {
@@ -802,7 +880,26 @@ class _SetRow extends StatelessWidget {
               width: 42,
               child: Checkbox(
                 value: isComplete,
-                onChanged: (_) => sessionService.toggleSetComplete(drillIndex, setIndex),
+                onChanged: (checked) {
+                  // Always allow unchecking a completed set
+                  if (isComplete) {
+                    sessionService.toggleSetComplete(drillIndex, setIndex);
+                    return;
+                  }
+                  // Block completion if any measurement value is missing/zero
+                  final allFilled = setResult.measurementResults.isEmpty || setResult.measurementResults.every((m) => m.value != null && !(m.type == 'duration' && m.value == 0));
+                  if (!allFilled) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Enter all values before marking this set as done'),
+                        behavior: SnackBarBehavior.floating,
+                        duration: Duration(seconds: 2),
+                      ),
+                    );
+                    return;
+                  }
+                  sessionService.toggleSetComplete(drillIndex, setIndex);
+                },
                 materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 visualDensity: VisualDensity.compact,
               ),
@@ -821,14 +918,16 @@ class _SetRow extends StatelessWidget {
           onChanged: (d) => sessionService.updateSetMeasurementValue(drillIndex, setIndex, measIndex, d.inSeconds),
         );
       case 'rpe':
-        return _ChipInput(
-          values: List.generate(10, (i) => i + 1),
+        // Weight Training drills with legacy 'rpe' measurements are surfaced as RIR.
+        final effectiveType = activityTitle == 'Weight Training' ? 'rir' : 'rpe';
+        return _ScaleInput(
+          type: effectiveType,
           selected: measurement.value?.toInt(),
           onSelected: (v) => sessionService.updateSetMeasurementValue(drillIndex, setIndex, measIndex, v),
         );
       case 'rir':
-        return _ChipInput(
-          values: List.generate(6, (i) => i),
+        return _ScaleInput(
+          type: 'rir',
           selected: measurement.value?.toInt(),
           onSelected: (v) => sessionService.updateSetMeasurementValue(drillIndex, setIndex, measIndex, v),
         );
@@ -1023,49 +1122,228 @@ class _DurationInput extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Chip (RPE / RIR) input
+// Scale (RPE / RIR) input — compact tap-target that opens a color-coded picker
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _ChipInput extends StatelessWidget {
-  const _ChipInput({required this.values, this.selected, required this.onSelected});
+class _ScaleInput extends StatelessWidget {
+  const _ScaleInput({
+    required this.type,
+    this.selected,
+    required this.onSelected,
+  });
 
-  final List<int> values;
+  /// 'rpe' (1–10, low=easy) or 'rir' (0–5, high=easy).
+  final String type;
   final int? selected;
   final ValueChanged<int> onSelected;
 
+  String get _label => type == 'rir' ? 'RIR' : 'RPE';
+
+  /// HSL colour: green (easy) → yellow → red (hard).
+  Color _colorFor(int v) {
+    final double t;
+    if (type == 'rpe') {
+      t = (v - 1) / 9.0;
+    } else {
+      t = (5 - v) / 5.0;
+    }
+    final hue = 120.0 * (1.0 - t);
+    return HSLColor.fromAHSL(1.0, hue, 0.72, 0.42).toColor();
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Wrap(
-      spacing: 4,
-      runSpacing: 4,
-      children: values.map((v) {
-        final isSel = v == selected;
-        return GestureDetector(
-          onTap: () => onSelected(v),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 150),
-            width: 28,
-            height: 28,
-            decoration: BoxDecoration(
-              color: isSel ? Theme.of(context).primaryColor : Theme.of(context).scaffoldBackgroundColor,
-              borderRadius: SkillDrillsRadius.xsBorderRadius,
-              border: Border.all(
-                color: isSel ? Theme.of(context).primaryColor : Theme.of(context).dividerColor,
-              ),
-            ),
-            child: Center(
-              child: Text(
-                '$v',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: isSel ? Colors.white : Theme.of(context).textTheme.bodySmall?.color,
-                ),
-              ),
+    final v = selected;
+    final color = v != null ? _colorFor(v) : null;
+    return GestureDetector(
+      onTap: () => _showPicker(context),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 7),
+        decoration: BoxDecoration(
+          color: color?.withAlpha(30) ?? Theme.of(context).scaffoldBackgroundColor,
+          borderRadius: SkillDrillsRadius.smBorderRadius,
+          border: Border.all(color: color ?? Theme.of(context).dividerColor),
+        ),
+        child: Center(
+          child: Text(
+            v != null ? '$_label\u2009$v' : _label,
+            style: TextStyle(
+              fontSize: 11,
+              fontFamily: 'Choplin',
+              fontWeight: FontWeight.w700,
+              color: color ?? Theme.of(context).colorScheme.onPrimary,
             ),
           ),
-        );
-      }).toList(),
+        ),
+      ),
+    );
+  }
+
+  void _showPicker(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => _ScalePicker(
+        label: _label,
+        type: type,
+        selected: selected,
+        colorFor: _colorFor,
+        onSelected: (v) {
+          onSelected(v);
+          Navigator.of(ctx).pop();
+        },
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _ScalePicker extends StatefulWidget {
+  const _ScalePicker({
+    required this.label,
+    required this.type,
+    required this.selected,
+    required this.colorFor,
+    required this.onSelected,
+  });
+
+  final String label;
+  final String type;
+  final int? selected;
+  final Color Function(int) colorFor;
+  final ValueChanged<int> onSelected;
+
+  @override
+  State<_ScalePicker> createState() => _ScalePickerState();
+}
+
+class _ScalePickerState extends State<_ScalePicker> with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<double> _fade;
+  late final Animation<Offset> _slide;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 300));
+    _fade = CurvedAnimation(parent: _ctrl, curve: Curves.easeOut);
+    _slide = Tween<Offset>(begin: const Offset(0, 0.12), end: Offset.zero).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic));
+    _ctrl.forward();
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  List<int> get _values => widget.type == 'rir' ? List.generate(6, (i) => i) : List.generate(10, (i) => i + 1);
+
+  String get _hint {
+    if (widget.type == 'rpe') return '1 = very easy  ·  10 = maximum effort';
+    return '0 = to failure  ·  5 = very easy';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: _fade,
+      child: SlideTransition(
+        position: _slide,
+        child: Container(
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(SkillDrillsRadius.lg)),
+          ),
+          padding: EdgeInsets.fromLTRB(
+            20,
+            12,
+            20,
+            24 + MediaQuery.of(context).padding.bottom,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Sheet handle
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).dividerColor,
+                    borderRadius: SkillDrillsRadius.fullBorderRadius,
+                  ),
+                ),
+              ),
+              Text(
+                widget.label,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontFamily: 'Choplin',
+                      fontWeight: FontWeight.w700,
+                    ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                _hint,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onPrimary,
+                    ),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: _values.map((v) {
+                  final isSelected = v == widget.selected;
+                  final color = widget.colorFor(v);
+                  return Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 2.5),
+                      child: GestureDetector(
+                        onTap: () => widget.onSelected(v),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 150),
+                          height: 54,
+                          decoration: BoxDecoration(
+                            color: isSelected ? color : color.withAlpha(38),
+                            borderRadius: SkillDrillsRadius.smBorderRadius,
+                            border: Border.all(
+                              color: isSelected ? color : color.withAlpha(100),
+                              width: isSelected ? 2.0 : 1.0,
+                            ),
+                            boxShadow: isSelected
+                                ? [
+                                    BoxShadow(
+                                      color: color.withAlpha(90),
+                                      blurRadius: 6,
+                                      spreadRadius: 0,
+                                    )
+                                  ]
+                                : [],
+                          ),
+                          child: Center(
+                            child: Text(
+                              '$v',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w800,
+                                fontFamily: 'Choplin',
+                                color: isSelected ? Colors.white : color,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 4),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

@@ -26,6 +26,7 @@ class _StartState extends State<Start> with SingleTickerProviderStateMixin {
   late Animation<Offset> _slideAnim;
 
   Stream<List<Routine>>? _routinesStream;
+  Stream<List<session_model.Session>>? _recentSessionsStream;
   final Map<String, bool> _loadingRoutines = {};
 
   @override
@@ -45,6 +46,11 @@ class _StartState extends State<Start> with SingleTickerProviderStateMixin {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid != null) {
       _routinesStream = FirebaseFirestore.instance.collection('routines').doc(uid).collection('routines').orderBy('title').snapshots().map((snap) => snap.docs.map((d) => Routine.fromSnapshot(d)).toList());
+      _recentSessionsStream = FirebaseFirestore.instance.collection('sessions').doc(uid).collection('sessions').orderBy('started_at', descending: true).limit(3).snapshots().map((snap) => snap.docs
+          .map((d) => session_model.Session.fromSnapshot(
+                d as DocumentSnapshot<Map<String, dynamic>>,
+              ))
+          .toList());
     }
   }
 
@@ -228,6 +234,9 @@ class _StartState extends State<Start> with SingleTickerProviderStateMixin {
 
             const SizedBox(height: SkillDrillsSpacing.xl),
 
+            // Recent Sessions section
+            if (_recentSessionsStream != null) ..._buildRecentSessionsSection(),
+
             // Routines section
             Padding(
               padding: const EdgeInsets.only(bottom: SkillDrillsSpacing.sm),
@@ -244,6 +253,35 @@ class _StartState extends State<Start> with SingleTickerProviderStateMixin {
         ),
       ),
     );
+  }
+
+  List<Widget> _buildRecentSessionsSection() {
+    return [
+      Padding(
+        padding: const EdgeInsets.only(bottom: SkillDrillsSpacing.sm),
+        child: Text(
+          'Recent Sessions'.toUpperCase(),
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1.2,
+              ),
+        ),
+      ),
+      StreamBuilder<List<session_model.Session>>(
+        stream: _recentSessionsStream,
+        builder: (context, snap) {
+          if (snap.connectionState == ConnectionState.waiting) {
+            return const Center(child: Padding(padding: EdgeInsets.all(16), child: CircularProgressIndicator()));
+          }
+          final sessions = snap.data ?? [];
+          if (sessions.isEmpty) return const SizedBox.shrink();
+          return Column(
+            children: sessions.map((s) => _RecentSessionCard(session: s)).toList(),
+          );
+        },
+      ),
+      const SizedBox(height: SkillDrillsSpacing.xl),
+    ];
   }
 
   Widget _buildRoutinesSection() {
@@ -346,6 +384,103 @@ class _RoutineCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _RecentSessionCard extends StatelessWidget {
+  const _RecentSessionCard({required this.session});
+
+  final session_model.Session session;
+
+  String _formatTime(DateTime dt) {
+    final hour = dt.hour % 12 == 0 ? 12 : dt.hour % 12;
+    final min = dt.minute.toString().padLeft(2, '0');
+    final period = dt.hour >= 12 ? 'PM' : 'AM';
+    return '$hour:$min $period';
+  }
+
+  String _formatDuration(int? seconds) {
+    if (seconds == null || seconds == 0) return '—';
+    final d = Duration(seconds: seconds);
+    if (d.inHours >= 1) return '${d.inHours}h ${d.inMinutes.remainder(60)}m';
+    if (d.inMinutes >= 1) return '${d.inMinutes}m ${d.inSeconds.remainder(60)}s';
+    return '${d.inSeconds}s';
+  }
+
+  String _dateLabel(DateTime dt) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final d = DateTime(dt.year, dt.month, dt.day);
+    final diff = today.difference(d).inDays;
+    if (diff == 0) return 'Today';
+    if (diff == 1) return 'Yesterday';
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return '${months[dt.month - 1]} ${dt.day}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: SkillDrillsSpacing.sm),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: SkillDrillsSpacing.md, vertical: SkillDrillsSpacing.sm),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(9),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.secondary.withAlpha(18),
+                borderRadius: SkillDrillsRadius.smBorderRadius,
+              ),
+              child: Icon(Icons.history_rounded, size: 22, color: Theme.of(context).colorScheme.secondary),
+            ),
+            const SizedBox(width: SkillDrillsSpacing.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    session.title,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(fontFamily: 'Choplin'),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Wrap(
+                    spacing: 8,
+                    children: [
+                      _Chip(label: _dateLabel(session.startedAt)),
+                      _Chip(label: _formatTime(session.startedAt)),
+                      _Chip(label: _formatDuration(session.durationSeconds)),
+                      _Chip(
+                        label: '${session.drillCount} drill${session.drillCount == 1 ? '' : 's'}',
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _Chip extends StatelessWidget {
+  const _Chip({required this.label});
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      label,
+      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: Theme.of(context).colorScheme.onPrimary,
+          ),
     );
   }
 }

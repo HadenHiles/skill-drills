@@ -1,10 +1,12 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:skilldrills/main.dart';
 import 'package:skilldrills/models/firestore/activity.dart';
 import 'package:skilldrills/models/firestore/drill.dart';
 import 'package:skilldrills/models/firestore/session.dart' as session_model;
 import 'package:skilldrills/services/session.dart';
+import 'package:skilldrills/tabs/drills/drill_detail.dart';
 import 'package:skilldrills/theme/theme.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -113,6 +115,37 @@ class _AddDrillSheetState extends State<_AddDrillSheet> {
     }
   }
 
+  // ── Create new drill ───────────────────────────────────────────────────────
+
+  Future<void> _createNewDrill() async {
+    final newDrill = await navigatorKey.currentState!.push<Drill?>(
+      PageRouteBuilder(
+        pageBuilder: (ctx, anim, _) => const DrillDetail(),
+        transitionDuration: const Duration(milliseconds: 320),
+        transitionsBuilder: (ctx, anim, _, child) {
+          final slide = Tween<Offset>(
+            begin: const Offset(0, 0.06),
+            end: Offset.zero,
+          ).animate(CurvedAnimation(parent: anim, curve: Curves.easeOutCubic));
+          return FadeTransition(
+            opacity: CurvedAnimation(parent: anim, curve: Curves.easeOut),
+            child: SlideTransition(position: slide, child: child),
+          );
+        },
+      ),
+    );
+
+    if (!mounted) return;
+
+    if (newDrill != null && newDrill.reference != null && newDrill.activity != null) {
+      // Auto-add the newly created drill directly to the session
+      await _selectDrill(newDrill, newDrill.activity!);
+    } else {
+      // Refresh the list so the new drill appears for manual selection
+      _load();
+    }
+  }
+
   // ── Filtered data ───────────────────────────────────────────────────────────
 
   List<Drill> _drillsFor(String activityTitle) {
@@ -207,9 +240,12 @@ class _AddDrillSheetState extends State<_AddDrillSheet> {
                         : ListView.builder(
                             controller: scrollController,
                             padding: const EdgeInsets.only(bottom: 32),
-                            itemCount: _activities.length,
+                            itemCount: _activities.length + 1, // +1 for "Create new drill"
                             itemBuilder: (context, i) {
-                              final activity = _activities[i];
+                              if (i == 0) {
+                                return _buildCreateDrillTile(context);
+                              }
+                              final activity = _activities[i - 1];
                               final sectionDrills = _drillsFor(activity.title!);
                               if (sectionDrills.isEmpty) {
                                 return const SizedBox.shrink();
@@ -227,6 +263,44 @@ class _AddDrillSheetState extends State<_AddDrillSheet> {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildCreateDrillTile(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        InkWell(
+          onTap: _createNewDrill,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).primaryColor.withAlpha(18),
+                    borderRadius: SkillDrillsRadius.smBorderRadius,
+                  ),
+                  child: Icon(Icons.add_rounded, color: Theme.of(context).primaryColor, size: 22),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  'Create a new drill',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        color: Theme.of(context).primaryColor,
+                        fontWeight: FontWeight.w700,
+                      ),
+                ),
+                const Spacer(),
+                Icon(Icons.chevron_right_rounded, color: Theme.of(context).primaryColor, size: 20),
+              ],
+            ),
+          ),
+        ),
+        const Divider(height: 1),
+      ],
     );
   }
 
@@ -248,9 +322,15 @@ class _AddDrillSheetState extends State<_AddDrillSheet> {
               ),
               const SizedBox(height: 4),
               Text(
-                'Create drills from the Drills tab',
+                'Create your first drill to add it to this session',
                 style: Theme.of(context).textTheme.bodyMedium,
                 textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: SkillDrillsSpacing.lg),
+              OutlinedButton.icon(
+                onPressed: _createNewDrill,
+                icon: const Icon(Icons.add_rounded, size: 18),
+                label: const Text('Create a new drill'),
               ),
             ],
           ),
