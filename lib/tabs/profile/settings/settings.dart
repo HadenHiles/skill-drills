@@ -12,6 +12,7 @@ import 'package:skilldrills/services/subscription.dart';
 import 'package:skilldrills/tabs/profile/settings/activities.dart';
 import 'package:skilldrills/theme/settings_state_notifier.dart';
 import 'package:skilldrills/widgets/basic_title.dart';
+import 'package:skilldrills/widgets/paywall_screen.dart';
 
 class ProfileSettings extends StatefulWidget {
   const ProfileSettings({super.key});
@@ -244,7 +245,12 @@ class _ProfileSettingsState extends State<ProfileSettings> {
                       Icons.star_rounded,
                       color: Theme.of(context).colorScheme.primary,
                     ),
-                    onPressed: (_) => presentPaywall(),
+                    onPressed: (_) => navigatorKey.currentState!.push(
+                      MaterialPageRoute(
+                        fullscreenDialog: true,
+                        builder: (_) => const PaywallScreen(),
+                      ),
+                    ),
                   ),
                 SettingsTile(
                   title: Text('Restore Purchases', style: Theme.of(context).textTheme.bodyLarge),

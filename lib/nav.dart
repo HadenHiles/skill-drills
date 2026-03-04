@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:skilldrills/services/subscription.dart';
+import 'package:skilldrills/widgets/paywall_screen.dart';
 import 'package:skilldrills/session.dart';
 import 'package:skilldrills/main.dart';
 import 'package:skilldrills/services/session.dart';
@@ -187,12 +188,19 @@ class _NavState extends State<Nav> {
 
     bootstrap();
 
-    // Show paywall on first frame after a fresh sign-in / sign-up so the app
-    // is fully rendered before the sheet appears.  presentPaywallIfNeeded is
-    // a no-op for existing subscribers.
+    // Show the custom paywall on first frame after a fresh sign-in / sign-up,
+    // but only if the user isn't already subscribed.
     if (widget.showPaywall) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        presentPaywallIfNeeded();
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        final alreadyPro = await hasActiveSubscription();
+        if (!alreadyPro) {
+          navigatorKey.currentState!.push(
+            MaterialPageRoute(
+              fullscreenDialog: true,
+              builder: (_) => const PaywallScreen(),
+            ),
+          );
+        }
       });
     }
   }

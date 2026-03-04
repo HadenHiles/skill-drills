@@ -10,7 +10,7 @@
 ///    Firebase UID so purchases are attributed to the correct user.
 /// 3. On sign-out, call [logoutRevenueCatUser].
 /// 4. Gate premium features with [hasActiveSubscription].
-/// 5. Show the paywall with [presentPaywall] or [presentPaywallIfNeeded].
+/// 5. Navigate to [PaywallScreen] to let the user subscribe.
 /// 6. Show the Customer Center (subscription management) with
 ///    [presentCustomerCenter].
 library;
@@ -178,43 +178,6 @@ Future<CustomerInfo?> restorePurchases() async {
   } catch (e, st) {
     debugPrint('[RevenueCat] restorePurchases error: $e\n$st');
     return null;
-  }
-}
-
-// ── Paywall UI ────────────────────────────────────────────────────────────────
-
-/// Present the RevenueCat-configured paywall for the current (default)
-/// offering.
-///
-/// Pass an [offering] to show a specific offering's paywall instead.
-/// Returns `true` if the user purchased or restored a subscription.
-Future<bool> presentPaywall({Offering? offering}) async {
-  if (!_rcSupported) return false;
-  try {
-    final result = await RevenueCatUI.presentPaywall(offering: offering);
-    debugPrint('[RevenueCat] Paywall result: $result');
-    return result == PaywallResult.purchased || result == PaywallResult.restored;
-  } catch (e, st) {
-    debugPrint('[RevenueCat] presentPaywall error: $e\n$st');
-    return false;
-  }
-}
-
-/// Present the paywall **only if** the user does not already hold
-/// [kProEntitlement].
-///
-/// This is the preferred entry point after sign-up / onboarding — it
-/// silently skips showing the paywall for existing subscribers.
-/// Returns `true` if the user purchased or restored a subscription.
-Future<bool> presentPaywallIfNeeded() async {
-  if (!_rcSupported) return false;
-  try {
-    final result = await RevenueCatUI.presentPaywallIfNeeded(kProEntitlement);
-    debugPrint('[RevenueCat] PaywallIfNeeded result: $result');
-    return result == PaywallResult.purchased || result == PaywallResult.restored;
-  } catch (e, st) {
-    debugPrint('[RevenueCat] presentPaywallIfNeeded error: $e\n$st');
-    return false;
   }
 }
 
