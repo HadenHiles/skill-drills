@@ -49,7 +49,7 @@ class _DrillsState extends State<Drills> with SingleTickerProviderStateMixin {
   /// Expanded state per activity title. Defaults to true (open).
   final Map<String, bool> _expanded = {};
 
-  bool _isExpanded(String title) => _expanded[title] ?? true;
+  bool _isExpanded(String title) => _expanded[title] ?? false;
 
   void _toggle(String title) => setState(() => _expanded[title] = !_isExpanded(title));
 
