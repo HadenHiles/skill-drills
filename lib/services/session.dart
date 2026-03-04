@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:skilldrills/models/firestore/measurement_result.dart';
 import 'package:skilldrills/models/firestore/session.dart' as session_model;
+import 'package:skilldrills/services/haptics.dart';
 
 class SessionService extends ChangeNotifier {
   // ── Stopwatch ──────────────────────────────────────────────────────────────
@@ -75,6 +76,7 @@ class SessionService extends ChangeNotifier {
         t.cancel();
         _restCountdown = null;
         notifyListeners();
+        hapticRestComplete();
       }
     });
   }

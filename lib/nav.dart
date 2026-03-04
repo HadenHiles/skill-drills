@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:skilldrills/services/haptics.dart';
 import 'package:skilldrills/services/subscription.dart';
 import 'package:skilldrills/widgets/paywall_screen.dart';
 import 'package:skilldrills/session.dart';
@@ -17,7 +18,6 @@ import 'package:skilldrills/tabs/routines/routine_detail.dart';
 import 'package:skilldrills/tabs/profile/settings/settings.dart';
 import 'package:skilldrills/widgets/basic_title.dart';
 import 'package:sliding_up_panel/sliding_up_panel.dart';
-import 'package:vibration/vibration.dart';
 import 'package:skilldrills/nav_tab.dart';
 
 final PanelController sessionPanelController = PanelController();
@@ -160,14 +160,7 @@ class _NavState extends State<Nav> {
   ];
 
   void _onItemTapped(int index) async {
-    await Vibration.hasAmplitudeControl().then((hasAmplitudeControl) {
-      if (settings.vibrate && hasAmplitudeControl && index != _selectedIndex) {
-        Vibration.vibrate(
-          duration: 50,
-          amplitude: 50,
-        );
-      }
-    });
+    if (index != _selectedIndex) hapticNavTap();
 
     setState(() {
       _selectedIndex = index;
