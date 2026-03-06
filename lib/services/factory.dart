@@ -1237,7 +1237,7 @@ List<_DrillSpec> _defaultDrillSpecs() => [
               'Have a partner toss a ball high (8–10 feet) slightly behind you, or self-toss: step back 3 yards, toss upward at 60° and run to the landing zone. The key mechanics: on reading a deep fly, drop-step immediately — left foot drops back 45° for a ball to the left, right foot for the right. Sprint back on an arc, never backpedal. Catch above the throwing shoulder with two hands. Do 20 fly balls, 10 each direction. The drop-step is the most important outfield mechanic. Most recreational players backpedal and lose 2–4 steps on every deep ball — the correct drop-step and turn pattern turns difficult flies into routine catches.',
           activityTitle: 'Baseball',
           drillTypeId: 'baseball_fielding',
-          skillTitles: ["Pop Fly\'s"],
+          skillTitles: ["Pop Fly's"],
           measurements: [MeasurementResult('amount', 'Clean Catches', 1, null) as Measurement, MeasurementResult('amount', 'Attempts', 2, null) as Measurement, MeasurementTarget('amount', 'Target Catches', 3, 16, false) as Measurement]),
       _DrillSpec(
           title: 'Home-to-First Acceleration Sprint',
