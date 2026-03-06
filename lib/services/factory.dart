@@ -23,6 +23,18 @@ final ValueNotifier<bool> isBootstrapping = ValueNotifier(false);
 // Bootstrap entry point (called from Nav.initState)
 // ─────────────────────────────────────────────────────────────────────────────
 
+/// Hard-resets all factory-seeded data for the current user:
+/// - Deletes and re-seeds activities + skills
+/// - Deletes and re-seeds drill types + measurements
+/// - Deletes and re-seeds default drills + their subcollections
+///
+/// User-created routines and session history are NOT touched.
+Future<void> resetAllData() async {
+  await resetActivities();
+  await resetDrillTypes();
+  await resetDrills();
+}
+
 Future<void> bootstrap() async {
   isBootstrapping.value = true;
   try {
@@ -139,6 +151,53 @@ void _saveActivitySkill(DocumentReference actRef, Skill s) {
 // ─────────────────────────────────────────────────────────────────────────────
 // DRILL TYPES  (6 universal + 4 per activity × 14 activities = 62 total)
 // ─────────────────────────────────────────────────────────────────────────────
+
+/// Delete all drill types + measurements and re-seed from the factory spec.
+/// Always runs regardless of existing count.
+Future<void> resetDrillTypes() async {
+  final uid = auth.currentUser!.uid;
+  final allTypes = _allDrillTypes();
+  final snapshot = await FirebaseFirestore.instance.collection('drill_types').doc(uid).collection('drill_types').get();
+  for (var doc in snapshot.docs) {
+    final mSnap = await doc.reference.collection('measurements').get();
+    for (var m in mSnap.docs) {
+      await m.reference.delete();
+    }
+    await doc.reference.delete();
+  }
+  for (var dt in allTypes) {
+    final dtDoc = FirebaseFirestore.instance.collection('drill_types').doc(uid).collection('drill_types').doc();
+    for (var m in dt.measurements!) {
+      _saveMeasurement(dtDoc, m);
+    }
+    dtDoc.set(dt.toMap());
+  }
+}
+
+/// Delete all drills (+ measurements + skills subcollections) and re-seed from
+/// the factory spec. Always runs regardless of existing drill count.
+Future<void> resetDrills() async {
+  final uid = auth.currentUser!.uid;
+
+  // Delete every existing drill and its subcollections.
+  final existingSnap = await FirebaseFirestore.instance.collection('drills').doc(uid).collection('drills').get();
+  for (final doc in existingSnap.docs) {
+    final measSnap = await doc.reference.collection('measurements').get();
+    for (final m in measSnap.docs) {
+      await m.reference.delete();
+    }
+    final skillsSnap = await doc.reference.collection('skills').get();
+    for (final s in skillsSnap.docs) {
+      await s.reference.delete();
+    }
+    await doc.reference.delete();
+  }
+
+  // Re-seed using the same logic as bootstrapDrills but without the early-exit
+  // guard (since we just cleared the collection above, bootstrapDrills would
+  // work too, but calling it directly is cleaner).
+  await bootstrapDrills();
+}
 
 Future<void> bootstrapDrillTypes({bool includeDefault = true}) async {
   final uid = auth.currentUser!.uid;
@@ -858,6 +917,23 @@ List<_DrillSpec> _defaultDrillSpecs() => [
           drillTypeId: 'hockey_skating_time',
           skillTitles: ['Skating'],
           measurements: [MeasurementResult('duration', 'Completion Time', 1, null) as Measurement, MeasurementResult('rpe', 'RPE (1–10)', 2, null) as Measurement, MeasurementTarget('duration', 'Target Time', 3, 20, true) as Measurement, MeasurementTarget('rpe', 'Target RPE', 4, 9, false) as Measurement]),
+      // ── Hockey – Passing & Defense
+      _DrillSpec(
+          title: 'Partner / Wall Passing Circuit',
+          description:
+              'Stand 10–15 feet from a wall or partner. Make crisp, flat wrist passes — cup the blade over the puck at start, transfer weight fully to the front foot, and follow through pointing the blade at the target. Rotate: 10 forehand passes, 10 backhand passes, and 10 saucer passes for 30 total. Track completions where the return stays within comfortable reach. Tape-to-tape passing is the highest-frequency on-ice skill — every professional player passes more per game than they shoot by a ratio of 5–10 to 1. Accuracy and release speed, not power, win possession battles at every level.',
+          activityTitle: 'Hockey',
+          drillTypeId: 'hockey_passing',
+          skillTitles: ['Passing'],
+          measurements: [MeasurementResult('amount', 'Passes Made', 1, null) as Measurement, MeasurementResult('amount', 'Attempts', 2, null) as Measurement, MeasurementTarget('amount', 'Target Passes', 3, 26, false) as Measurement]),
+      _DrillSpec(
+          title: 'Defensive Gap Control (Lateral Slides)',
+          description:
+              'Set cones 8 feet apart. Drop into a defensive posture: knees bent, stick flat on the floor, weight evenly distributed. Shuffle laterally without crossing the feet. At each cone simulate a poke check (extend stick forward at ice level and retract) then a stick lift (blade up from underneath a simulated opponent stick). Do 3 sets of 10 shuffles per direction. Maintaining proper gap — staying between the puck and the net at 1–1.5 stick-lengths — is the most critical defensive positional concept in hockey. Every foot of gap closed incorrectly creates a scoring opportunity for the attacker.',
+          activityTitle: 'Hockey',
+          drillTypeId: 'hockey_skating_time',
+          skillTitles: ['Defense'],
+          measurements: [MeasurementResult('duration', 'Work Time', 1, null) as Measurement, MeasurementResult('rpe', 'RPE (1–10)', 2, null) as Measurement, MeasurementTarget('duration', 'Target Duration', 3, 90, false) as Measurement, MeasurementTarget('rpe', 'Target RPE', 4, 6, false) as Measurement]),
       // ── Basketball – Ball Handling
       _DrillSpec(
           title: 'Ball Slaps & Fingertip Dribble',
@@ -895,7 +971,7 @@ List<_DrillSpec> _defaultDrillSpecs() => [
           activityTitle: 'Basketball',
           drillTypeId: 'basketball_conditioning',
           skillTitles: [
-            'Dribbling'
+            'Defense'
           ],
           measurements: [
             MeasurementResult('amount', 'Round Trips', 1, null) as Measurement,
@@ -1029,11 +1105,9 @@ List<_DrillSpec> _defaultDrillSpecs() => [
             MeasurementResult('amount', 'Sets', 1, null) as Measurement,
             MeasurementResult('amount', 'Reps', 2, null) as Measurement,
             MeasurementResult('amount', 'Weight (kg)', 3, null) as Measurement,
-            MeasurementResult('rpe', 'RPE (1–10)', 4, null) as Measurement,
-            MeasurementResult('rir', 'RIR', 5, null) as Measurement,
-            MeasurementTarget('amount', 'Target Reps', 6, 10, false) as Measurement,
-            MeasurementTarget('rpe', 'Target RPE', 7, 7, false) as Measurement,
-            MeasurementTarget('rir', 'Target RIR', 8, 3, false) as Measurement
+            MeasurementResult('rir', 'RIR', 4, null) as Measurement,
+            MeasurementTarget('amount', 'Target Reps', 5, 10, false) as Measurement,
+            MeasurementTarget('rir', 'Target RIR', 6, 3, false) as Measurement
           ]),
       // ── Weight Training – Upper Body
       _DrillSpec(
@@ -1096,6 +1170,23 @@ List<_DrillSpec> _defaultDrillSpecs() => [
           drillTypeId: 'basketball_dribbling',
           skillTitles: ['Dribbling'],
           measurements: [MeasurementResult('amount', 'Reps', 1, null) as Measurement, MeasurementResult('duration', 'Time', 2, null) as Measurement, MeasurementTarget('amount', 'Target Reps', 3, 30, false) as Measurement]),
+      // ── Basketball – Passing & Rebounding
+      _DrillSpec(
+          title: 'Chest / Bounce / Overhead Wall Pass',
+          description:
+              'Stand 8 feet from a wall with a 6-inch target mark at chest height. Hit 10 chest passes (step through, thumbs rotate down on release), 10 bounce passes (contact the floor 2/3 of the way to the wall so the ball rises to waist height on the return), and 10 overhead passes (two-hand launch above the head). Track returns that stay within easy catching reach. Passing is the most team-critical skill in basketball — players who can deliver in all three patterns under defensive pressure control every possession they touch. Guards average more passes per minute than any other action on the floor.',
+          activityTitle: 'Basketball',
+          drillTypeId: 'basketball_shooting',
+          skillTitles: ['Passing'],
+          measurements: [MeasurementResult('amount', 'Zone Catches', 1, null) as Measurement, MeasurementResult('amount', 'Attempts', 2, null) as Measurement, MeasurementTarget('amount', 'Target Catches', 3, 27, false) as Measurement]),
+      _DrillSpec(
+          title: 'Toss & High-Point Rebound',
+          description:
+              'Stand at the block. Toss the ball softly off the backboard with the off-hand, explode off both feet, and catch it at the absolute peak — arms fully extended as high as they will reach — before it starts to descend. Immediately chin the ball (two hands, elbows flared wide, ball under the chin) while landing with feet wide and knees bent. Reset and repeat. Do 20 reps per side. Catching at the peak instead of the descent adds 4+ inches of effective reach on every board. Chinning the ball eliminates strip attempts in over 80% of contested rebound situations.',
+          activityTitle: 'Basketball',
+          drillTypeId: 'basketball_shooting',
+          skillTitles: ['Rebounding'],
+          measurements: [MeasurementResult('amount', 'High-Point Catches', 1, null) as Measurement, MeasurementResult('amount', 'Attempts', 2, null) as Measurement, MeasurementTarget('amount', 'Target Catches', 3, 17, false) as Measurement]),
       // ── Baseball – Additional Drills ─────────────────────────────────────────
       _DrillSpec(
           title: 'Side Toss (Hip Turn)',
@@ -1139,6 +1230,23 @@ List<_DrillSpec> _defaultDrillSpecs() => [
           drillTypeId: 'baseball_throwing',
           skillTitles: ['Throwing'],
           measurements: [MeasurementResult('amount', 'Strikes', 1, null) as Measurement, MeasurementResult('amount', 'Throws', 2, null) as Measurement, MeasurementTarget('amount', 'Target Strikes', 3, 14, false) as Measurement]),
+      // ── Baseball – Outfield & Base Running
+      _DrillSpec(
+          title: 'Fly Ball Tracking & Drop Step',
+          description:
+              'Have a partner toss a ball high (8–10 feet) slightly behind you, or self-toss: step back 3 yards, toss upward at 60° and run to the landing zone. The key mechanics: on reading a deep fly, drop-step immediately — left foot drops back 45° for a ball to the left, right foot for the right. Sprint back on an arc, never backpedal. Catch above the throwing shoulder with two hands. Do 20 fly balls, 10 each direction. The drop-step is the most important outfield mechanic. Most recreational players backpedal and lose 2–4 steps on every deep ball — the correct drop-step and turn pattern turns difficult flies into routine catches.',
+          activityTitle: 'Baseball',
+          drillTypeId: 'baseball_fielding',
+          skillTitles: ["Pop Fly\'s"],
+          measurements: [MeasurementResult('amount', 'Clean Catches', 1, null) as Measurement, MeasurementResult('amount', 'Attempts', 2, null) as Measurement, MeasurementTarget('amount', 'Target Catches', 3, 16, false) as Measurement]),
+      _DrillSpec(
+          title: 'Home-to-First Acceleration Sprint',
+          description:
+              'From a simulated post-swing position at home plate, explode to first base (90 feet / ~27 metres) on a stopwatch. Focus on the first 3 steps: drive the hands forward not sideways, push hard from the back foot, keep the head down through the first 10 yards. Run through the bag — decelerate only 5 yards past first. Time 8 reps with 90 seconds full rest between each. Home-to-first speed is the most directly measured physical attribute by baseball scouts. A 0.1-second improvement — achievable in 6–8 weeks of sprint-start training — changes both draft positioning and the outcome of close plays.',
+          activityTitle: 'Baseball',
+          drillTypeId: 'pace',
+          skillTitles: ['Base Running'],
+          measurements: [MeasurementResult('amount', 'Distance (ft)', 1, 90) as Measurement, MeasurementResult('duration', 'Best Time', 2, null) as Measurement, MeasurementTarget('duration', 'Target Time', 3, null, true) as Measurement]),
       // ── Golf – Additional Drills ─────────────────────────────────────────────
       _DrillSpec(
           title: 'Consecutive Putt Challenge',
@@ -1182,6 +1290,15 @@ List<_DrillSpec> _defaultDrillSpecs() => [
           drillTypeId: 'golf_driving',
           skillTitles: ['Drive', 'Iron Play'],
           measurements: [MeasurementResult('amount', 'Quality Reps', 1, null) as Measurement, MeasurementResult('amount', 'Total Reps', 2, null) as Measurement, MeasurementTarget('amount', 'Target Reps', 3, 20, false) as Measurement]),
+      // ── Golf – Bunker
+      _DrillSpec(
+          title: 'Greenside Bunker Splash Shot',
+          description:
+              'From a greenside bunker, set up with: open clubface (rotate the face to 1–2 on the clock dial before gripping), ball forward of centre in the stance, weight 60% on the front foot, and the stance dug in for stability. Swing along the body line (left of target), enter the sand 2 inches behind the ball — you are hitting sand, not the ball — and the ball rides out on a cushion of sand. Finish high. Track saves where the ball finishes within 15 feet of the flag out of 10 attempts. The splash shot is the most feared yet most teachable shot in golf. The only way it goes wrong is entering too close to the ball — two inches behind is the single cue that fixes 90% of bunker problems.',
+          activityTitle: 'Golf',
+          drillTypeId: 'golf_short_game',
+          skillTitles: ['Bunker'],
+          measurements: [MeasurementResult('amount', 'Saves', 1, null) as Measurement, MeasurementResult('amount', 'Attempts', 2, null) as Measurement, MeasurementTarget('amount', 'Target Saves', 3, 6, false) as Measurement]),
       // ── Soccer – Additional Drills ───────────────────────────────────────────
       _DrillSpec(
           title: 'Inside-Outside Touch Roll',
@@ -1225,6 +1342,15 @@ List<_DrillSpec> _defaultDrillSpecs() => [
           drillTypeId: 'soccer_passing',
           skillTitles: ['Passing'],
           measurements: [MeasurementResult('amount', 'On Target', 1, null) as Measurement, MeasurementResult('amount', 'Attempts', 2, null) as Measurement, MeasurementTarget('amount', 'Target Hits', 3, 12, false) as Measurement]),
+      // ── Soccer – Defending
+      _DrillSpec(
+          title: '1v1 Defensive Jockeying Circuit',
+          description:
+              'Set two cones 6 yards apart. Adopt a defensive stance: side-on not square, knees bent, weight on the front foot, eyes on the hips of the attacker rather than the ball. Shuffle backwards between cones keeping the body between the front cone and the back cone. At each change of direction, jab-step to simulate a fake and recover without crossing the feet or turning square. 15 complete round trips per set. Turning the back and sprinting is the natural instinct to beat — a jockeying defender who stays goal-side and side-on for 2–3 seconds wins the situation more consistently than a rash tackle. Jockeying simultaneously preserves positioning and delays the attack.',
+          activityTitle: 'Soccer',
+          drillTypeId: 'soccer_dribbling',
+          skillTitles: ['Defending'],
+          measurements: [MeasurementResult('duration', 'Completion Time', 1, null) as Measurement, MeasurementResult('amount', 'Errors (feet crossed)', 2, null) as Measurement, MeasurementTarget('duration', 'Target Time', 3, 60, true) as Measurement]),
       // ── Weight Training – Additional Drills ──────────────────────────────────
       _DrillSpec(
           title: 'Glute Bridge',
@@ -1260,11 +1386,9 @@ List<_DrillSpec> _defaultDrillSpecs() => [
             MeasurementResult('amount', 'Sets', 1, null) as Measurement,
             MeasurementResult('amount', 'Reps', 2, null) as Measurement,
             MeasurementResult('amount', 'Weight (kg)', 3, null) as Measurement,
-            MeasurementResult('rpe', 'RPE (1–10)', 4, null) as Measurement,
-            MeasurementResult('rir', 'RIR', 5, null) as Measurement,
-            MeasurementTarget('amount', 'Target Reps', 6, 12, false) as Measurement,
-            MeasurementTarget('rpe', 'Target RPE', 7, 6, false) as Measurement,
-            MeasurementTarget('rir', 'Target RIR', 8, 2, false) as Measurement
+            MeasurementResult('rir', 'RIR', 4, null) as Measurement,
+            MeasurementTarget('amount', 'Target Reps', 5, 12, false) as Measurement,
+            MeasurementTarget('rir', 'Target RIR', 6, 2, false) as Measurement
           ]),
       _DrillSpec(
           title: 'Dumbbell Overhead Press',
@@ -1293,6 +1417,15 @@ List<_DrillSpec> _defaultDrillSpecs() => [
           drillTypeId: 'weight_bodyweight',
           skillTitles: ['Core', 'Full Body'],
           measurements: [MeasurementResult('amount', 'Sets', 1, null) as Measurement, MeasurementResult('duration', 'Hold Time', 2, null) as Measurement, MeasurementTarget('duration', 'Target Hold', 3, 30, false) as Measurement]),
+      // ── Weight Training – Cardio
+      _DrillSpec(
+          title: 'Jump Rope / High Knees Conditioning',
+          description:
+              'Method A (with rope): 3 rounds of 3 minutes at a sustainable pace, 1-minute rest between rounds. Introduce 30-second speed bursts within each round in weeks 2–3. Method B (no rope): mimic rope footwork — bounce on the balls of the feet with alternating high knees while keeping elbows bent and wrists rotating. Track total session duration. Cardiovascular base training is the most underweighted element in recreational lifting programmes. VO2max declines 1% per year after age 25 if not actively maintained — structured cardio reverses this and directly improves recovery between sets, enabling more training volume per session.',
+          activityTitle: 'Weight Training',
+          drillTypeId: 'weight_cardio',
+          skillTitles: ['Cardio'],
+          measurements: [MeasurementResult('duration', 'Session Duration', 1, null) as Measurement, MeasurementResult('amount', 'Rounds', 2, null) as Measurement, MeasurementTarget('duration', 'Target Duration', 3, 900, false) as Measurement]),
       // ── Tennis ──────────────────────────────────────────────────────────────────
       _DrillSpec(
           title: 'Serve Consistency (Flat)',
@@ -1387,6 +1520,15 @@ List<_DrillSpec> _defaultDrillSpecs() => [
           drillTypeId: 'tennis_groundstroke',
           skillTitles: ['Backhand'],
           measurements: [MeasurementResult('amount', 'In Zone', 1, null) as Measurement, MeasurementResult('amount', 'Attempts', 2, null) as Measurement, MeasurementTarget('amount', 'Target In Zone', 3, 18, false) as Measurement]),
+      // ── Tennis – Return of Serve
+      _DrillSpec(
+          title: 'Return of Serve — Split Step & Deep Zone',
+          description:
+              'Have a partner serve or use a ball machine. Stand 2 feet behind the baseline. As the ball is tossed, perform a split step — a small hop so both feet land simultaneously just as the ball is struck. Compact the takeback to half its normal length — serve speed provides all the power required. Drive the return deep cross-court or down the line, targeting a landing zone within 3 feet of the baseline in a 6-foot-wide channel. Track 20 returns per session. The split step is the single most trainable change in return mechanics. Players who split-step at the correct moment gain 0.3 seconds to read ball direction — enough to avoid being jammed on any serve under 120 mph.',
+          activityTitle: 'Tennis',
+          drillTypeId: 'tennis_groundstroke',
+          skillTitles: ['Return'],
+          measurements: [MeasurementResult('amount', 'In Zone', 1, null) as Measurement, MeasurementResult('amount', 'Attempts', 2, null) as Measurement, MeasurementTarget('amount', 'Target In Zone', 3, 15, false) as Measurement]),
       // ── Running ─────────────────────────────────────────────────────────────────
       _DrillSpec(
           title: '400m Repeats',
@@ -1786,8 +1928,8 @@ List<_DrillSpec> _defaultDrillSpecs() => [
           description:
               'Practice the return of serve by bouncing a ball and hitting it deep down the middle or cross-court. Keep the return low and deep — do not attack unless the serve lands short. Hit 20 to each zone. Returning deep and down the middle removes the serving team\'s angle advantage, neutralising the third-shot opportunity that a short return creates.',
           activityTitle: 'Pickleball',
-          drillTypeId: 'pk_serve',
-          skillTitles: ['Serve'],
+          drillTypeId: 'pk_drive',
+          skillTitles: ['Drive'],
           measurements: [MeasurementResult('amount', 'Deep in Zone', 1, null) as Measurement, MeasurementResult('amount', 'Attempts', 2, null) as Measurement, MeasurementTarget('amount', 'Target Deep', 3, 14, false) as Measurement]),
       _DrillSpec(
           title: 'Footwork to the Kitchen',
@@ -1966,9 +2108,9 @@ List<_DrillSpec> _defaultDrillSpecs() => [
           description:
               'Stand on a box or step holding a light weight. Round forward one vertebra at a time from the top of the spine down — the controlled opposite of a deadlift. Reach the lowest comfortable point then return one vertebra at a time. 3 × 8. Develops spinal mobility and hamstring flexibility simultaneously. Controversial name, uncontroversially effective — used by elite gymnasts, acrobats, and martial artists globally for back health and posterior chain mobility.',
           activityTitle: 'Gymnastics',
-          drillTypeId: 'gym_flexibility',
+          drillTypeId: 'gym_conditioning',
           skillTitles: ['Flexibility', 'Strength'],
-          measurements: [MeasurementResult('amount', 'Sets', 1, null) as Measurement, MeasurementResult('amount', 'Reps', 2, null) as Measurement, MeasurementTarget('amount', 'Target Reps', 3, 8, false) as Measurement]),
+          measurements: [MeasurementResult('amount', 'Sets', 1, null) as Measurement, MeasurementResult('amount', 'Reps', 2, null) as Measurement, MeasurementResult('rir', 'RIR', 3, null) as Measurement, MeasurementTarget('amount', 'Target Reps', 4, 8, false) as Measurement, MeasurementTarget('rir', 'Target RIR', 5, 3, false) as Measurement]),
       _DrillSpec(
           title: 'Ring Row Progression',
           description:
@@ -2083,6 +2225,15 @@ List<_DrillSpec> _defaultDrillSpecs() => [
           drillTypeId: 'guitar_repertoire',
           skillTitles: ['Strumming', 'Rhythm', 'Chords'],
           measurements: [MeasurementResult('amount', 'Patterns Completed', 1, null) as Measurement, MeasurementResult('amount', 'Quality (1–10)', 2, null) as Measurement, MeasurementTarget('amount', 'Target Patterns', 3, 5, false) as Measurement]),
+      // ── Guitar – Theory
+      _DrillSpec(
+          title: 'CAGED System — Major Chord Positions',
+          description:
+              'The CAGED system maps every major chord to 5 moveable positions across the neck. Start with G major: the C-shape (3rd fret area), A-shape (5th fret), G-shape (open), E-shape (10th fret), D-shape (12th fret) — all are the same G major chord in different voicings. Play each shape cleanly and identify the root note in that position. Track how many of the 5 positions for one key you can execute without prompting before moving to A, D, E, and C. CAGED is the most important piece of guitar-specific music theory — once internalized, any chord can be played anywhere on the neck, any progression can be navigated without chord charts, and every scale and arpeggio pattern becomes comprehensible. Every professional guitarist has this system automatic.',
+          activityTitle: 'Guitar',
+          drillTypeId: 'guitar_chord',
+          skillTitles: ['Theory', 'Chords'],
+          measurements: [MeasurementResult('amount', 'Positions (clean)', 1, null) as Measurement, MeasurementResult('amount', 'Total Positions', 2, null) as Measurement, MeasurementTarget('amount', 'Target Positions', 3, 5, false) as Measurement]),
     ];
 
 // ─────────────────────────────────────────────────────────────────────────────

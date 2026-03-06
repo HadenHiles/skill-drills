@@ -391,13 +391,21 @@ Future<session_model.DrillResult> buildDrillResultForSession({
 
   // Build deduplicated measurement template.
   // Use a set of "type|label" keys to skip exact duplicates.
+  // Normalize legacy 'rpe' measurements to 'rir' for Weight Training so that
+  // drills that have both an 'rpe' and an 'rir' field don't render two identical
+  // scale pickers, and so the column header always reads "RIR" rather than
+  // "RPE (1–10)" for those drills.
   final seen = <String>{};
   final measurementResults = measSnap.docs
       .map((doc) {
         final data = doc.data();
         if ((data['role'] as String?) == 'result') {
-          final type = (data['type'] as String?) ?? 'amount';
-          final label = (data['label'] as String?) ?? '';
+          var type = (data['type'] as String?) ?? 'amount';
+          var label = (data['label'] as String?) ?? '';
+          if (type == 'rpe' && activityTitle == 'Weight Training') {
+            type = 'rir';
+            label = 'RIR';
+          }
           final key = '$type|$label';
           if (seen.contains(key)) return null; // skip duplicate
           seen.add(key);
@@ -438,7 +446,10 @@ Future<session_model.DrillResult> buildDrillResultForSession({
   }
 
   // Build a set pre-filled with historic values for the given set position.
-  // Falls back to 0 for each measurement when no history exists.
+  // Falls back to the routine's reps value (for the reps-matching measurement)
+  // or 0 (for all other measurements) when no history exists.
+  final repsLabelLower = repsLabel.toLowerCase();
+
   session_model.SetResult makeSet(int setIndex) {
     final meas = <MeasurementResult>[];
     for (var mi = 0; mi < measurementResults.length; mi++) {
@@ -448,12 +459,22 @@ Future<session_model.DrillResult> buildDrillResultForSession({
         final vals = historicSetValues[setIndex];
         if (mi < vals.length) defaultVal = vals[mi];
       }
-      // Default to 0 when no history (per spec).
-      defaultVal ??= 0;
+      if (defaultVal == null) {
+        // Use the routine's reps value for the matching measurement; 0 elsewhere.
+        if (reps != null && m.label.toLowerCase() == repsLabelLower) {
+          defaultVal = reps;
+        } else {
+          defaultVal = 0;
+        }
+      }
       meas.add(MeasurementResult(m.type, m.label, m.order, defaultVal));
     }
     return session_model.SetResult(measurementResults: meas);
   }
+
+  // When a routine specifies the number of sets, seed that many rows upfront.
+  // Otherwise start with a single set (the user can add more).
+  final initialSetCount = sets != null && sets > 0 ? sets : 1;
 
   return session_model.DrillResult(
     drillId,
@@ -467,8 +488,8 @@ Future<session_model.DrillResult> buildDrillResultForSession({
     reps: reps,
     measurementResults: measurementResults,
     historicSetValues: historicSetValues,
-    // Seed the first set from the measurement template so the user is
-    // immediately shown a set row to fill in.
-    setResults: [makeSet(0)],
+    // Seed the initial set rows. If the routine specified a set count, create
+    // that many rows; otherwise start with one so the user sees a row to fill in.
+    setResults: List.generate(initialSetCount, makeSet),
   );
 }

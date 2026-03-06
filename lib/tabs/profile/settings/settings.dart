@@ -8,6 +8,7 @@ import 'package:skilldrills/login.dart';
 import 'package:skilldrills/main.dart';
 import 'package:skilldrills/models/settings.dart';
 import 'package:skilldrills/services/auth.dart';
+import 'package:skilldrills/services/factory.dart';
 import 'package:skilldrills/services/subscription.dart';
 import 'package:skilldrills/tabs/profile/settings/activities.dart';
 import 'package:skilldrills/theme/settings_state_notifier.dart';
@@ -285,6 +286,54 @@ class _ProfileSettingsState extends State<ProfileSettings> {
                 style: Theme.of(context).textTheme.titleLarge,
               ),
               tiles: [
+                SettingsTile(
+                  title: Text(
+                    'Reset Default Drills & Data',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                      fontSize: Theme.of(context).textTheme.bodyLarge!.fontSize,
+                    ),
+                  ),
+                  description: Text(
+                    'Deletes and re-seeds all factory activities, drill types and drills. Your routines and session history are kept.',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                  leading: Icon(Icons.refresh_rounded, color: Theme.of(context).colorScheme.error),
+                  onPressed: (BuildContext context) async {
+                    final confirmed = await showDialog<bool>(
+                      context: context,
+                      builder: (_) => AlertDialog(
+                        title: const Text('Reset Default Data?'),
+                        content: const Text(
+                          'This will delete and re-create all factory activities, drill types and drills for your account.\n\nYour routines and session history will not be affected.',
+                          textAlign: TextAlign.center,
+                        ),
+                        actions: [
+                          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(true),
+                            child: Text('Reset', style: TextStyle(color: Theme.of(context).colorScheme.error)),
+                          ),
+                        ],
+                      ),
+                    );
+                    if (confirmed != true) return;
+                    if (!context.mounted) return;
+                    final messenger = ScaffoldMessenger.of(context);
+                    try {
+                      await resetAllData();
+                      messenger.showSnackBar(const SnackBar(
+                        content: Text('Data reset successfully!'),
+                        duration: Duration(seconds: 3),
+                      ));
+                    } catch (e) {
+                      messenger.showSnackBar(SnackBar(
+                        content: Text('Reset failed: $e'),
+                        duration: const Duration(seconds: 4),
+                      ));
+                    }
+                  },
+                ),
                 SettingsTile(
                   title: Text(
                     'Logout',
