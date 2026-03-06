@@ -12,6 +12,7 @@ import 'package:skilldrills/models/firestore/measurement_target.dart';
 import 'package:skilldrills/models/firestore/measurement_result.dart';
 import 'package:skilldrills/models/firestore/skill_drill_user.dart';
 import 'package:skilldrills/models/firestore/routine.dart';
+import 'package:skilldrills/services/subscription.dart';
 
 final FirebaseAuth auth = FirebaseAuth.instance;
 
@@ -101,6 +102,8 @@ Future<void> bootstrapActivities({List<String> selectedActivities = const []}) a
 
 Future<void> resetActivities({List<String> selectedActivities = const []}) async {
   final uid = auth.currentUser!.uid;
+
+  // Delete every existing activity and its skills subcollection.
   final snapshot = await FirebaseFirestore.instance.collection("activities").doc(uid).collection("activities").get();
   for (var doc in snapshot.docs) {
     final skillSnap = await doc.reference.collection('skills').get();
@@ -109,6 +112,11 @@ Future<void> resetActivities({List<String> selectedActivities = const []}) async
     }
     doc.reference.delete();
   }
+
+  // Determine subscription tier so we can cap the active-activity count for
+  // free users. Pro users can have all selected activities active at once.
+  final isPro = await hasActiveSubscription();
+
   final Map<String, List<String>> activitySkills = {
     'Hockey': ['Skating', 'Shooting', 'Stickhandling', 'Passing', 'Defense'],
     'Basketball': ['Shooting', 'Dribbling', 'Passing', 'Rebounding', 'Defense', 'Conditioning'],
@@ -125,11 +133,25 @@ Future<void> resetActivities({List<String> selectedActivities = const []}) async
     'Gymnastics': ['Strength', 'Flexibility', 'Balance', 'Handstand', 'Core', 'Conditioning'],
     'Guitar': ['Scales', 'Chords', 'Strumming', 'Picking', 'Rhythm', 'Theory'],
   };
+
+  // Track how many activities have been activated so far — used to enforce the
+  // free-tier cap when working through the selectedActivities list.
+  int activatedCount = 0;
+
   for (var entry in activitySkills.entries) {
-    // If the user selected specific activities during onboarding, mark all
-    // others as inactive so the UI is focused on their chosen domains.
-    // An empty selectedActivities list means "no preference" — all active.
-    final isActive = selectedActivities.isEmpty || selectedActivities.contains(entry.key);
+    bool isActive = false;
+
+    if (selectedActivities.isNotEmpty && selectedActivities.contains(entry.key)) {
+      // Honour the user's explicit selection, subject to the free-tier limit.
+      if (isPro || activatedCount < kFreeActiveActivityLimit) {
+        isActive = true;
+        activatedCount++;
+      }
+    }
+    // When selectedActivities is empty (e.g. "Reset to defaults" from Settings),
+    // all activities are seeded as inactive — the user deliberately chooses
+    // which to enable within their plan's active-activity allowance.
+
     final a = Activity(entry.key, null, isActive: isActive);
     final actDoc = FirebaseFirestore.instance.collection("activities").doc(uid).collection("activities").doc();
     a.id = actDoc.id;
