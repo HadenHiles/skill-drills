@@ -320,13 +320,32 @@ class _ProfileSettingsState extends State<ProfileSettings> {
                     if (confirmed != true) return;
                     if (!context.mounted) return;
                     final messenger = ScaffoldMessenger.of(context);
+                    showDialog(
+                      context: context,
+                      barrierDismissible: false,
+                      builder: (_) => PopScope(
+                        canPop: false,
+                        child: AlertDialog(
+                          content: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const CircularProgressIndicator(),
+                              const SizedBox(height: 20),
+                              const Text('Resetting data…'),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
                     try {
                       await resetAllData();
+                      if (context.mounted) Navigator.of(context).pop();
                       messenger.showSnackBar(const SnackBar(
                         content: Text('Data reset successfully!'),
                         duration: Duration(seconds: 3),
                       ));
                     } catch (e) {
+                      if (context.mounted) Navigator.of(context).pop();
                       messenger.showSnackBar(SnackBar(
                         content: Text('Reset failed: $e'),
                         duration: const Duration(seconds: 4),

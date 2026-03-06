@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:skilldrills/main.dart';
 import 'package:skilldrills/models/firestore/activity.dart';
 import 'package:skilldrills/models/skill_drills_dialog.dart';
@@ -27,9 +30,37 @@ class _ActivitiesSettingsState extends State<ActivitiesSettings> {
   /// can count how many are currently active without an extra Firestore read.
   List<DocumentSnapshot<Map<String, dynamic>>> _activitiesSnapshot = [];
 
+  /// Whether the current user holds an active Pro subscription.
+  /// Defaults to `true` (optimistic) until the first check resolves so the
+  /// UI doesn't flash a limit-reached banner on fast devices.
+  bool _isPro = true;
+  StreamSubscription<CustomerInfo>? _subscriptionListener;
+
+  /// Number of currently active activities derived from the latest snapshot.
+  int get _activeCount => _activitiesSnapshot.map(Activity.fromSnapshot).where((a) => a.isActive).length;
+
   @override
   void initState() {
     super.initState();
+    _initSubscriptionState();
+  }
+
+  /// Fetches the initial subscription state and subscribes to live updates so
+  /// the nudge banner and lock states stay in sync without a restart.
+  Future<void> _initSubscriptionState() async {
+    final isPro = await hasActiveSubscription();
+    if (mounted) setState(() => _isPro = isPro);
+
+    _subscriptionListener = customerInfoStream.listen((info) {
+      final nowPro = info.entitlements.active.containsKey(kProEntitlement);
+      if (mounted) setState(() => _isPro = nowPro);
+    });
+  }
+
+  @override
+  void dispose() {
+    _subscriptionListener?.cancel();
+    super.dispose();
   }
 
   Widget _buildActivities(BuildContext context) {
@@ -56,13 +87,20 @@ class _ActivitiesSettingsState extends State<ActivitiesSettings> {
   }
 
   Widget _buildActivityList(BuildContext context, List<DocumentSnapshot<Map<String, dynamic>>> snapshot) {
-    List<ActivityItem> items = snapshot
-        .map((data) => ActivityItem(
-              sport: Activity.fromSnapshot(data),
-              deleteCallback: _deleteActivity,
-              toggleCallback: _toggleActive,
-            ))
-        .toList();
+    final activeCount = snapshot.map(Activity.fromSnapshot).where((a) => a.isActive).length;
+    final atLimit = !_isPro && activeCount >= kFreeActiveActivityLimit;
+
+    List<ActivityItem> items = snapshot.map((data) {
+      final activity = Activity.fromSnapshot(data);
+      return ActivityItem(
+        sport: activity,
+        deleteCallback: _deleteActivity,
+        toggleCallback: _toggleActive,
+        // Show the "upgrade to unlock" indicator on inactive items when the
+        // user is not pro and has already reached the active limit.
+        isLockedByPlan: atLimit && !activity.isActive,
+      );
+    }).toList();
 
     return items.isNotEmpty
         ? ListView(
@@ -85,42 +123,76 @@ class _ActivitiesSettingsState extends State<ActivitiesSettings> {
 
   /// Toggles the [isActive] flag on [activity].
   ///
-  /// When enabling an activity, checks whether the user has already reached
-  /// [kFreeActiveActivityLimit] active activities and, if so, verifies they
-  /// hold an active subscription before allowing the change.  Non-subscribed
-  /// users who are at the limit are shown an upgrade prompt instead.
+  /// **Free-tier behaviour when enabling:**
+  /// Instead of showing a hard block, the system automatically deactivates the
+  /// activity that was activated the longest ago (determined by
+  /// [kActivityLastActivatedAtField]) and activates the requested one.  A
+  /// snackbar informs the user of the swap and nudges them toward Pro.
+  ///
+  /// This makes it structurally impossible for a free user to have more than
+  /// [kFreeActiveActivityLimit] active activities simultaneously — they can
+  /// swap freely, but never accumulate extras.
   Future<void> _toggleActive(Activity activity, bool isActive) async {
-    if (isActive) {
-      final activeCount = _activitiesSnapshot.map((doc) => Activity.fromSnapshot(doc)).where((a) => a.isActive && a.reference?.id != activity.reference?.id).length;
+    final uid = auth.currentUser!.uid;
+    final actRef = FirebaseFirestore.instance.collection('activities').doc(uid).collection('activities').doc(activity.reference!.id);
 
-      if (activeCount >= kFreeActiveActivityLimit) {
-        final subscribed = await hasActiveSubscription();
-        if (!subscribed) {
-          if (!mounted) return;
-          dialog(
-            context,
-            SkillDrillsDialog(
-              "Upgrade to unlock more",
-              Text(
-                "Free accounts can have up to $kFreeActiveActivityLimit active activities.\n\nUpgrade to a paid plan to unlock unlimited active activities.",
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyMedium,
+    if (isActive) {
+      // Activities currently active, excluding the one being enabled.
+      final otherActive = _activitiesSnapshot.map(Activity.fromSnapshot).where((a) => a.isActive && a.reference?.id != activity.reference?.id).toList();
+
+      if (!_isPro && otherActive.length >= kFreeActiveActivityLimit) {
+        // Auto-deactivate the activity that was activated the longest ago.
+        final oldest = _findOldestActivated(otherActive);
+        if (oldest != null) {
+          final oldRef = FirebaseFirestore.instance.collection('activities').doc(uid).collection('activities').doc(oldest.reference!.id);
+
+          final batch = FirebaseFirestore.instance.batch();
+          batch.update(oldRef, {'is_active': false});
+          batch.update(actRef, {
+            'is_active': true,
+            kActivityLastActivatedAtField: FieldValue.serverTimestamp(),
+          });
+          await batch.commit();
+
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  '"${oldest.title}" was deactivated to make room. '
+                  'Upgrade to Pro for unlimited active activities.',
+                ),
+                action: SnackBarAction(
+                  label: 'Upgrade',
+                  onPressed: () => navigatorKey.currentState!.push(
+                    MaterialPageRoute(builder: (_) => const PaywallScreen()),
+                  ),
+                ),
               ),
-              "Not now",
-              () => Navigator.of(context).pop(),
-              "Upgrade",
-              () {
-                Navigator.of(context).pop();
-                navigatorKey.currentState!.push(MaterialPageRoute(builder: (_) => const PaywallScreen()));
-              },
-            ),
-          );
+            );
+          }
           return;
         }
       }
-    }
 
-    FirebaseFirestore.instance.collection('activities').doc(auth.currentUser!.uid).collection('activities').doc(activity.reference!.id).update({'is_active': isActive});
+      // Within the free limit (or user is Pro): just activate.
+      await actRef.update({
+        'is_active': true,
+        kActivityLastActivatedAtField: FieldValue.serverTimestamp(),
+      });
+    } else {
+      await actRef.update({'is_active': false});
+    }
+  }
+
+  /// Returns the [Activity] from [activities] whose [Activity.lastActivatedAt]
+  /// is the earliest, treating `null` as older than any real timestamp.
+  Activity? _findOldestActivated(List<Activity> activities) {
+    if (activities.isEmpty) return null;
+    return activities.reduce((oldest, a) {
+      if (oldest.lastActivatedAt == null) return oldest;
+      if (a.lastActivatedAt == null) return a;
+      return a.lastActivatedAt!.isBefore(oldest.lastActivatedAt!) ? a : oldest;
+    });
   }
 
   void _deleteActivity(Activity activity) {
@@ -133,6 +205,57 @@ class _ActivitiesSettingsState extends State<ActivitiesSettings> {
 
       doc.reference.delete();
     });
+  }
+
+  /// Nudge banner shown when the user is on the free plan and has reached the
+  /// activity limit.  Tapping "Upgrade" opens the paywall.
+  Widget _buildFreeLimitBanner(BuildContext context) {
+    return Material(
+      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+      child: InkWell(
+        onTap: () => navigatorKey.currentState!.push(
+          MaterialPageRoute(builder: (_) => const PaywallScreen()),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Row(
+            children: [
+              Icon(
+                Icons.lock_outline_rounded,
+                size: 18,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: RichText(
+                  text: TextSpan(
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                    children: [
+                      TextSpan(
+                        text: 'Free plan: ',
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                      TextSpan(
+                        text: 'up to $kFreeActiveActivityLimit active activities. '
+                            'Tap to upgrade and unlock all.',
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Icon(
+                Icons.chevron_right_rounded,
+                size: 18,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -198,6 +321,7 @@ class _ActivitiesSettingsState extends State<ActivitiesSettings> {
         },
         body: Column(
           children: [
+            if (!_isPro && _activeCount >= kFreeActiveActivityLimit) _buildFreeLimitBanner(context),
             Flexible(
               child: _buildActivities(context),
             ),

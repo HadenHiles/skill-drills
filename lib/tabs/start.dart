@@ -543,93 +543,105 @@ class _ActivityPickerSheetState extends State<_ActivityPickerSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(SkillDrillsRadius.lg)),
+    return ConstrainedBox(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.85,
       ),
-      padding: EdgeInsets.fromLTRB(20, 12, 20, 24 + MediaQuery.of(context).padding.bottom),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Handle
-          Center(
-            child: Container(
-              width: 40,
-              height: 4,
-              margin: const EdgeInsets.only(bottom: 16),
-              decoration: BoxDecoration(
-                color: Theme.of(context).dividerColor,
-                borderRadius: SkillDrillsRadius.fullBorderRadius,
+      child: Container(
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(SkillDrillsRadius.lg)),
+        ),
+        padding: EdgeInsets.fromLTRB(20, 12, 20, 24 + MediaQuery.of(context).padding.bottom),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Handle
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).dividerColor,
+                  borderRadius: SkillDrillsRadius.fullBorderRadius,
+                ),
               ),
             ),
-          ),
-          Text(
-            'Choose Activity',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontFamily: 'Choplin',
-                  fontWeight: FontWeight.w700,
-                ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'What are you training today?',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onPrimary,
-                ),
-          ),
-          const SizedBox(height: 16),
-          if (_loading)
-            const Center(child: Padding(padding: EdgeInsets.symmetric(vertical: 32), child: CircularProgressIndicator()))
-          else if (_activities.isEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 32),
-              child: Center(
-                child: Text(
-                  'No active activities found.\nAdd activities in your profile first.',
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-              ),
-            )
-          else
-            ...(_activities.map(
-              (a) => InkWell(
-                onTap: () => Navigator.of(context).pop(a),
-                borderRadius: SkillDrillsRadius.mdBorderRadius,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).primaryColor.withAlpha(18),
-                          borderRadius: SkillDrillsRadius.smBorderRadius,
-                        ),
-                        child: Center(
-                          child: Text(a.icon, style: const TextStyle(fontSize: 22)),
-                        ),
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Text(
-                          a.title ?? '',
-                          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                                fontFamily: 'Choplin',
-                                fontWeight: FontWeight.w600,
-                              ),
-                        ),
-                      ),
-                      Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Theme.of(context).colorScheme.onPrimary),
-                    ],
+            Text(
+              'Choose Activity',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontFamily: 'Choplin',
+                    fontWeight: FontWeight.w700,
+                  ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'What are you training today?',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onPrimary,
+                  ),
+            ),
+            const SizedBox(height: 16),
+            if (_loading)
+              const Center(child: Padding(padding: EdgeInsets.symmetric(vertical: 32), child: CircularProgressIndicator()))
+            else if (_activities.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 32),
+                child: Center(
+                  child: Text(
+                    'No active activities found.\nAdd activities in your profile first.',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodyMedium,
                   ),
                 ),
+              )
+            else
+              Flexible(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: _activities.length,
+                  itemBuilder: (ctx, i) {
+                    final a = _activities[i];
+                    return InkWell(
+                      onTap: () => Navigator.of(context).pop(a),
+                      borderRadius: SkillDrillsRadius.mdBorderRadius,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 44,
+                              height: 44,
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).primaryColor.withAlpha(18),
+                                borderRadius: SkillDrillsRadius.smBorderRadius,
+                              ),
+                              child: Center(
+                                child: Text(a.icon, style: const TextStyle(fontSize: 22)),
+                              ),
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Text(
+                                a.title ?? '',
+                                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                      fontFamily: 'Choplin',
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                              ),
+                            ),
+                            Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Theme.of(context).colorScheme.onPrimary),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
               ),
-            )),
-        ],
+          ],
+        ),
       ),
     );
   }

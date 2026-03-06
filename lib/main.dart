@@ -35,10 +35,13 @@ void main() async {
   await initializeRevenueCat();
 
   // If the user is already signed in, associate their Firebase UID with
-  // RevenueCat so their entitlements are available immediately.
+  // RevenueCat so their entitlements are available immediately, then enforce
+  // the free-tier activity limit in case a subscription lapsed since the last
+  // app session.
   final currentUser = FirebaseAuth.instance.currentUser;
   if (currentUser != null) {
     await loginRevenueCatUser(currentUser.uid);
+    await enforceActivityLimit(currentUser.uid);
   }
 
   // Initialize Google Sign In (7.x singleton pattern).

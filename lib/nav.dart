@@ -1,5 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:skilldrills/services/haptics.dart';
 import 'package:skilldrills/services/subscription.dart';
 import 'package:skilldrills/widgets/paywall_screen.dart';
@@ -53,6 +57,11 @@ class _NavState extends State<Nav> {
   List<Widget>? _actions;
   int _selectedIndex = 2;
   bool _showLogoToolbar = true;
+
+  /// Subscription to [customerInfoStream] used to enforce the free-tier
+  /// activity limit whenever the user's entitlement state changes (e.g. a
+  /// subscription lapses while the app is in the foreground).
+  StreamSubscription<CustomerInfo>? _subscriptionEnforcementListener;
   static final List<NavTab> _tabs = [
     NavTab(
       title: const BasicTitle(title: "Profile"),
@@ -181,6 +190,17 @@ class _NavState extends State<Nav> {
 
     bootstrap();
 
+    // Listen for subscription state changes and enforce the activity limit
+    // immediately when the user's Pro entitlement becomes inactive (e.g. on
+    // subscription lapse or cancellation while the app is open).
+    _subscriptionEnforcementListener = customerInfoStream.listen((info) {
+      final isPro = info.entitlements.active.containsKey(kProEntitlement);
+      if (!isPro) {
+        final uid = FirebaseAuth.instance.currentUser?.uid;
+        if (uid != null) enforceActivityLimit(uid);
+      }
+    });
+
     // Show the custom paywall on first frame after a fresh sign-in / sign-up,
     // but only if the user isn't already subscribed.
     if (widget.showPaywall) {
@@ -196,6 +216,12 @@ class _NavState extends State<Nav> {
         }
       });
     }
+  }
+
+  @override
+  void dispose() {
+    _subscriptionEnforcementListener?.cancel();
+    super.dispose();
   }
 
   @override

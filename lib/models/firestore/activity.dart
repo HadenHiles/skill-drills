@@ -1,6 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'skill.dart';
 
+// Exported so callers can sort / filter on this field name without magic strings.
+const String kActivityLastActivatedAtField = 'last_activated_at';
+
 /// Terminology labels for a given activity.
 /// Controls how "drills", "sets", and "reps" are called throughout the UI.
 ///
@@ -108,6 +111,16 @@ class Activity {
   final String? createdBy;
   DocumentReference? reference;
 
+  /// The last time this activity was toggled on.
+  ///
+  /// Written as a server timestamp whenever [isActive] is set to `true`.
+  /// Used by [enforceActivityLimit] to decide which activities to keep when a
+  /// paid subscription lapses — the [kFreeActiveActivityLimit] most recently
+  /// activated are retained; the rest are disabled.  A `null` here means the
+  /// activity has never been explicitly activated (seeded default), and it is
+  /// treated as the oldest for enforcement purposes.
+  DateTime? lastActivatedAt;
+
   /// Terminology config – how this activity labels its drills, sets, and reps.
   String drillLabel; // singular, e.g. "Drill"
   String setsLabel; // plural, e.g. "Sets"
@@ -120,6 +133,7 @@ class Activity {
     this.title,
     this.createdBy, {
     this.isActive = true,
+    this.lastActivatedAt,
     String? drillLabel,
     String? setsLabel,
     String? repsLabel,
@@ -134,6 +148,7 @@ class Activity {
         id = map!['id'],
         title = map['title'],
         isActive = (map['is_active'] as bool?) ?? true,
+        lastActivatedAt = (map[kActivityLastActivatedAtField] as Timestamp?)?.toDate(),
         skills = [],
         createdBy = map['created_by'],
         drillLabel = (map['drill_label'] as String?)?.isNotEmpty == true ? map['drill_label'] as String : ActivityTerminology.defaultsFor(map['title'] as String?).drillLabel,
@@ -157,6 +172,7 @@ class Activity {
       'sets_label': setsLabel,
       'reps_label': repsLabel,
       'icon': icon,
+      if (lastActivatedAt != null) kActivityLastActivatedAtField: Timestamp.fromDate(lastActivatedAt!),
     };
   }
 

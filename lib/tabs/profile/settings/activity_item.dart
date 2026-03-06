@@ -7,11 +7,22 @@ import 'package:skilldrills/tabs/profile/settings/activity_detail.dart';
 import 'package:skilldrills/widgets/app_list_item.dart';
 
 class ActivityItem extends StatefulWidget {
-  const ActivityItem({super.key, this.sport, this.deleteCallback, this.toggleCallback});
+  const ActivityItem({
+    super.key,
+    this.sport,
+    this.deleteCallback,
+    this.toggleCallback,
+    this.isLockedByPlan = false,
+  });
 
   final Activity? sport;
   final Function? deleteCallback;
   final Function? toggleCallback;
+
+  /// When `true`, the user is on the free plan, the activity is currently
+  /// inactive, and the free-tier limit has been reached.  A small lock
+  /// indicator is shown to nudge the user toward upgrading.
+  final bool isLockedByPlan;
 
   @override
   State<ActivityItem> createState() => _ActivityItemState();
@@ -29,6 +40,39 @@ class _ActivityItemState extends State<ActivityItem> {
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
+          if (widget.isLockedByPlan) ...[
+            Tooltip(
+              message: 'Upgrade to activate more activities',
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.lock_outline_rounded,
+                      size: 11,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: 3),
+                    Text(
+                      'PRO',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.5,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(width: 6),
+          ],
           Switch(
             value: sport.isActive,
             onChanged: (v) => widget.toggleCallback?.call(widget.sport, v),

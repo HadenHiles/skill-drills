@@ -18,10 +18,12 @@ library;
 import 'dart:async';
 import 'dart:io';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:purchases_ui_flutter/purchases_ui_flutter.dart';
+import 'package:skilldrills/models/firestore/activity.dart' show kActivityLastActivatedAtField;
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -235,4 +237,76 @@ Future<void> presentCustomerCenter() async {
   } catch (e, st) {
     debugPrint('[RevenueCat] presentCustomerCenter error: $e\n$st');
   }
+}
+
+// ── Free-tier enforcement ─────────────────────────────────────────────────────
+
+/// Enforces the free-tier activity limit for [uid].
+///
+/// When the user is not subscribed and has more than [kFreeActiveActivityLimit]
+/// active activities, this disables all excess activities in a single Firestore
+/// batch, keeping only the [kFreeActiveActivityLimit] most recently activated —
+/// determined by the `last_activated_at` server timestamp that is written each
+/// time an activity is toggled on.
+///
+/// **Special case — no activation history:**
+/// If none of the active activities carry a `last_activated_at` timestamp
+/// (the user never explicitly toggled anything and no session data exists),
+/// *all* active activities are disabled, forcing a deliberate choice within
+/// the free allocation.
+///
+/// This is called:
+/// - On app startup (after auth + RevenueCat login).
+/// - Whenever [customerInfoStream] signals a non-Pro state, ensuring that a
+///   lapsed subscription is enforced immediately without a restart.
+Future<void> enforceActivityLimit(String uid) async {
+  // Nothing to enforce if the user has an active subscription.
+  if (await hasActiveSubscription()) return;
+
+  final snapshot = await FirebaseFirestore.instance.collection('activities').doc(uid).collection('activities').where('is_active', isEqualTo: true).get();
+
+  if (snapshot.docs.length <= kFreeActiveActivityLimit) return;
+
+  final activeDocs = List.of(snapshot.docs);
+
+  // Check whether any activity was ever explicitly activated.
+  final hasHistory = activeDocs.any((doc) => doc.data()[kActivityLastActivatedAtField] != null);
+
+  if (!hasHistory) {
+    // No activation timestamps: disable everything so the user makes a
+    // deliberate selection within their free-tier allocation.
+    final batch = FirebaseFirestore.instance.batch();
+    for (final doc in activeDocs) {
+      batch.update(doc.reference, {'is_active': false});
+    }
+    await batch.commit();
+    debugPrint(
+      '[Subscription] No activation history — disabled all ${activeDocs.length} '
+      'activities for free-tier enforcement.',
+    );
+    return;
+  }
+
+  // Sort descending by last_activated_at; null timestamps sort to the end
+  // (treated as the oldest, deactivated first).
+  activeDocs.sort((a, b) {
+    final aTs = (a.data()[kActivityLastActivatedAtField] as Timestamp?)?.toDate();
+    final bTs = (b.data()[kActivityLastActivatedAtField] as Timestamp?)?.toDate();
+    if (aTs == null && bTs == null) return 0;
+    if (aTs == null) return 1;
+    if (bTs == null) return -1;
+    return bTs.compareTo(aTs); // most recent first
+  });
+
+  // Disable everything beyond the free limit.
+  final toDisable = activeDocs.skip(kFreeActiveActivityLimit).toList();
+  final batch = FirebaseFirestore.instance.batch();
+  for (final doc in toDisable) {
+    batch.update(doc.reference, {'is_active': false});
+  }
+  await batch.commit();
+  debugPrint(
+    '[Subscription] Disabled ${toDisable.length} excess activities — '
+    'keeping $kFreeActiveActivityLimit most recently activated.',
+  );
 }
