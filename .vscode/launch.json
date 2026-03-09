@@ -12,7 +12,14 @@
             "deviceId": "R3CX20HFZJL",
             "args": ["--dart-define-from-file=dart_defines.json"]
         },
-
+        {
+            "name": "(Profile) Haden's S24 Ultra",
+            "type": "dart",
+            "flutterMode": "profile",
+            "request": "launch",
+            "deviceId": "R3CX20HFZJL",
+            "args": ["--dart-define-from-file=dart_defines.json"]
+        },
         {
             "name": "skilldrills",
             "request": "launch",
