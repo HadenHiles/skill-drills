@@ -24,14 +24,20 @@ class OnboardingPreferences {
   // ── Persistence ────────────────────────────────────────────────────────────
 
   /// Returns true if the user has already completed the welcome flow.
-  /// When [uid] is provided, checks a UID-scoped key first so that a fresh
-  /// account (or a reinstall with a new UID) always sees onboarding, while an
-  /// existing account with persisted NSUserDefaults correctly skips it.
+  ///
+  /// When [uid] is null the user is not authenticated and we cannot verify
+  /// which account the global flag belongs to (it may have survived a device
+  /// restore or partial reinstall). In that case we always return false so the
+  /// welcome screen is shown.
+  ///
+  /// When [uid] is provided the UID-scoped key is checked first. The global
+  /// key is used as a backward-compat fallback for accounts that completed
+  /// onboarding before the UID-scoped key was introduced.
   static Future<bool> hasSeenWelcome({String? uid}) async {
+    if (uid == null) return false;
     final prefs = await SharedPreferences.getInstance();
-    if (uid != null && (prefs.getBool('${_keyHasSeenWelcome}_$uid') ?? false)) {
-      return true;
-    }
+    if (prefs.getBool('${_keyHasSeenWelcome}_$uid') ?? false) return true;
+    // Backward compat: global flag set before per-UID key was introduced.
     return prefs.getBool(_keyHasSeenWelcome) ?? false;
   }
 
