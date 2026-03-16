@@ -288,7 +288,7 @@ class _ProfileSettingsState extends State<ProfileSettings> {
               tiles: [
                 SettingsTile(
                   title: Text(
-                    'Reset Default Drills & Data',
+                    'Restore Default Data',
                     style: TextStyle(
                       color: Theme.of(context).colorScheme.error,
                       fontSize: Theme.of(context).textTheme.bodyLarge!.fontSize,
@@ -303,7 +303,7 @@ class _ProfileSettingsState extends State<ProfileSettings> {
                     final confirmed = await showDialog<bool>(
                       context: context,
                       builder: (_) => AlertDialog(
-                        title: const Text('Reset Default Data?'),
+                        title: const Text('Restore Default Data?'),
                         content: const Text(
                           'This will delete and re-create all factory activities, drill types and drills for your account.\n\nYour routines and session history will not be affected.',
                           textAlign: TextAlign.center,
@@ -312,45 +312,21 @@ class _ProfileSettingsState extends State<ProfileSettings> {
                           TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
                           TextButton(
                             onPressed: () => Navigator.of(context).pop(true),
-                            child: Text('Reset', style: TextStyle(color: Theme.of(context).colorScheme.error)),
+                            child: Text('Restore', style: TextStyle(color: Theme.of(context).colorScheme.error)),
                           ),
                         ],
                       ),
                     );
                     if (confirmed != true) return;
                     if (!context.mounted) return;
-                    final messenger = ScaffoldMessenger.of(context);
-                    showDialog(
-                      context: context,
-                      barrierDismissible: false,
-                      builder: (_) => PopScope(
-                        canPop: false,
-                        child: AlertDialog(
-                          content: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const CircularProgressIndicator(),
-                              const SizedBox(height: 20),
-                              const Text('Resetting data…'),
-                            ],
-                          ),
-                        ),
-                      ),
-                    );
-                    try {
-                      await resetAllData();
-                      if (context.mounted) Navigator.of(context).pop();
-                      messenger.showSnackBar(const SnackBar(
-                        content: Text('Data reset successfully!'),
-                        duration: Duration(seconds: 3),
-                      ));
-                    } catch (e) {
-                      if (context.mounted) Navigator.of(context).pop();
-                      messenger.showSnackBar(SnackBar(
-                        content: Text('Reset failed: $e'),
-                        duration: const Duration(seconds: 4),
-                      ));
-                    }
+                    // Fire in the background — progress is shown on the Drills
+                    // and Activities screens via isBootstrapping / bootstrapProgress.
+                    // ignore: unawaited_futures
+                    resetAllData();
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                      content: Text('Restoring your library in the background…'),
+                      duration: Duration(seconds: 3),
+                    ));
                   },
                 ),
                 SettingsTile(

@@ -20,6 +20,37 @@ final FirebaseAuth auth = FirebaseAuth.instance;
 /// friendly loading state instead of a confusing empty state.
 final ValueNotifier<bool> isBootstrapping = ValueNotifier(false);
 
+// ── Bootstrap progress ────────────────────────────────────────────────────────
+
+enum BootstrapStage { pending, loading, done }
+
+class BootstrapProgress {
+  final BootstrapStage activities;
+  final BootstrapStage drillTypes;
+  final BootstrapStage drills;
+
+  const BootstrapProgress({
+    this.activities = BootstrapStage.pending,
+    this.drillTypes = BootstrapStage.pending,
+    this.drills = BootstrapStage.pending,
+  });
+
+  BootstrapProgress copyWith({
+    BootstrapStage? activities,
+    BootstrapStage? drillTypes,
+    BootstrapStage? drills,
+  }) =>
+      BootstrapProgress(
+        activities: activities ?? this.activities,
+        drillTypes: drillTypes ?? this.drillTypes,
+        drills: drills ?? this.drills,
+      );
+}
+
+/// Tracks per-collection progress during [bootstrap]. Widgets can listen to
+/// this alongside [isBootstrapping] to show fine-grained progress UI.
+final ValueNotifier<BootstrapProgress> bootstrapProgress = ValueNotifier(const BootstrapProgress());
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Bootstrap entry point (called from Nav.initState)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -30,25 +61,59 @@ final ValueNotifier<bool> isBootstrapping = ValueNotifier(false);
 /// - Deletes and re-seeds default drills + their subcollections
 ///
 /// User-created routines and session history are NOT touched.
+///
+/// Sets [isBootstrapping] and [bootstrapProgress] so any listening UI (e.g.
+/// the Drills tab and Activities screen) automatically shows the progress.
 Future<void> resetAllData() async {
-  await resetActivities();
-  await resetDrillTypes();
-  await resetDrills();
+  isBootstrapping.value = true;
+  bootstrapProgress.value = const BootstrapProgress();
+  try {
+    bootstrapProgress.value = bootstrapProgress.value.copyWith(
+      activities: BootstrapStage.loading,
+      drillTypes: BootstrapStage.loading,
+    );
+    await Future.wait([
+      resetActivities().then((_) {
+        bootstrapProgress.value = bootstrapProgress.value.copyWith(activities: BootstrapStage.done);
+      }),
+      resetDrillTypes().then((_) {
+        bootstrapProgress.value = bootstrapProgress.value.copyWith(drillTypes: BootstrapStage.done);
+      }),
+    ]);
+    bootstrapProgress.value = bootstrapProgress.value.copyWith(drills: BootstrapStage.loading);
+    await resetDrills();
+    bootstrapProgress.value = bootstrapProgress.value.copyWith(drills: BootstrapStage.done);
+  } finally {
+    isBootstrapping.value = false;
+  }
 }
 
 Future<void> bootstrap() async {
   isBootstrapping.value = true;
+  bootstrapProgress.value = const BootstrapProgress();
   try {
     addUser();
 
     // Read one-time onboarding preferences (cleared after first apply).
     final onboardingPrefs = await OnboardingPreferences.load();
 
+    // Start activities and drill types in parallel and report each individually.
+    bootstrapProgress.value = bootstrapProgress.value.copyWith(
+      activities: BootstrapStage.loading,
+      drillTypes: BootstrapStage.loading,
+    );
     await Future.wait([
-      bootstrapActivities(selectedActivities: onboardingPrefs.selectedActivities),
-      bootstrapDrillTypes(includeDefault: onboardingPrefs.includeDefaultDrills),
+      bootstrapActivities(selectedActivities: onboardingPrefs.selectedActivities).then((_) {
+        bootstrapProgress.value = bootstrapProgress.value.copyWith(activities: BootstrapStage.done);
+      }),
+      bootstrapDrillTypes(includeDefault: onboardingPrefs.includeDefaultDrills).then((_) {
+        bootstrapProgress.value = bootstrapProgress.value.copyWith(drillTypes: BootstrapStage.done);
+      }),
     ]);
+
+    bootstrapProgress.value = bootstrapProgress.value.copyWith(drills: BootstrapStage.loading);
     await bootstrapDrills();
+    bootstrapProgress.value = bootstrapProgress.value.copyWith(drills: BootstrapStage.done);
 
     // Clear the per-activity selections now that they have been applied.
     // The opted_out_default_drills flag is NOT cleared — it persists so future

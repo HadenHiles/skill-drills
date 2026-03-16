@@ -6,8 +6,6 @@ import 'package:flutter/material.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:skilldrills/main.dart';
 import 'package:skilldrills/models/firestore/activity.dart';
-import 'package:skilldrills/models/skill_drills_dialog.dart';
-import 'package:skilldrills/services/dialogs.dart';
 import 'package:skilldrills/services/factory.dart';
 import 'package:skilldrills/services/subscription.dart';
 import 'package:skilldrills/tabs/profile/settings/activity_detail.dart';
@@ -64,26 +62,98 @@ class _ActivitiesSettingsState extends State<ActivitiesSettings> {
   }
 
   Widget _buildActivities(BuildContext context) {
-    return StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance.collection("activities").doc(auth.currentUser!.uid).collection("activities").orderBy('title', descending: false).snapshots(),
-        builder: (context, snapshot) {
-          if (!snapshot.hasData) {
-            return const Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                CircularProgressIndicator(),
-              ],
-            );
-          }
+    return ValueListenableBuilder<bool>(
+      valueListenable: isBootstrapping,
+      builder: (context, bootstrapping, _) {
+        return StreamBuilder<QuerySnapshot>(
+          stream: FirebaseFirestore.instance.collection("activities").doc(auth.currentUser!.uid).collection("activities").orderBy('title', descending: false).snapshots(),
+          builder: (context, snapshot) {
+            // Show bootstrap progress UI while the library is being built.
+            if (bootstrapping && (!snapshot.hasData || snapshot.data!.docs.isEmpty)) {
+              return _buildBootstrappingState(context);
+            }
 
-          final docs = snapshot.data!.docs.cast<DocumentSnapshot<Map<String, dynamic>>>();
-          // Keep a local copy so _toggleActive can count active items.
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) setState(() => _activitiesSnapshot = docs);
-          });
-          return _buildActivityList(context, docs);
-        });
+            if (!snapshot.hasData) {
+              return const Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(),
+                ],
+              );
+            }
+
+            final docs = snapshot.data!.docs.cast<DocumentSnapshot<Map<String, dynamic>>>();
+            // Keep a local copy so _toggleActive can count active items.
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) setState(() => _activitiesSnapshot = docs);
+            });
+            return _buildActivityList(context, docs);
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildBootstrappingState(BuildContext context) {
+    final color = Theme.of(context).colorScheme.secondary;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 40),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.construction_rounded, size: 52, color: color),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'Building Your Library…',
+              style: Theme.of(context).textTheme.headlineSmall,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Setting up your activities and drills.\nThis only happens once.',
+              style: Theme.of(context).textTheme.bodyMedium,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            ValueListenableBuilder<BootstrapProgress>(
+              valueListenable: bootstrapProgress,
+              builder: (context, progress, _) {
+                return Column(
+                  children: [
+                    _BootstrapProgressRow(
+                      label: 'Activities & Skills',
+                      stage: progress.activities,
+                      color: color,
+                    ),
+                    const SizedBox(height: 12),
+                    _BootstrapProgressRow(
+                      label: 'Drill Templates',
+                      stage: progress.drillTypes,
+                      color: color,
+                    ),
+                    const SizedBox(height: 12),
+                    _BootstrapProgressRow(
+                      label: 'Default Drills',
+                      stage: progress.drills,
+                      color: color,
+                    ),
+                  ],
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildActivityList(BuildContext context, List<DocumentSnapshot<Map<String, dynamic>>> snapshot) {
@@ -325,43 +395,76 @@ class _ActivitiesSettingsState extends State<ActivitiesSettings> {
             Flexible(
               child: _buildActivities(context),
             ),
-            SizedBox(
-              width: double.infinity,
-              child: TextButton(
-                style: TextButton.styleFrom(
-                  foregroundColor: Theme.of(context).colorScheme.error,
-                  padding: const EdgeInsets.all(25),
-                ),
-                child: const Text(
-                  "Reset to defaults",
-                  style: TextStyle(fontSize: 20),
-                ),
-                onPressed: () {
-                  dialog(
-                    context,
-                    SkillDrillsDialog(
-                      "Reset Activities?",
-                      const Text(
-                        "This will restore all default activities and their terminology.\n\nThis can't be undone.",
-                        textAlign: TextAlign.center,
-                      ),
-                      "Cancel",
-                      () {
-                        Navigator.of(context).pop();
-                      },
-                      "Reset",
-                      () {
-                        resetActivities();
-                        Navigator.of(context).pop();
-                      },
-                    ),
-                  );
-                },
-              ),
-            ),
           ],
         ),
       ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Bootstrap progress row – label + linear progress bar + status icon
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _BootstrapProgressRow extends StatelessWidget {
+  final String label;
+  final BootstrapStage stage;
+  final Color color;
+
+  const _BootstrapProgressRow({
+    required this.label,
+    required this.stage,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDone = stage == BootstrapStage.done;
+    final isLoading = stage == BootstrapStage.loading;
+    final isPending = stage == BootstrapStage.pending;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                label,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: isPending ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.38) : Theme.of(context).colorScheme.onSurface,
+                    ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 250),
+              child: isDone
+                  ? Icon(Icons.check_circle_rounded, key: const ValueKey('done'), size: 18, color: color)
+                  : isLoading
+                      ? SizedBox(
+                          key: const ValueKey('loading'),
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: color),
+                        )
+                      : SizedBox(key: const ValueKey('pending'), width: 18, height: 18),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: LinearProgressIndicator(
+            value: isDone ? 1.0 : (isPending ? 0.0 : null),
+            backgroundColor: color.withValues(alpha: 0.15),
+            valueColor: AlwaysStoppedAnimation<Color>(
+              isDone ? color : (isLoading ? color : Colors.transparent),
+            ),
+            minHeight: 5,
+          ),
+        ),
+      ],
     );
   }
 }

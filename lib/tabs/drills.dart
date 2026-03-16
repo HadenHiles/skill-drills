@@ -220,16 +220,32 @@ class _DrillsState extends State<Drills> with SingleTickerProviderStateMixin {
             ),
             const SizedBox(height: SkillDrillsSpacing.sm),
             Text(
-              bootstrapping ? 'Generating your default drill templates.\nThis only happens once.' : 'Hang tight…',
+              bootstrapping ? 'Setting up your default drill templates.\nThis only happens once.' : 'Hang tight…',
               style: Theme.of(context).textTheme.bodyMedium,
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: SkillDrillsSpacing.lg),
-            const SizedBox(
-              width: 28,
-              height: 28,
-              child: CircularProgressIndicator(strokeWidth: 2.5),
-            ),
+            if (bootstrapping)
+              ValueListenableBuilder<BootstrapProgress>(
+                valueListenable: bootstrapProgress,
+                builder: (context, progress, _) {
+                  return Column(
+                    children: [
+                      _BootstrapProgressRow(label: 'Activities & Skills', stage: progress.activities),
+                      const SizedBox(height: SkillDrillsSpacing.sm),
+                      _BootstrapProgressRow(label: 'Drill Templates', stage: progress.drillTypes),
+                      const SizedBox(height: SkillDrillsSpacing.sm),
+                      _BootstrapProgressRow(label: 'Default Drills', stage: progress.drills),
+                    ],
+                  );
+                },
+              )
+            else
+              const SizedBox(
+                width: 28,
+                height: 28,
+                child: CircularProgressIndicator(strokeWidth: 2.5),
+              ),
           ],
         ),
       ),
@@ -421,6 +437,67 @@ class _ActivitySection extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Bootstrap progress row – label + linear progress bar + status icon
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _BootstrapProgressRow extends StatelessWidget {
+  final String label;
+  final BootstrapStage stage;
+
+  const _BootstrapProgressRow({required this.label, required this.stage});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = Theme.of(context).colorScheme.secondary;
+    final isDone = stage == BootstrapStage.done;
+    final isLoading = stage == BootstrapStage.loading;
+    final isPending = stage == BootstrapStage.pending;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                label,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: isPending ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.38) : Theme.of(context).colorScheme.onSurface,
+                    ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 250),
+              child: isDone
+                  ? Icon(Icons.check_circle_rounded, key: const ValueKey('done'), size: 18, color: color)
+                  : isLoading
+                      ? SizedBox(
+                          key: const ValueKey('loading'),
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: color),
+                        )
+                      : SizedBox(key: const ValueKey('pending'), width: 18, height: 18),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: LinearProgressIndicator(
+            value: isDone ? 1.0 : (isPending ? 0.0 : null),
+            backgroundColor: color.withValues(alpha: 0.15),
+            valueColor: AlwaysStoppedAnimation<Color>(isDone ? color : (isLoading ? color : Colors.transparent)),
+            minHeight: 5,
+          ),
+        ),
+      ],
     );
   }
 }
