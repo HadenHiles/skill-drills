@@ -7,9 +7,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:skilldrills/main.dart';
 import 'package:skilldrills/models/firestore/activity.dart';
+import 'package:skilldrills/models/firestore/drill.dart';
+import 'package:skilldrills/models/firestore/measurement.dart';
 import 'package:skilldrills/models/firestore/session.dart' as session_model;
+import 'package:skilldrills/models/firestore/skill.dart';
 import 'package:skilldrills/models/skill_drills_dialog.dart';
 import 'package:skilldrills/services/dialogs.dart';
+import 'package:skilldrills/services/utility.dart';
 import 'package:skilldrills/tabs/session/add_drill_sheet.dart';
 import 'package:skilldrills/theme/theme.dart';
 import 'package:sliding_up_panel/sliding_up_panel.dart';
@@ -550,15 +554,33 @@ class _DrillPage extends StatelessWidget {
             ],
           ),
         ),
-        // Drill title
+        // Drill title + info button
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 6, 16, 12),
-          child: Text(
-            drillResult.drillTitle,
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontFamily: 'Choplin',
-                  fontWeight: FontWeight.w700,
+          padding: const EdgeInsets.fromLTRB(16, 6, 4, 12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(
+                  drillResult.drillTitle,
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontFamily: 'Choplin',
+                        fontWeight: FontWeight.w700,
+                      ),
                 ),
+              ),
+              IconButton(
+                visualDensity: VisualDensity.compact,
+                padding: const EdgeInsets.fromLTRB(8, 2, 8, 2),
+                tooltip: 'Drill details',
+                icon: Icon(
+                  Icons.info_outline_rounded,
+                  size: 18,
+                  color: Theme.of(context).colorScheme.onSurface.withAlpha(100),
+                ),
+                onPressed: () => _showDrillDetails(context, drillResult),
+              ),
+            ],
           ),
         ),
 
@@ -1313,6 +1335,357 @@ class _ScaleInput extends StatelessWidget {
         },
       ),
     );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Drill details sheet
+// ─────────────────────────────────────────────────────────────────────────────
+
+void _showDrillDetails(BuildContext context, session_model.DrillResult drillResult) {
+  showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (_) => _DrillDetailsSheet(drillResult: drillResult),
+  );
+}
+
+class _DrillDetailsSheet extends StatefulWidget {
+  const _DrillDetailsSheet({required this.drillResult});
+
+  final session_model.DrillResult drillResult;
+
+  @override
+  State<_DrillDetailsSheet> createState() => _DrillDetailsSheetState();
+}
+
+class _DrillDetailsSheetState extends State<_DrillDetailsSheet> with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<double> _fade;
+  late final Animation<Offset> _slide;
+
+  Drill? _drill;
+  List<Measurement> _measurements = [];
+  List<Skill> _skills = [];
+  bool _loading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 300));
+    _fade = CurvedAnimation(parent: _ctrl, curve: Curves.easeOut);
+    _slide = Tween<Offset>(begin: const Offset(0, 0.12), end: Offset.zero).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic));
+    _ctrl.forward();
+    _fetchDetails();
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _fetchDetails() async {
+    try {
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid == null) {
+        if (mounted) {
+          setState(() {
+            _loading = false;
+            _error = 'Not signed in';
+          });
+        }
+        return;
+      }
+      final drillRef = FirebaseFirestore.instance.collection('drills').doc(uid).collection('drills').doc(widget.drillResult.drillId);
+
+      final results = await Future.wait([
+        drillRef.get(),
+        drillRef.collection('measurements').orderBy('order').get(),
+        drillRef.collection('skills').get(),
+      ]);
+
+      if (!mounted) return;
+
+      final drillSnap = results[0] as DocumentSnapshot<Map<String, dynamic>>;
+      final measureSnap = results[1] as QuerySnapshot<Map<String, dynamic>>;
+      final skillsSnap = results[2] as QuerySnapshot<Map<String, dynamic>>;
+
+      if (!drillSnap.exists) {
+        setState(() {
+          _loading = false;
+          _error = 'Drill details not found';
+        });
+        return;
+      }
+
+      setState(() {
+        _drill = Drill.fromSnapshot(drillSnap);
+        _measurements = measureSnap.docs.map(Measurement.fromSnapshot).toList();
+        _skills = skillsSnap.docs.map(Skill.fromSnapshot).toList();
+        _loading = false;
+      });
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _error = 'Could not load details';
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomPad = MediaQuery.of(context).padding.bottom;
+    return FadeTransition(
+      opacity: _fade,
+      child: SlideTransition(
+        position: _slide,
+        child: Container(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.75,
+          ),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(SkillDrillsRadius.lg)),
+          ),
+          padding: EdgeInsets.fromLTRB(20, 12, 20, 24 + bottomPad),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).dividerColor,
+                    borderRadius: SkillDrillsRadius.fullBorderRadius,
+                  ),
+                ),
+              ),
+              if (_loading)
+                const Center(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(vertical: 32),
+                    child: CircularProgressIndicator(),
+                  ),
+                )
+              else if (_error != null)
+                Center(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 32),
+                    child: Text(_error!, style: Theme.of(context).textTheme.bodyMedium),
+                  ),
+                )
+              else
+                Flexible(child: _buildContent(context)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildContent(BuildContext context) {
+    final drill = _drill!;
+    final resultMeasurements = _measurements.where((m) => m.role == 'result').toList();
+    final targetMeasurements = _measurements.where((m) => m.role == 'target').toList();
+    final description = drill.description?.trim() ?? '';
+    final drillTypeDescriptor = drill.drillType?.descriptor?.trim() ?? '';
+    final drillTypeTitle = drill.drillType?.title?.trim() ?? '';
+
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _ActivityBadge(
+            icon: widget.drillResult.activityIcon,
+            label: widget.drillResult.activityTitle,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            widget.drillResult.drillTitle,
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontFamily: 'Choplin',
+                  fontWeight: FontWeight.w700,
+                ),
+          ),
+          if (_skills.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 6,
+              runSpacing: 4,
+              children: _skills
+                  .map(
+                    (s) => Chip(
+                      label: Text(
+                        s.title,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontFamily: 'Choplin',
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      visualDensity: VisualDensity.compact,
+                      backgroundColor: Theme.of(context).primaryColor.withAlpha(18),
+                      side: BorderSide(color: Theme.of(context).primaryColor.withAlpha(60)),
+                      shape: RoundedRectangleBorder(borderRadius: SkillDrillsRadius.fullBorderRadius),
+                    ),
+                  )
+                  .toList(),
+            ),
+          ],
+          if (description.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            Text(description, style: Theme.of(context).textTheme.bodyMedium),
+          ],
+          if (drillTypeTitle.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            const Divider(height: 1),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Icon(
+                  Icons.category_outlined,
+                  size: 14,
+                  color: Theme.of(context).colorScheme.onSurface.withAlpha(120),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  drillTypeTitle,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        fontFamily: 'Choplin',
+                        color: Theme.of(context).colorScheme.onSurface.withAlpha(150),
+                      ),
+                ),
+              ],
+            ),
+            if (drillTypeDescriptor.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(drillTypeDescriptor, style: Theme.of(context).textTheme.bodySmall),
+            ],
+          ],
+          if (resultMeasurements.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            const Divider(height: 1),
+            const SizedBox(height: 12),
+            Text(
+              'Measurements',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    fontFamily: 'Choplin',
+                    color: Theme.of(context).colorScheme.onSurface.withAlpha(150),
+                  ),
+            ),
+            const SizedBox(height: 8),
+            ...resultMeasurements.map(
+              (m) => Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Row(
+                  children: [
+                    Icon(
+                      m.type == 'duration'
+                          ? Icons.timer_outlined
+                          : m.type == 'rpe' || m.type == 'rir'
+                              ? Icons.speed_rounded
+                              : Icons.straighten_rounded,
+                      size: 14,
+                      color: Theme.of(context).colorScheme.onSurface.withAlpha(120),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        m.label.isNotEmpty ? m.label : _typeLabel(m.type),
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                    ),
+                    Text(
+                      _typeLabel(m.type),
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Theme.of(context).colorScheme.onSurface.withAlpha(110),
+                          ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+          if (targetMeasurements.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            const Divider(height: 1),
+            const SizedBox(height: 12),
+            Text(
+              'Targets',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    fontFamily: 'Choplin',
+                    color: Theme.of(context).colorScheme.onSurface.withAlpha(150),
+                  ),
+            ),
+            const SizedBox(height: 8),
+            ...targetMeasurements.map(
+              (t) => Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Row(
+                  children: [
+                    Icon(
+                      t.reverse ? Icons.arrow_downward_rounded : Icons.flag_outlined,
+                      size: 14,
+                      color: Theme.of(context).primaryColor.withAlpha(160),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        t.label.isNotEmpty ? t.label : (t.type == 'duration' ? 'Time Goal' : 'Goal'),
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                    ),
+                    if (t.target != null)
+                      Text(
+                        _formatTarget(t),
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.w700,
+                              fontFamily: 'Choplin',
+                              color: Theme.of(context).primaryColor,
+                            ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  static String _typeLabel(String type) {
+    switch (type) {
+      case 'duration':
+        return 'Time';
+      case 'rpe':
+        return 'RPE';
+      case 'rir':
+        return 'RIR';
+      default:
+        return 'Amount';
+    }
+  }
+
+  static String _formatTarget(Measurement t) {
+    if (t.target == null) return '—';
+    if (t.type == 'duration') return printDuration(Duration(seconds: t.target!.toInt()));
+    return t.target!.toString();
   }
 }
 
