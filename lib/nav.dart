@@ -19,6 +19,7 @@ import 'package:skilldrills/tabs/profile.dart';
 import 'package:skilldrills/tabs/routines.dart';
 import 'package:skilldrills/services/factory.dart';
 import 'package:skilldrills/tabs/Start.dart';
+import 'package:skilldrills/theme/theme.dart';
 import 'package:skilldrills/tabs/drills/drill_detail.dart';
 import 'package:skilldrills/tabs/routines/routine_detail.dart';
 import 'package:skilldrills/tabs/profile/settings/settings.dart';
@@ -250,6 +251,16 @@ class _NavState extends State<Nav> {
 
   @override
   Widget build(BuildContext context) {
+    return ValueListenableBuilder<bool>(
+      valueListenable: isInitialSeeding,
+      builder: (context, seeding, _) {
+        if (seeding) return _buildSeedingScreen(context);
+        return _buildMainScaffold(context);
+      },
+    );
+  }
+
+  Widget _buildMainScaffold(BuildContext context) {
     return SessionServiceProvider(
       service: sessionService,
       child: Scaffold(
@@ -438,6 +449,240 @@ class _NavState extends State<Nav> {
             onTap: _onItemTapped,
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildSeedingScreen(BuildContext context) {
+    final color = Theme.of(context).colorScheme.secondary;
+    return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      body: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 40),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: color.withAlpha(18),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.construction_rounded, size: 52, color: color),
+                ),
+                const SizedBox(height: SkillDrillsSpacing.lg),
+                Text(
+                  'Building Your Library\u2026',
+                  style: Theme.of(context).textTheme.headlineSmall,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: SkillDrillsSpacing.sm),
+                Text(
+                  'Setting up your activities, drill templates, and default drills.\nThis only happens once.',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: SkillDrillsSpacing.lg),
+                ValueListenableBuilder<BootstrapProgress>(
+                  valueListenable: bootstrapProgress,
+                  builder: (context, progress, _) {
+                    return Column(
+                      children: [
+                        _SeedProgressRow(label: 'Activities & Skills', stage: progress.activities),
+                        const SizedBox(height: SkillDrillsSpacing.sm),
+                        _SeedProgressRow(label: 'Drill Templates', stage: progress.drillTypes),
+                        const SizedBox(height: SkillDrillsSpacing.sm),
+                        if (progress.drills == BootstrapStage.loading) const _SeedDrillsProgressWidget() else _SeedProgressRow(label: 'Default Drills', stage: progress.drills),
+                      ],
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Seeding screen helpers (used only during first-install / data-reset)
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _SeedProgressRow extends StatelessWidget {
+  final String label;
+  final BootstrapStage stage;
+
+  const _SeedProgressRow({required this.label, required this.stage});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = Theme.of(context).colorScheme.secondary;
+    final isDone = stage == BootstrapStage.done;
+    final isLoading = stage == BootstrapStage.loading;
+    final isPending = stage == BootstrapStage.pending;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                label,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: isPending ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.38) : Theme.of(context).colorScheme.onSurface,
+                    ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 250),
+              child: isDone
+                  ? Icon(Icons.check_circle_rounded, key: const ValueKey('done'), size: 18, color: color)
+                  : isLoading
+                      ? SizedBox(
+                          key: const ValueKey('loading'),
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: color),
+                        )
+                      : SizedBox(key: const ValueKey('pending'), width: 18, height: 18),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: LinearProgressIndicator(
+            value: isDone ? 1.0 : (isPending ? 0.0 : null),
+            backgroundColor: color.withValues(alpha: 0.15),
+            valueColor: AlwaysStoppedAnimation<Color>(isDone ? color : (isLoading ? color : Colors.transparent)),
+            minHeight: 5,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SeedDrillsProgressWidget extends StatefulWidget {
+  const _SeedDrillsProgressWidget();
+
+  @override
+  State<_SeedDrillsProgressWidget> createState() => _SeedDrillsProgressWidgetState();
+}
+
+class _SeedDrillsProgressWidgetState extends State<_SeedDrillsProgressWidget> {
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = Theme.of(context).colorScheme.secondary;
+    return ValueListenableBuilder<DrillSeedProgress>(
+      valueListenable: drillSeedProgress,
+      builder: (context, progress, _) {
+        final fraction = progress.drillsTotal > 0 ? progress.drillsDone / progress.drillsTotal : 0.0;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Default Drills',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.55),
+                            ),
+                      ),
+                      if (progress.activityName.isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Text(progress.activityName, style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: color)),
+              ],
+            ),
+            const SizedBox(height: 6),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: TweenAnimationBuilder<double>(
+                key: ValueKey(progress.activityName),
+                tween: Tween<double>(begin: 0, end: fraction),
+                duration: const Duration(milliseconds: 350),
+                curve: Curves.easeOut,
+                builder: (context, value, _) => LinearProgressIndicator(
+                  value: value,
+                  backgroundColor: color.withValues(alpha: 0.15),
+                  valueColor: AlwaysStoppedAnimation<Color>(color),
+                  minHeight: 5,
+                ),
+              ),
+            ),
+            const SizedBox(height: 6),
+            GestureDetector(
+              onTap: () => setState(() => _expanded = !_expanded),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(_expanded ? 'Less' : 'More', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: color)),
+                  Icon(_expanded ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded, size: 16, color: color),
+                ],
+              ),
+            ),
+            AnimatedCrossFade(
+              firstChild: const SizedBox.shrink(),
+              secondChild: _buildDetails(context, progress, color),
+              crossFadeState: _expanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+              duration: const Duration(milliseconds: 200),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildDetails(BuildContext context, DrillSeedProgress progress, Color color) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (final activity in progress.completedActivities)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2),
+              child: Row(
+                children: [
+                  Icon(Icons.check_circle_rounded, size: 14, color: color),
+                  const SizedBox(width: 6),
+                  Text(activity, style: Theme.of(context).textTheme.bodySmall),
+                ],
+              ),
+            ),
+          if (progress.activityName.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2),
+              child: Row(
+                children: [
+                  SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 1.5, color: color)),
+                  const SizedBox(width: 6),
+                  Text(
+                    '${progress.activityName} — ${progress.drillsDone} of ${progress.drillsTotal}',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
+              ),
+            ),
+        ],
       ),
     );
   }

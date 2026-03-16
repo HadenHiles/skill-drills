@@ -20,6 +20,11 @@ final FirebaseAuth auth = FirebaseAuth.instance;
 /// friendly loading state instead of a confusing empty state.
 final ValueNotifier<bool> isBootstrapping = ValueNotifier(false);
 
+/// True when [bootstrap] is actively seeding empty collections — i.e. this is
+/// a genuine first-install or data-reset, not just fast idempotent checks.
+/// Drives the full-screen seeding overlay in [Nav].
+final ValueNotifier<bool> isInitialSeeding = ValueNotifier(false);
+
 // ── Bootstrap progress ────────────────────────────────────────────────────────
 
 enum BootstrapStage { pending, loading, done }
@@ -109,6 +114,16 @@ Future<void> resetAllData() async {
 }
 
 Future<void> bootstrap() async {
+  final uid = auth.currentUser!.uid;
+  // Quick parallel pre-check: is any collection missing data?
+  // Three limit(1) reads run concurrently — negligible cost for existing users.
+  final checks = await Future.wait([
+    FirebaseFirestore.instance.collection('activities').doc(uid).collection('activities').limit(1).get(),
+    FirebaseFirestore.instance.collection('drill_types').doc(uid).collection('drill_types').limit(1).get(),
+    FirebaseFirestore.instance.collection('drills').doc(uid).collection('drills').limit(1).get(),
+  ]);
+  if (checks.any((s) => s.docs.isEmpty)) isInitialSeeding.value = true;
+
   isBootstrapping.value = true;
   bootstrapProgress.value = const BootstrapProgress();
   try {
@@ -141,6 +156,7 @@ Future<void> bootstrap() async {
     await OnboardingPreferences.clearAfterApply();
   } finally {
     isBootstrapping.value = false;
+    isInitialSeeding.value = false;
   }
 }
 
