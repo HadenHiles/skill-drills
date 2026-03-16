@@ -218,7 +218,8 @@ class _NavState extends State<Nav> {
             ),
           )
               .then((_) async {
-            final seen = await OnboardingPreferences.hasSeenWelcome();
+            final uid = FirebaseAuth.instance.currentUser?.uid;
+            final seen = await OnboardingPreferences.hasSeenWelcome(uid: uid);
             if (!seen && navigatorKey.currentState != null) {
               navigatorKey.currentState!.push(
                 MaterialPageRoute(
@@ -229,7 +230,8 @@ class _NavState extends State<Nav> {
             }
           });
         } else {
-          final seen = await OnboardingPreferences.hasSeenWelcome();
+          final uid = FirebaseAuth.instance.currentUser?.uid;
+          final seen = await OnboardingPreferences.hasSeenWelcome(uid: uid);
           if (!seen && navigatorKey.currentState != null) {
             navigatorKey.currentState!.push(
               MaterialPageRoute(

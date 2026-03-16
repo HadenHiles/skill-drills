@@ -2,6 +2,7 @@
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:skilldrills/nav.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
 import 'package:skilldrills/login.dart';
@@ -82,22 +83,28 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
   }
 
   Future<void> _onGetStarted() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
     try {
       final prefs = OnboardingPreferences(
         selectedActivities: _selectedActivities,
         includeDefaultDrills: _includeDefaultDrills,
       );
       await prefs.save();
-      await OnboardingPreferences.markWelcomeSeen();
+      await OnboardingPreferences.markWelcomeSeen(uid: uid);
     } catch (e) {
       print('Welcome: failed to save onboarding prefs: $e');
     }
     if (!mounted) return;
-    if (FirebaseAuth.instance.currentUser != null) {
-      // Already authenticated — shown as a post-login onboarding continuation.
-      // Just pop back to Nav; bootstrap will pick up the saved preferences.
+    if (Navigator.canPop(context)) {
+      // Shown as a modal (WelcomeScreen(initialPage: 2)) — pop back to Nav.
       Navigator.of(context).pop();
+    } else if (uid != null) {
+      // Home route with Keychain-persisted auth — navigate straight to Nav.
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const Nav()),
+      );
     } else {
+      // Normal first-time flow — navigate to Login to authenticate.
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => const Login()),
       );

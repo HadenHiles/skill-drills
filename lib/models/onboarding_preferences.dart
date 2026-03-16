@@ -24,15 +24,26 @@ class OnboardingPreferences {
   // ── Persistence ────────────────────────────────────────────────────────────
 
   /// Returns true if the user has already completed the welcome flow.
-  static Future<bool> hasSeenWelcome() async {
+  /// When [uid] is provided, checks a UID-scoped key first so that a fresh
+  /// account (or a reinstall with a new UID) always sees onboarding, while an
+  /// existing account with persisted NSUserDefaults correctly skips it.
+  static Future<bool> hasSeenWelcome({String? uid}) async {
     final prefs = await SharedPreferences.getInstance();
+    if (uid != null && (prefs.getBool('${_keyHasSeenWelcome}_$uid') ?? false)) {
+      return true;
+    }
     return prefs.getBool(_keyHasSeenWelcome) ?? false;
   }
 
   /// Called when the user completes (or dismisses) the welcome flow.
-  static Future<void> markWelcomeSeen() async {
+  /// Pass [uid] when the user is already authenticated so the flag is also
+  /// stored under a UID-scoped key, enabling per-account tracking.
+  static Future<void> markWelcomeSeen({String? uid}) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_keyHasSeenWelcome, true);
+    if (uid != null) {
+      await prefs.setBool('${_keyHasSeenWelcome}_$uid', true);
+    }
   }
 
   /// Loads previously saved onboarding preferences (if any).

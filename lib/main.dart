@@ -64,7 +64,9 @@ void main() async {
     prefs.getBool('vibrate') != null ? prefs.getBool('vibrate')! : false,
     prefs.getBool('dark_mode') != null ? prefs.getBool('dark_mode')! : false,
   );
-  hasSeenWelcome = await OnboardingPreferences.hasSeenWelcome();
+  hasSeenWelcome = await OnboardingPreferences.hasSeenWelcome(
+    uid: FirebaseAuth.instance.currentUser?.uid,
+  );
   FlutterNativeSplash.remove();
 
   runApp(
