@@ -51,6 +51,26 @@ class BootstrapProgress {
 /// this alongside [isBootstrapping] to show fine-grained progress UI.
 final ValueNotifier<BootstrapProgress> bootstrapProgress = ValueNotifier(const BootstrapProgress());
 
+/// Per-activity progress emitted by [bootstrapDrills]. Updates once per drill
+/// written so the UI can show a filling progress bar for each activity.
+class DrillSeedProgress {
+  final String activityName;
+  final int drillsDone;
+  final int drillsTotal;
+
+  /// Activities that have been fully seeded so far (in order).
+  final List<String> completedActivities;
+
+  const DrillSeedProgress({
+    this.activityName = '',
+    this.drillsDone = 0,
+    this.drillsTotal = 0,
+    this.completedActivities = const [],
+  });
+}
+
+final ValueNotifier<DrillSeedProgress> drillSeedProgress = ValueNotifier(const DrillSeedProgress());
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Bootstrap entry point (called from Nav.initState)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -956,34 +976,66 @@ Future<void> bootstrapDrills() async {
     }
   }
 
+  // Group specs by activity, preserving the order they appear in the list.
+  final specsByActivity = <String, List<_DrillSpec>>{};
   for (final spec in _defaultDrillSpecs()) {
-    final activity = activityMap[spec.activityTitle];
-    final drillType = drillTypeMap[spec.drillTypeId];
-    if (activity == null || drillType == null) continue;
+    specsByActivity.putIfAbsent(spec.activityTitle, () => []).add(spec);
+  }
 
-    final skills = spec.skillTitles.map((t) => findSkill(spec.activityTitle, t)).whereType<Skill>().toList();
-    final actSnap2 = Activity(activity.title, activity.createdBy);
-    actSnap2.id = activity.id;
-    actSnap2.skills = skills;
+  final completed = <String>[];
 
-    final newRef = FirebaseFirestore.instance.collection('drills').doc(uid).collection('drills').doc();
-    batch.set(newRef, Drill(spec.title, spec.description, actSnap2, drillType).toMap());
-    opCount++;
-    await maybeFlush();
+  for (final entry in specsByActivity.entries) {
+    final actTitle = entry.key;
+    final specs = entry.value;
+    var done = 0;
 
-    for (final m in spec.measurements) {
-      batch.set(newRef.collection('measurements').doc(), m.toMap());
+    drillSeedProgress.value = DrillSeedProgress(
+      activityName: actTitle,
+      drillsDone: 0,
+      drillsTotal: specs.length,
+      completedActivities: List.unmodifiable(completed),
+    );
+
+    for (final spec in specs) {
+      final activity = activityMap[spec.activityTitle];
+      final drillType = drillTypeMap[spec.drillTypeId];
+      if (activity == null || drillType == null) continue;
+
+      final skills = spec.skillTitles.map((t) => findSkill(spec.activityTitle, t)).whereType<Skill>().toList();
+      final actSnap2 = Activity(activity.title, activity.createdBy);
+      actSnap2.id = activity.id;
+      actSnap2.skills = skills;
+
+      final newRef = FirebaseFirestore.instance.collection('drills').doc(uid).collection('drills').doc();
+      batch.set(newRef, Drill(spec.title, spec.description, actSnap2, drillType).toMap());
       opCount++;
       await maybeFlush();
+
+      for (final m in spec.measurements) {
+        batch.set(newRef.collection('measurements').doc(), m.toMap());
+        opCount++;
+        await maybeFlush();
+      }
+      for (final s in skills) {
+        batch.set(newRef.collection('skills').doc(), s.toMap());
+        opCount++;
+        await maybeFlush();
+      }
+
+      done++;
+      drillSeedProgress.value = DrillSeedProgress(
+        activityName: actTitle,
+        drillsDone: done,
+        drillsTotal: specs.length,
+        completedActivities: List.unmodifiable(completed),
+      );
     }
-    for (final s in skills) {
-      batch.set(newRef.collection('skills').doc(), s.toMap());
-      opCount++;
-      await maybeFlush();
-    }
+
+    completed.add(actTitle);
   }
 
   if (opCount > 0) await batch.commit();
+  drillSeedProgress.value = const DrillSeedProgress();
 }
 
 List<_DrillSpec> _defaultDrillSpecs() => [

@@ -235,7 +235,7 @@ class _DrillsState extends State<Drills> with SingleTickerProviderStateMixin {
                       const SizedBox(height: SkillDrillsSpacing.sm),
                       _BootstrapProgressRow(label: 'Drill Templates', stage: progress.drillTypes),
                       const SizedBox(height: SkillDrillsSpacing.sm),
-                      _BootstrapProgressRow(label: 'Default Drills', stage: progress.drills),
+                      if (progress.drills == BootstrapStage.loading) const _DrillSeedProgressWidget() else _BootstrapProgressRow(label: 'Default Drills', stage: progress.drills),
                     ],
                   );
                 },
@@ -435,6 +435,126 @@ class _ActivitySection extends StatelessWidget {
             'No drills yet — tap + to add one',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45)),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Per-activity drill seed progress widget
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _DrillSeedProgressWidget extends StatefulWidget {
+  const _DrillSeedProgressWidget();
+
+  @override
+  State<_DrillSeedProgressWidget> createState() => _DrillSeedProgressWidgetState();
+}
+
+class _DrillSeedProgressWidgetState extends State<_DrillSeedProgressWidget> {
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = Theme.of(context).colorScheme.secondary;
+    return ValueListenableBuilder<DrillSeedProgress>(
+      valueListenable: drillSeedProgress,
+      builder: (context, progress, _) {
+        final fraction = progress.drillsTotal > 0 ? progress.drillsDone / progress.drillsTotal : 0.0;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Default Drills',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.55),
+                            ),
+                      ),
+                      if (progress.activityName.isNotEmpty) ...[const SizedBox(height: 2), Text(progress.activityName, style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600))],
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: color)),
+              ],
+            ),
+            const SizedBox(height: 6),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: TweenAnimationBuilder<double>(
+                key: ValueKey(progress.activityName),
+                tween: Tween<double>(begin: 0, end: fraction),
+                duration: const Duration(milliseconds: 350),
+                curve: Curves.easeOut,
+                builder: (context, value, _) => LinearProgressIndicator(
+                  value: value,
+                  backgroundColor: color.withValues(alpha: 0.15),
+                  valueColor: AlwaysStoppedAnimation<Color>(color),
+                  minHeight: 5,
+                ),
+              ),
+            ),
+            const SizedBox(height: 6),
+            GestureDetector(
+              onTap: () => setState(() => _expanded = !_expanded),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(_expanded ? 'Less' : 'More', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: color)),
+                  Icon(_expanded ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded, size: 16, color: color),
+                ],
+              ),
+            ),
+            AnimatedCrossFade(
+              firstChild: const SizedBox.shrink(),
+              secondChild: _buildDetails(context, progress, color),
+              crossFadeState: _expanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+              duration: const Duration(milliseconds: 200),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildDetails(BuildContext context, DrillSeedProgress progress, Color color) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (final activity in progress.completedActivities)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2),
+              child: Row(
+                children: [
+                  Icon(Icons.check_circle_rounded, size: 14, color: color),
+                  const SizedBox(width: 6),
+                  Text(activity, style: Theme.of(context).textTheme.bodySmall),
+                ],
+              ),
+            ),
+          if (progress.activityName.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2),
+              child: Row(
+                children: [
+                  SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 1.5, color: color)),
+                  const SizedBox(width: 6),
+                  Text(
+                    '${progress.activityName} — ${progress.drillsDone} of ${progress.drillsTotal}',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
+              ),
+            ),
         ],
       ),
     );
