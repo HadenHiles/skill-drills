@@ -6,8 +6,10 @@ import 'package:provider/provider.dart';
 import 'package:skilldrills/login.dart';
 import 'package:skilldrills/models/onboarding_preferences.dart';
 import 'package:skilldrills/models/settings.dart';
+import 'package:skilldrills/services/subscription.dart';
 import 'package:skilldrills/theme/settings_state_notifier.dart';
 import 'package:skilldrills/theme/theme.dart';
+import 'package:skilldrills/widgets/paywall_screen.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Activity metadata used on the picker page
@@ -44,11 +46,12 @@ class WelcomeScreen extends StatefulWidget {
 class _WelcomeScreenState extends State<WelcomeScreen> {
   final _pageController = PageController();
   int _currentPage = 0;
-  static const int _totalPages = 4;
+  static const int _totalPages = 5;
 
   // ── Onboarding state ──────────────────────────────────────────────────────
   List<String> _selectedActivities = [];
   bool _includeDefaultDrills = true;
+  bool _isPro = false;
 
   // ── Navigation ────────────────────────────────────────────────────────────
 
@@ -59,6 +62,11 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
         curve: Curves.easeInOut,
       );
     }
+  }
+
+  void _onSubscribed() {
+    setState(() => _isPro = true);
+    _nextPage();
   }
 
   Future<void> _onGetStarted() async {
@@ -109,17 +117,22 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                   onPageChanged: (i) => setState(() => _currentPage = i),
                   children: [
                     _IntroPage(onNext: _nextPage),
+                    _SubscriptionPage(
+                      onSubscribed: _onSubscribed,
+                      onSkip: _nextPage,
+                    ),
                     _ActivityPickerPage(
                       selectedActivities: _selectedActivities,
                       onChanged: (updated) => setState(() => _selectedActivities = updated),
                       onNext: _nextPage,
+                      maxActivities: _isPro ? null : kFreeActiveActivityLimit,
                     ),
                     _PreferencesPage(
                       includeDefaultDrills: _includeDefaultDrills,
                       onIncludeDefaultDrillsChanged: (v) => setState(() => _includeDefaultDrills = v),
                       onNext: _nextPage,
                     ),
-                    _GetStartedPage(onGetStarted: _onGetStarted),
+                    _GetStartedPage(onGetStarted: _onGetStarted, isPro: _isPro),
                   ],
                 ),
               ),
@@ -290,27 +303,203 @@ class _FeatureCard extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Page 2 – Activity Picker
+// Page 2 – Subscription
 // ─────────────────────────────────────────────────────────────────────────────
 
-const int _maxActivities = 2;
+const _proFeatures = [
+  (icon: Icons.all_inclusive_rounded, text: 'Unlimited Active Activities'),
+  (icon: Icons.event_note_rounded, text: 'Unlimited Saved Routines'),
+  (icon: Icons.bar_chart_rounded, text: 'Advanced Improvement Metrics'),
+  (icon: Icons.star_rounded, text: 'All Current & Future Pro Features'),
+];
+
+class _SubscriptionPage extends StatefulWidget {
+  final VoidCallback onSubscribed;
+  final VoidCallback onSkip;
+
+  const _SubscriptionPage({
+    required this.onSubscribed,
+    required this.onSkip,
+  });
+
+  @override
+  State<_SubscriptionPage> createState() => _SubscriptionPageState();
+}
+
+class _SubscriptionPageState extends State<_SubscriptionPage> {
+  bool _launching = false;
+
+  Future<void> _openPaywall() async {
+    if (_launching) return;
+    setState(() => _launching = true);
+    final result = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (_) => const PaywallScreen(showSkip: true),
+      ),
+    );
+    if (!mounted) return;
+    setState(() => _launching = false);
+    if (result == true) {
+      widget.onSubscribed();
+    }
+    // result == false means user skipped the paywall — stay here so they
+    // can still tap "Continue free" deliberately.
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(24, 32, 24, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          const Text(
+            'Take your training\nto the next level.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.white,
+              fontFamily: 'Choplin',
+              fontWeight: FontWeight.w700,
+              fontSize: 28,
+              height: 1.2,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Skill Drills Pro unlocks everything.\nFree accounts get $kFreeActiveActivityLimit active activities.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.75),
+              fontSize: 14,
+              height: 1.5,
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // ── Pro feature list ─────────────────────────────────────────
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.12),
+              borderRadius: SkillDrillsRadius.mdBorderRadius,
+              border: Border.all(color: Colors.white.withValues(alpha: 0.22), width: 1),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: Column(
+              children: [
+                for (final f in _proFeatures) ...[
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 7),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 34,
+                          height: 34,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(f.icon, color: Colors.white, size: 18),
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          f.text,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontFamily: 'Choplin',
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (f != _proFeatures.last) Divider(height: 1, color: Colors.white.withValues(alpha: 0.1)),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 28),
+
+          // ── Primary CTA ──────────────────────────────────────────────
+          SizedBox(
+            height: 56,
+            width: double.infinity,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white,
+                foregroundColor: SkillDrillsColors.brandBlue,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: SkillDrillsRadius.smBorderRadius,
+                ),
+              ),
+              onPressed: _launching ? null : _openPaywall,
+              child: _launching
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: SkillDrillsColors.brandBlue,
+                      ),
+                    )
+                  : const Text(
+                      'View Plans',
+                      style: TextStyle(
+                        fontFamily: 'Choplin',
+                        fontWeight: FontWeight.w700,
+                        fontSize: 16,
+                        letterSpacing: 0.3,
+                      ),
+                    ),
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // ── Skip ─────────────────────────────────────────────────────
+          TextButton(
+            onPressed: widget.onSkip,
+            child: Text(
+              'Continue with free plan',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.7),
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Page 3 – Activity Picker
+// ─────────────────────────────────────────────────────────────────────────────
 
 class _ActivityPickerPage extends StatelessWidget {
   final List<String> selectedActivities;
   final ValueChanged<List<String>> onChanged;
   final VoidCallback onNext;
 
+  /// Null = unlimited (Pro user). Non-null = cap for free users.
+  final int? maxActivities;
+
   const _ActivityPickerPage({
     required this.selectedActivities,
     required this.onChanged,
     required this.onNext,
+    this.maxActivities,
   });
 
   void _toggle(String activity) {
     final updated = List<String>.from(selectedActivities);
     if (updated.contains(activity)) {
       updated.remove(activity);
-    } else if (updated.length < _maxActivities) {
+    } else if (maxActivities == null || updated.length < maxActivities!) {
       updated.add(activity);
     }
     onChanged(updated);
@@ -319,7 +508,7 @@ class _ActivityPickerPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final activities = _activityEmoji.keys.toList();
-    final atMax = selectedActivities.length >= _maxActivities;
+    final atMax = maxActivities != null && selectedActivities.length >= maxActivities!;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -342,7 +531,7 @@ class _ActivityPickerPage extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                'Pick up to $_maxActivities activities. Free accounts get $_maxActivities active.\nYou can unlock more later.',
+                maxActivities == null ? 'You have Pro — select as many as you like.' : 'Pick up to $maxActivities activities. You can change this later.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: Colors.white.withValues(alpha: 0.75),
@@ -365,7 +554,7 @@ class _ActivityPickerPage extends StatelessWidget {
                           borderRadius: SkillDrillsRadius.fullBorderRadius,
                         ),
                         child: Text(
-                          '${selectedActivities.length} / $_maxActivities selected',
+                          maxActivities == null ? '${selectedActivities.length} selected' : '${selectedActivities.length} / $maxActivities selected',
                           style: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.w600,
@@ -492,7 +681,7 @@ class _ActivityTile extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Page 3 – Preferences
+// Page 4 – Preferences
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _PreferencesPage extends StatelessWidget {
@@ -821,13 +1010,14 @@ class _VibrationToggleCard extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Page 4 – Get Started (auth CTA)
+// Page 5 – Get Started (auth CTA)
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _GetStartedPage extends StatelessWidget {
   final VoidCallback onGetStarted;
+  final bool isPro;
 
-  const _GetStartedPage({required this.onGetStarted});
+  const _GetStartedPage({required this.onGetStarted, this.isPro = false});
 
   @override
   Widget build(BuildContext context) {
@@ -874,7 +1064,7 @@ class _GetStartedPage extends StatelessWidget {
           ),
           const SizedBox(height: 16),
 
-          // ── Pro teaser ────────────────────────────────────────────────
+          // ── Status banner (pro confirmation or free-tier reminder) ──
           Container(
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.1),
@@ -884,11 +1074,11 @@ class _GetStartedPage extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Row(
               children: [
-                const Text('⚡', style: TextStyle(fontSize: 20)),
+                Text(isPro ? '🎉' : '⚡', style: const TextStyle(fontSize: 20)),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    'Upgrade anytime to unlock more active activities, saved routines, and advanced analytics.',
+                    isPro ? 'Pro is active — unlimited activities, routines, and analytics are unlocked.' : 'Upgrade anytime to unlock more active activities, saved routines, and advanced analytics.',
                     style: TextStyle(
                       color: Colors.white.withValues(alpha: 0.8),
                       fontSize: 13,
