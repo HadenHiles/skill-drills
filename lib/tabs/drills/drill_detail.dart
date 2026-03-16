@@ -1636,11 +1636,56 @@ class _DrillDetailState extends State<DrillDetail> {
                 ),
                 Divider(height: 1, color: theme.dividerColor),
               ],
-              // Empty state — mirrors _DrillPage ListView empty state
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 20),
-                child: Center(
-                  child: Text('No sets yet', style: theme.textTheme.bodyMedium),
+              // Preview set row — 1 set with placeholder inputs, mirrors _SetRow layout
+              Opacity(
+                opacity: 0.55,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      SizedBox(
+                        width: 36,
+                        child: Text(
+                          '1',
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            fontFamily: 'Choplin',
+                          ),
+                        ),
+                      ),
+                      ...results.map(
+                        (m) => Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 4),
+                            child: Container(
+                              height: 36,
+                              decoration: BoxDecoration(
+                                border: Border.all(color: theme.dividerColor),
+                                borderRadius: SkillDrillsRadius.smBorderRadius,
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                m.type == 'duration' ? '00:00' : '0',
+                                style: theme.textTheme.bodyMedium,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      if (results.isEmpty) const Expanded(child: SizedBox()),
+                      SizedBox(
+                        width: 42,
+                        child: Checkbox(
+                          value: false,
+                          onChanged: null,
+                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          visualDensity: VisualDensity.compact,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
               // 'Add Set' button — mirrors session.dart OutlinedButton.icon

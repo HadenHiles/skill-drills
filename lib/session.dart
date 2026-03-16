@@ -350,7 +350,7 @@ class _SessionState extends State<Session> with SingleTickerProviderStateMixin {
                               ? SkillDrillsColors.success
                               : isActive
                                   ? Theme.of(context).primaryColor
-                                  : Theme.of(context).colorScheme.onPrimary,
+                                  : Theme.of(context).colorScheme.onSurface.withAlpha(150),
                         ),
                       ),
                       const SizedBox(height: 2),
@@ -401,7 +401,7 @@ class _SessionState extends State<Session> with SingleTickerProviderStateMixin {
                               ? SkillDrillsColors.success
                               : isActive
                                   ? Theme.of(context).primaryColor
-                                  : Theme.of(context).colorScheme.onPrimary,
+                                  : Theme.of(context).colorScheme.onSurface.withAlpha(150),
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -589,7 +589,8 @@ class _DrillPage extends StatelessWidget {
                 );
               }
               // "Add set" button — last item always
-              if (index == sets.length) {
+              // When sets is empty, itemCount=2 so add button is at index 1 (not sets.length=0)
+              if (index == (sets.isEmpty ? 1 : sets.length)) {
                 return Padding(
                   padding: EdgeInsets.only(top: sets.isEmpty ? 0 : 8),
                   child: SizedBox(
@@ -640,7 +641,7 @@ class _DrillMenu extends StatelessWidget {
   Widget build(BuildContext context) {
     final drill = sessionService.drillResults[drillIndex];
     return PopupMenuButton<_DrillMenuAction>(
-      icon: Icon(Icons.more_vert_rounded, color: Theme.of(context).colorScheme.onPrimary),
+      icon: Icon(Icons.more_vert_rounded, color: Theme.of(context).colorScheme.onSurface.withAlpha(130)),
       onSelected: (action) {
         switch (action) {
           case _DrillMenuAction.restTimer:
@@ -735,7 +736,7 @@ class _SetRowHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final style = Theme.of(context).textTheme.bodySmall?.copyWith(
           fontWeight: FontWeight.w600,
-          color: Theme.of(context).colorScheme.onPrimary,
+          color: Theme.of(context).colorScheme.onSurface.withAlpha(150),
         );
 
     Expanded labelCell(dynamic m) => Expanded(
@@ -1229,7 +1230,7 @@ class _DurationInput extends StatelessWidget {
                   ),
             ),
             const SizedBox(width: 4),
-            Icon(Icons.timer_outlined, size: 13, color: Theme.of(context).colorScheme.onPrimary),
+            Icon(Icons.timer_outlined, size: 13, color: Theme.of(context).colorScheme.onSurface.withAlpha(130)),
           ],
         ),
       ),
@@ -1289,7 +1290,7 @@ class _ScaleInput extends StatelessWidget {
               fontSize: 11,
               fontFamily: 'Choplin',
               fontWeight: FontWeight.w700,
-              color: color ?? Theme.of(context).colorScheme.onPrimary,
+              color: color ?? Theme.of(context).colorScheme.onSurface.withAlpha(150),
             ),
           ),
         ),
@@ -1411,7 +1412,7 @@ class _ScalePickerState extends State<_ScalePicker> with SingleTickerProviderSta
               Text(
                 _hint,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onPrimary,
+                      color: Theme.of(context).colorScheme.onSurface.withAlpha(150),
                     ),
               ),
               const SizedBox(height: 20),
