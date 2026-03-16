@@ -236,7 +236,7 @@ void _saveActivitySkill(DocumentReference actRef, Skill s) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// DRILL TYPES  (6 universal + 4 per activity × 14 activities = 62 total)
+// DRILL TYPES  (8 universal + activity-specific per 14 activities)
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// Delete all drill types + measurements and re-seed from the factory spec.
@@ -261,12 +261,8 @@ Future<void> resetDrillTypes() async {
   }
 }
 
-/// Delete all drills (+ measurements + skills subcollections) and re-seed from
-/// the factory spec. Always runs regardless of existing drill count.
 Future<void> resetDrills() async {
   final uid = auth.currentUser!.uid;
-
-  // Delete every existing drill and its subcollections.
   final existingSnap = await FirebaseFirestore.instance.collection('drills').doc(uid).collection('drills').get();
   for (final doc in existingSnap.docs) {
     final measSnap = await doc.reference.collection('measurements').get();
@@ -279,28 +275,19 @@ Future<void> resetDrills() async {
     }
     await doc.reference.delete();
   }
-
-  // Re-seed using the same logic as bootstrapDrills but without the early-exit
-  // guard (since we just cleared the collection above, bootstrapDrills would
-  // work too, but calling it directly is cleaner).
   await bootstrapDrills();
 }
 
 Future<void> bootstrapDrillTypes({bool includeDefault = true}) async {
   final uid = auth.currentUser!.uid;
-
-  // Persist the opted-out decision so future bootstraps also skip seeding.
   if (!includeDefault) {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('opted_out_default_drills', true);
     return;
   }
-
-  // Respect a previously stored opt-out.
   final prefs = await SharedPreferences.getInstance();
   final optedOut = prefs.getBool('opted_out_default_drills') ?? false;
   if (optedOut) return;
-
   final allTypes = _allDrillTypes();
   final snapshot = await FirebaseFirestore.instance.collection('drill_types').doc(uid).collection('drill_types').get();
   if (snapshot.docs.length == allTypes.length) return;
@@ -345,100 +332,132 @@ List<DrillType> _allDrillTypes() => [
 // ── Universal ─────────────────────────────────────────────────────────────────
 
 List<DrillType> _universalDrillTypes() => [
+      // Simple rep counter — dry swings, form reps, bodyweight sets
       DrillType('count', 'Count / Reps', 'Simple repetition counter with optional target', 0, 1)
         ..measurements = [
-          MeasurementResult('amount', 'Count', 1, null) as Measurement,
-          MeasurementTarget('amount', 'Target Count', 2, null, false) as Measurement,
+          MeasurementResult('amount', 'Reps', 1, null) as Measurement,
+          MeasurementTarget('amount', 'Target Reps', 2, null, false) as Measurement,
         ],
-      DrillType('score', 'Score / Accuracy', 'Track hits, attempts, and an optional target', 0, 2)
+      // Accuracy — made / attempted (shooting, serves, passes, fielding)
+      DrillType('score', 'Made / Attempted', 'Track successful attempts out of total — percentage-based accuracy', 0, 2)
         ..measurements = [
-          MeasurementResult('amount', 'Score', 1, null) as Measurement,
-          MeasurementResult('amount', 'Attempts', 2, null) as Measurement,
-          MeasurementTarget('amount', 'Target Score', 3, null, false) as Measurement,
+          MeasurementResult('amount', 'Made', 1, null) as Measurement,
+          MeasurementResult('amount', 'Attempted', 2, null) as Measurement,
+          MeasurementTarget('amount', 'Target Made', 3, null, false) as Measurement,
         ],
-      DrillType('duration', 'Duration / Time', 'Track elapsed time with an optional target', 0, 3)
+      // Pure timed effort — sprints, time trials, holds
+      DrillType('duration', 'Timed Effort', 'Track elapsed time with an optional target time', 0, 3)
         ..measurements = [
           MeasurementResult('duration', 'Time', 1, null) as Measurement,
           MeasurementTarget('duration', 'Target Time', 2, null, true) as Measurement,
         ],
-      DrillType('count_duration', 'Count + Time', 'Repetition count alongside completion time', 0, 4)
+      // Streak / best consecutive — juggling, wall rallies, dinking, setting
+      DrillType('streak', 'Best Streak', 'Longest consecutive run without error — track session best', 0, 4)
         ..measurements = [
-          MeasurementResult('amount', 'Count', 1, null) as Measurement,
+          MeasurementResult('amount', 'Best Streak', 1, null) as Measurement,
+          MeasurementResult('amount', 'Total Reps', 2, null) as Measurement,
+          MeasurementTarget('amount', 'Target Streak', 3, null, false) as Measurement,
+        ],
+      // Reps + time together — stickhandling, form drills, circuits
+      DrillType('count_duration', 'Reps + Time', 'Repetition count alongside completion time', 0, 5)
+        ..measurements = [
+          MeasurementResult('amount', 'Reps', 1, null) as Measurement,
           MeasurementResult('duration', 'Time', 2, null) as Measurement,
-          MeasurementTarget('amount', 'Target Count', 3, null, false) as Measurement,
+          MeasurementTarget('amount', 'Target Reps', 3, null, false) as Measurement,
           MeasurementTarget('duration', 'Target Time', 4, null, true) as Measurement,
         ],
-      DrillType('sets', 'Sets', 'Multiple sets with reps and optional weight', 0, 5)
+      // Resistance training sets — the complete progressive overload picture
+      DrillType('sets', 'Sets x Reps x Weight', 'Resistance training: sets, reps, load, and reps-in-reserve', 0, 6)
         ..measurements = [
           MeasurementResult('amount', 'Sets', 1, null) as Measurement,
           MeasurementResult('amount', 'Reps', 2, null) as Measurement,
           MeasurementResult('amount', 'Weight (kg)', 3, null) as Measurement,
-          MeasurementTarget('amount', 'Target Reps', 4, null, false) as Measurement,
+          MeasurementResult('rir', 'RIR', 4, null) as Measurement,
+          MeasurementTarget('amount', 'Target Reps', 5, null, false) as Measurement,
+          MeasurementTarget('amount', 'Target Weight (kg)', 6, null, false) as Measurement,
+          MeasurementTarget('rir', 'Target RIR', 7, null, false) as Measurement,
         ],
-      DrillType('pace', 'Pace / Laps', 'Distance and time for pace-based drills', 0, 6)
+      // Interval / rounds conditioning — bag rounds, court sprints, HIIT
+      DrillType('rounds', 'Rounds (Timed)', 'Multi-round conditioning: rounds, round duration, and RPE', 0, 7)
+        ..measurements = [
+          MeasurementResult('amount', 'Rounds Completed', 1, null) as Measurement,
+          MeasurementResult('duration', 'Round Duration', 2, null) as Measurement,
+          MeasurementResult('rpe', 'RPE (1-10)', 3, null) as Measurement,
+          MeasurementTarget('amount', 'Target Rounds', 4, null, false) as Measurement,
+          MeasurementTarget('duration', 'Target Round Duration', 5, null, false) as Measurement,
+          MeasurementTarget('rpe', 'Target RPE', 6, null, false) as Measurement,
+        ],
+      // Distance + time + effort — running, sprints, base running
+      DrillType('pace', 'Distance + Time', 'Distance covered and elapsed time with effort rating', 0, 8)
         ..measurements = [
           MeasurementResult('amount', 'Distance (m)', 1, null) as Measurement,
           MeasurementResult('duration', 'Time', 2, null) as Measurement,
-          MeasurementTarget('duration', 'Target Time', 3, null, true) as Measurement,
+          MeasurementResult('rpe', 'RPE (1-10)', 3, null) as Measurement,
+          MeasurementTarget('duration', 'Target Time', 4, null, true) as Measurement,
+          MeasurementTarget('rpe', 'Target RPE', 5, null, false) as Measurement,
         ],
     ];
 
 // ── Hockey ────────────────────────────────────────────────────────────────────
 
 List<DrillType> _hockeyDrillTypes() => [
-      DrillType('hockey_shot_accuracy', 'Shot Accuracy', 'Goals scored out of shots taken', 0, 7, activityKey: 'Hockey')
+      // Shot accuracy: on-target shots / goals out of total attempts
+      DrillType('hockey_shot_accuracy', 'Shot Accuracy', 'On-target shots or goals out of total attempts', 0, 9, activityKey: 'Hockey')
         ..measurements = [
-          MeasurementResult('amount', 'Goals Scored', 1, null) as Measurement,
+          MeasurementResult('amount', 'On Target / Goals', 1, null) as Measurement,
           MeasurementResult('amount', 'Shots Taken', 2, null) as Measurement,
-          MeasurementTarget('amount', 'Target Goals', 3, null, false) as Measurement,
+          MeasurementTarget('amount', 'Target On Target', 3, null, false) as Measurement,
         ],
-      DrillType('hockey_stickhandling', 'Stickhandling Circuit', 'Reps or laps through a stickhandling course', 0, 8, activityKey: 'Hockey')
+      // Stickhandling: reps + time — volume and speed both matter
+      DrillType('hockey_stickhandling', 'Stickhandling', 'Reps through a pattern with time: volume and speed', 0, 10, activityKey: 'Hockey')
         ..measurements = [
-          MeasurementResult('amount', 'Laps / Reps', 1, null) as Measurement,
+          MeasurementResult('amount', 'Reps', 1, null) as Measurement,
           MeasurementResult('duration', 'Time', 2, null) as Measurement,
-          MeasurementTarget('amount', 'Target Laps', 3, null, false) as Measurement,
+          MeasurementTarget('amount', 'Target Reps', 3, null, false) as Measurement,
+          MeasurementTarget('duration', 'Target Time', 4, null, true) as Measurement,
         ],
-      DrillType('hockey_skating_time', 'Skating Time Trial', 'Complete a skating course as fast as possible', 0, 9, activityKey: 'Hockey')
+      // Off-ice conditioning: time + rounds + RPE for dryland work
+      DrillType('hockey_office_conditioning', 'Off-Ice Conditioning', 'Dryland agility or conditioning drill: time and effort', 0, 11, activityKey: 'Hockey')
         ..measurements = [
-          MeasurementResult('duration', 'Completion Time', 1, null) as Measurement,
-          MeasurementResult('rpe', 'RPE (1–10)', 2, null) as Measurement,
-          MeasurementTarget('duration', 'Target Time', 3, null, true) as Measurement,
-          MeasurementTarget('rpe', 'Target RPE', 4, null, false) as Measurement,
+          MeasurementResult('duration', 'Work Time', 1, null) as Measurement,
+          MeasurementResult('amount', 'Rounds', 2, null) as Measurement,
+          MeasurementResult('rpe', 'RPE (1-10)', 3, null) as Measurement,
+          MeasurementTarget('duration', 'Target Duration', 4, null, false) as Measurement,
+          MeasurementTarget('rpe', 'Target RPE', 5, null, false) as Measurement,
         ],
-      DrillType('hockey_passing', 'Passing Accuracy', 'Successful passes out of total attempts', 0, 10, activityKey: 'Hockey')
+      // Passing: completions out of attempts
+      DrillType('hockey_passing', 'Passing Accuracy', 'Tape-to-tape passes completed out of total attempts', 0, 12, activityKey: 'Hockey')
         ..measurements = [
-          MeasurementResult('amount', 'Passes Made', 1, null) as Measurement,
+          MeasurementResult('amount', 'Passes Completed', 1, null) as Measurement,
           MeasurementResult('amount', 'Attempts', 2, null) as Measurement,
-          MeasurementTarget('amount', 'Target Passes', 3, null, false) as Measurement,
+          MeasurementTarget('amount', 'Target Completed', 3, null, false) as Measurement,
         ],
     ];
 
 // ── Basketball ────────────────────────────────────────────────────────────────
 
 List<DrillType> _basketballDrillTypes() => [
-      DrillType('basketball_free_throw', 'Free Throws', 'Makes and attempts from the free throw line', 0, 11, activityKey: 'Basketball')
+      // Shooting: makes / attempts — the universal basketball accuracy metric
+      DrillType('basketball_shooting', 'Shooting (Makes / Attempts)', 'Makes and attempts from a specific spot or zone', 0, 13, activityKey: 'Basketball')
         ..measurements = [
           MeasurementResult('amount', 'Makes', 1, null) as Measurement,
           MeasurementResult('amount', 'Attempts', 2, null) as Measurement,
           MeasurementTarget('amount', 'Target Makes', 3, null, false) as Measurement,
         ],
-      DrillType('basketball_shooting', 'Spot Shooting', 'Makes and attempts from a specific court location', 0, 12, activityKey: 'Basketball')
+      // Ball handling: duration + errors — lower errors AND time = progress
+      DrillType('basketball_dribbling', 'Ball Handling Circuit', 'Duration and error count: faster and cleaner is progress', 0, 14, activityKey: 'Basketball')
         ..measurements = [
-          MeasurementResult('amount', 'Makes', 1, null) as Measurement,
-          MeasurementResult('amount', 'Attempts', 2, null) as Measurement,
-          MeasurementTarget('amount', 'Target Makes', 3, null, false) as Measurement,
+          MeasurementResult('duration', 'Duration', 1, null) as Measurement,
+          MeasurementResult('amount', 'Errors / Losses', 2, null) as Measurement,
+          MeasurementTarget('duration', 'Target Duration', 3, null, false) as Measurement,
+          MeasurementTarget('amount', 'Target Max Errors', 4, null, false) as Measurement,
         ],
-      DrillType('basketball_dribbling', 'Dribbling Circuit', 'Circuit completion time with optional error count', 0, 13, activityKey: 'Basketball')
+      // Court conditioning: best time + RPE
+      DrillType('basketball_conditioning', 'Court Conditioning', 'Timed court sprint or agility drill with RPE', 0, 15, activityKey: 'Basketball')
         ..measurements = [
-          MeasurementResult('duration', 'Completion Time', 1, null) as Measurement,
-          MeasurementResult('amount', 'Errors', 2, null) as Measurement,
-          MeasurementTarget('duration', 'Target Time', 3, null, true) as Measurement,
-        ],
-      DrillType('basketball_conditioning', 'Conditioning', 'Timed run or court sprint drill', 0, 14, activityKey: 'Basketball')
-        ..measurements = [
-          MeasurementResult('duration', 'Time', 1, null) as Measurement,
+          MeasurementResult('duration', 'Best Time', 1, null) as Measurement,
           MeasurementResult('amount', 'Rounds', 2, null) as Measurement,
-          MeasurementResult('rpe', 'RPE (1–10)', 3, null) as Measurement,
+          MeasurementResult('rpe', 'RPE (1-10)', 3, null) as Measurement,
           MeasurementTarget('duration', 'Target Time', 4, null, true) as Measurement,
           MeasurementTarget('rpe', 'Target RPE', 5, null, false) as Measurement,
         ],
@@ -447,106 +466,122 @@ List<DrillType> _basketballDrillTypes() => [
 // ── Baseball ──────────────────────────────────────────────────────────────────
 
 List<DrillType> _baseballDrillTypes() => [
-      DrillType('baseball_batting', 'Batting Practice', 'Quality contact out of total swings', 0, 15, activityKey: 'Baseball')
+      // Batting: quality contacts / total swings
+      DrillType('baseball_batting', 'Batting Practice', 'Quality contacts out of total swings', 0, 16, activityKey: 'Baseball')
         ..measurements = [
-          MeasurementResult('amount', 'Solid Hits', 1, null) as Measurement,
-          MeasurementResult('amount', 'Swings', 2, null) as Measurement,
-          MeasurementTarget('amount', 'Target Hits', 3, null, false) as Measurement,
+          MeasurementResult('amount', 'Quality Contacts', 1, null) as Measurement,
+          MeasurementResult('amount', 'Total Swings', 2, null) as Measurement,
+          MeasurementTarget('amount', 'Target Quality', 3, null, false) as Measurement,
         ],
-      DrillType('baseball_fielding', 'Fielding Drill', 'Clean fielded balls out of total attempts', 0, 16, activityKey: 'Baseball')
+      // Fielding: clean fields / attempts
+      DrillType('baseball_fielding', 'Fielding Drill', 'Clean fields out of total attempts: fielding percentage', 0, 17, activityKey: 'Baseball')
         ..measurements = [
-          MeasurementResult('amount', 'Clean Fielded', 1, null) as Measurement,
+          MeasurementResult('amount', 'Clean Fields', 1, null) as Measurement,
           MeasurementResult('amount', 'Attempts', 2, null) as Measurement,
           MeasurementTarget('amount', 'Target Clean', 3, null, false) as Measurement,
         ],
-      DrillType('baseball_pitching', 'Pitching', 'Strikes thrown out of total pitches', 0, 17, activityKey: 'Baseball')
+      // Pitching: strikes / pitches + arm RPE
+      DrillType('baseball_pitching', 'Pitching Command', 'Strikes out of pitches thrown plus arm exertion rating', 0, 18, activityKey: 'Baseball')
         ..measurements = [
           MeasurementResult('amount', 'Strikes', 1, null) as Measurement,
-          MeasurementResult('amount', 'Pitches', 2, null) as Measurement,
-          MeasurementResult('rpe', 'Arm RPE (1–10)', 3, null) as Measurement,
+          MeasurementResult('amount', 'Total Pitches', 2, null) as Measurement,
+          MeasurementResult('rpe', 'Arm RPE (1-10)', 3, null) as Measurement,
           MeasurementTarget('amount', 'Target Strikes', 4, null, false) as Measurement,
-          MeasurementTarget('rpe', 'Target Arm RPE', 5, null, false) as Measurement,
+          MeasurementTarget('rpe', 'Max Arm RPE', 5, null, false) as Measurement,
         ],
-      DrillType('baseball_throwing', 'Throwing Accuracy', 'On-target throws out of total attempts', 0, 18, activityKey: 'Baseball')
+      // Throwing: on-target throws / attempts
+      DrillType('baseball_throwing', 'Throwing Accuracy', 'On-target throws out of total attempts', 0, 19, activityKey: 'Baseball')
         ..measurements = [
           MeasurementResult('amount', 'On Target', 1, null) as Measurement,
           MeasurementResult('amount', 'Attempts', 2, null) as Measurement,
-          MeasurementTarget('amount', 'Target Throws', 3, null, false) as Measurement,
+          MeasurementTarget('amount', 'Target On Target', 3, null, false) as Measurement,
         ],
     ];
 
 // ── Golf ──────────────────────────────────────────────────────────────────────
 
 List<DrillType> _golfDrillTypes() => [
-      DrillType('golf_putting', 'Putting', 'Makes and attempts from a given distance', 0, 19, activityKey: 'Golf')
+      // Putting: makes / attempts — pure make percentage
+      DrillType('golf_putting', 'Putting (Makes / Attempts)', 'Makes from a set distance; attempts tracked for percentage', 0, 20, activityKey: 'Golf')
         ..measurements = [
           MeasurementResult('amount', 'Makes', 1, null) as Measurement,
           MeasurementResult('amount', 'Attempts', 2, null) as Measurement,
           MeasurementTarget('amount', 'Target Makes', 3, null, false) as Measurement,
         ],
-      DrillType('golf_short_game', 'Chipping / Short Game', 'Balls within target proximity out of attempts', 0, 20, activityKey: 'Golf')
+      // Short game: proximity / in-zone — proximity to hole is the key metric
+      DrillType('golf_short_game', 'Short Game (Proximity)', 'Balls finishing within target zone out of attempts', 0, 21, activityKey: 'Golf')
         ..measurements = [
           MeasurementResult('amount', 'In Zone', 1, null) as Measurement,
           MeasurementResult('amount', 'Attempts', 2, null) as Measurement,
           MeasurementTarget('amount', 'Target In Zone', 3, null, false) as Measurement,
         ],
-      DrillType('golf_driving', 'Driving Accuracy', 'Fairways hit out of total drives', 0, 21, activityKey: 'Golf')
+      // Swing mechanics: quality reps / total reps — checkpoint drill quality
+      DrillType('golf_swing', 'Swing Mechanics', 'Clean reps through a checkpoint drill: quality over quantity', 0, 22, activityKey: 'Golf')
         ..measurements = [
-          MeasurementResult('amount', 'Fairways Hit', 1, null) as Measurement,
-          MeasurementResult('amount', 'Drives', 2, null) as Measurement,
-          MeasurementTarget('amount', 'Target Fairways', 3, null, false) as Measurement,
+          MeasurementResult('amount', 'Quality Reps', 1, null) as Measurement,
+          MeasurementResult('amount', 'Total Reps', 2, null) as Measurement,
+          MeasurementTarget('amount', 'Target Quality', 3, null, false) as Measurement,
         ],
-      DrillType('golf_iron_play', 'Iron Play', 'Greens hit in regulation out of attempts', 0, 22, activityKey: 'Golf')
+      // Lag putting: distance control — in-zone out of attempts at long range
+      DrillType('golf_lag', 'Lag / Distance Control', 'Balls stopping within 3-foot circle out of attempts at long range', 0, 23, activityKey: 'Golf')
         ..measurements = [
-          MeasurementResult('amount', 'Greens Hit', 1, null) as Measurement,
+          MeasurementResult('amount', 'In Zone', 1, null) as Measurement,
           MeasurementResult('amount', 'Attempts', 2, null) as Measurement,
-          MeasurementTarget('amount', 'Target Greens', 3, null, false) as Measurement,
+          MeasurementTarget('amount', 'Target In Zone', 3, null, false) as Measurement,
         ],
     ];
 
 // ── Soccer ────────────────────────────────────────────────────────────────────
 
 List<DrillType> _soccerDrillTypes() => [
-      DrillType('soccer_shooting', 'Shooting', 'Goals and shots on target out of total attempts', 0, 23, activityKey: 'Soccer')
+      // Shooting: goals + shots on target / attempts
+      DrillType('soccer_shooting', 'Shooting', 'Goals and shots on target out of total attempts', 0, 24, activityKey: 'Soccer')
         ..measurements = [
           MeasurementResult('amount', 'Goals', 1, null) as Measurement,
           MeasurementResult('amount', 'Shots on Target', 2, null) as Measurement,
           MeasurementResult('amount', 'Attempts', 3, null) as Measurement,
           MeasurementTarget('amount', 'Target Goals', 4, null, false) as Measurement,
         ],
-      DrillType('soccer_juggling', 'Juggling', 'Consecutive touches without the ball hitting the ground', 0, 24, activityKey: 'Soccer')
+      // Ball control: touches + time — volume and fluency
+      DrillType('soccer_touch', 'Ball Control / Touch', 'Touches or reps in a set time: fluency and volume', 0, 25, activityKey: 'Soccer')
         ..measurements = [
-          MeasurementResult('amount', 'Best Streak', 1, null) as Measurement,
-          MeasurementTarget('amount', 'Target Streak', 2, null, false) as Measurement,
+          MeasurementResult('amount', 'Touches / Reps', 1, null) as Measurement,
+          MeasurementResult('duration', 'Time', 2, null) as Measurement,
+          MeasurementTarget('amount', 'Target Touches', 3, null, false) as Measurement,
         ],
-      DrillType('soccer_dribbling', 'Dribbling Circuit', 'Cone circuit completion time with error count', 0, 25, activityKey: 'Soccer')
+      // Dribbling circuit: time + errors — faster and cleaner = better
+      DrillType('soccer_dribbling', 'Dribbling Circuit', 'Circuit time and touch errors: faster and cleaner is progress', 0, 26, activityKey: 'Soccer')
         ..measurements = [
           MeasurementResult('duration', 'Completion Time', 1, null) as Measurement,
-          MeasurementResult('amount', 'Errors', 2, null) as Measurement,
+          MeasurementResult('amount', 'Touch Errors', 2, null) as Measurement,
           MeasurementTarget('duration', 'Target Time', 3, null, true) as Measurement,
+          MeasurementTarget('amount', 'Max Errors', 4, null, false) as Measurement,
         ],
-      DrillType('soccer_passing', 'Passing Drill', 'Successful passes out of total attempts', 0, 26, activityKey: 'Soccer')
+      // Passing: on-target passes / attempts
+      DrillType('soccer_passing', 'Passing Accuracy', 'On-target passes out of total attempts', 0, 27, activityKey: 'Soccer')
         ..measurements = [
-          MeasurementResult('amount', 'Successful', 1, null) as Measurement,
+          MeasurementResult('amount', 'On Target', 1, null) as Measurement,
           MeasurementResult('amount', 'Attempts', 2, null) as Measurement,
-          MeasurementTarget('amount', 'Target Passes', 3, null, false) as Measurement,
+          MeasurementTarget('amount', 'Target On Target', 3, null, false) as Measurement,
         ],
     ];
 
 // ── Weight Training ───────────────────────────────────────────────────────────
 
 List<DrillType> _weightTrainingDrillTypes() => [
-      DrillType('weight_compound', 'Compound Lift', 'Multi-joint barbell or machine exercise', 0, 27, activityKey: 'Weight Training')
+      // Compound lift: sets x reps x load + RIR
+      DrillType('weight_compound', 'Compound Lift', 'Multi-joint barbell/dumbbell: sets, reps, load, and RIR', 0, 28, activityKey: 'Weight Training')
         ..measurements = [
           MeasurementResult('amount', 'Sets', 1, null) as Measurement,
           MeasurementResult('amount', 'Reps', 2, null) as Measurement,
           MeasurementResult('amount', 'Weight (kg)', 3, null) as Measurement,
           MeasurementResult('rir', 'RIR', 4, null) as Measurement,
-          MeasurementTarget('amount', 'Target Weight (kg)', 5, null, false) as Measurement,
-          MeasurementTarget('amount', 'Target Reps', 6, null, false) as Measurement,
+          MeasurementTarget('amount', 'Target Reps', 5, null, false) as Measurement,
+          MeasurementTarget('amount', 'Target Weight (kg)', 6, null, false) as Measurement,
           MeasurementTarget('rir', 'Target RIR', 7, null, false) as Measurement,
         ],
-      DrillType('weight_isolation', 'Isolation Exercise', 'Single-joint dumbbell or cable exercise', 0, 28, activityKey: 'Weight Training')
+      // Isolation exercise: sets x reps x load + RIR
+      DrillType('weight_isolation', 'Isolation Exercise', 'Single-joint accessory: sets, reps, load, and RIR', 0, 29, activityKey: 'Weight Training')
         ..measurements = [
           MeasurementResult('amount', 'Sets', 1, null) as Measurement,
           MeasurementResult('amount', 'Reps', 2, null) as Measurement,
@@ -555,7 +590,8 @@ List<DrillType> _weightTrainingDrillTypes() => [
           MeasurementTarget('amount', 'Target Reps', 5, null, false) as Measurement,
           MeasurementTarget('rir', 'Target RIR', 6, null, false) as Measurement,
         ],
-      DrillType('weight_bodyweight', 'Bodyweight Exercise', 'No-equipment exercise — push-ups, pull-ups, dips, etc.', 0, 29, activityKey: 'Weight Training')
+      // Bodyweight: sets x reps + RIR
+      DrillType('weight_bodyweight', 'Bodyweight Exercise', 'No-equipment exercise: sets, reps, and RIR', 0, 30, activityKey: 'Weight Training')
         ..measurements = [
           MeasurementResult('amount', 'Sets', 1, null) as Measurement,
           MeasurementResult('amount', 'Reps', 2, null) as Measurement,
@@ -563,41 +599,47 @@ List<DrillType> _weightTrainingDrillTypes() => [
           MeasurementTarget('amount', 'Target Reps', 4, null, false) as Measurement,
           MeasurementTarget('rir', 'Target RIR', 5, null, false) as Measurement,
         ],
-      DrillType('weight_cardio', 'Cardio', 'Aerobic conditioning with duration and optional distance', 0, 30, activityKey: 'Weight Training')
+      // Cardio: duration + distance + RPE
+      DrillType('weight_cardio', 'Cardio / Aerobic', 'Aerobic session: duration, distance, and RPE', 0, 31, activityKey: 'Weight Training')
         ..measurements = [
           MeasurementResult('duration', 'Duration', 1, null) as Measurement,
           MeasurementResult('amount', 'Distance (km)', 2, null) as Measurement,
-          MeasurementTarget('duration', 'Target Duration', 3, null, false) as Measurement,
+          MeasurementResult('rpe', 'RPE (1-10)', 3, null) as Measurement,
+          MeasurementTarget('duration', 'Target Duration', 4, null, false) as Measurement,
+          MeasurementTarget('rpe', 'Target RPE', 5, null, false) as Measurement,
         ],
     ];
 
 // ── Tennis ────────────────────────────────────────────────────────────────────
 
 List<DrillType> _tennisDrillTypes() => [
-      DrillType('tennis_serve', 'Serve Practice', 'First and second serves in vs. total attempts', 0, 31, activityKey: 'Tennis')
+      // Serve: in-zone / attempts
+      DrillType('tennis_serve', 'Serve (In / Attempts)', 'Serves landing in the target zone out of total attempts', 0, 32, activityKey: 'Tennis')
         ..measurements = [
-          MeasurementResult('amount', 'First Serves In', 1, null) as Measurement,
+          MeasurementResult('amount', 'Serves In', 1, null) as Measurement,
           MeasurementResult('amount', 'Attempts', 2, null) as Measurement,
           MeasurementTarget('amount', 'Target In', 3, null, false) as Measurement,
         ],
-      DrillType('tennis_groundstroke', 'Groundstroke Consistency', 'Consecutive rally balls or cross-court targets hit', 0, 32, activityKey: 'Tennis')
+      // Groundstroke: zone hits / attempts
+      DrillType('tennis_groundstroke', 'Groundstroke Accuracy', 'Balls landing in target zone out of attempts', 0, 33, activityKey: 'Tennis')
         ..measurements = [
-          MeasurementResult('amount', 'Best Streak', 1, null) as Measurement,
-          MeasurementResult('amount', 'Target Zone Hits', 2, null) as Measurement,
-          MeasurementResult('amount', 'Attempts', 3, null) as Measurement,
-          MeasurementTarget('amount', 'Target Streak', 4, null, false) as Measurement,
-        ],
-      DrillType('tennis_volley', 'Volley Drill', 'Controlled volleys kept in play or on target', 0, 33, activityKey: 'Tennis')
-        ..measurements = [
-          MeasurementResult('amount', 'Successful Volleys', 1, null) as Measurement,
+          MeasurementResult('amount', 'In Zone', 1, null) as Measurement,
           MeasurementResult('amount', 'Attempts', 2, null) as Measurement,
-          MeasurementTarget('amount', 'Target Volleys', 3, null, false) as Measurement,
+          MeasurementTarget('amount', 'Target In Zone', 3, null, false) as Measurement,
         ],
-      DrillType('tennis_footwork', 'Footwork & Conditioning', 'Court movement drill — time and RPE', 0, 34, activityKey: 'Tennis')
+      // Volley: clean putaways / attempts
+      DrillType('tennis_volley', 'Volley Drill', 'Clean volleys placed on target out of attempts', 0, 34, activityKey: 'Tennis')
         ..measurements = [
-          MeasurementResult('duration', 'Time', 1, null) as Measurement,
+          MeasurementResult('amount', 'Clean / On Target', 1, null) as Measurement,
+          MeasurementResult('amount', 'Attempts', 2, null) as Measurement,
+          MeasurementTarget('amount', 'Target Clean', 3, null, false) as Measurement,
+        ],
+      // Court movement: timed drill + RPE
+      DrillType('tennis_footwork', 'Court Movement', 'Timed movement drill: completion time and effort', 0, 35, activityKey: 'Tennis')
+        ..measurements = [
+          MeasurementResult('duration', 'Completion Time', 1, null) as Measurement,
           MeasurementResult('amount', 'Rounds', 2, null) as Measurement,
-          MeasurementResult('rpe', 'RPE (1–10)', 3, null) as Measurement,
+          MeasurementResult('rpe', 'RPE (1-10)', 3, null) as Measurement,
           MeasurementTarget('duration', 'Target Time', 4, null, true) as Measurement,
           MeasurementTarget('rpe', 'Target RPE', 5, null, false) as Measurement,
         ],
@@ -606,31 +648,35 @@ List<DrillType> _tennisDrillTypes() => [
 // ── Running ───────────────────────────────────────────────────────────────────
 
 List<DrillType> _runningDrillTypes() => [
-      DrillType('running_interval', 'Interval Run', 'Distance, time, and effort for interval training', 0, 35, activityKey: 'Running')
+      // Intervals: distance + split + reps + RPE
+      DrillType('running_interval', 'Interval Run', 'Distance per rep, split time, reps, and effort', 0, 36, activityKey: 'Running')
         ..measurements = [
           MeasurementResult('amount', 'Distance (m)', 1, null) as Measurement,
           MeasurementResult('duration', 'Split Time', 2, null) as Measurement,
           MeasurementResult('amount', 'Reps', 3, null) as Measurement,
-          MeasurementResult('rpe', 'RPE (1–10)', 4, null) as Measurement,
+          MeasurementResult('rpe', 'RPE (1-10)', 4, null) as Measurement,
           MeasurementTarget('duration', 'Target Split', 5, null, true) as Measurement,
           MeasurementTarget('rpe', 'Target RPE', 6, null, false) as Measurement,
         ],
-      DrillType('running_tempo', 'Tempo / Steady State', 'Sustained effort run — distance, time, and pace', 0, 36, activityKey: 'Running')
+      // Tempo / steady-state: distance + total time + RPE
+      DrillType('running_tempo', 'Tempo / Steady State', 'Distance, total time, and sustained effort rating', 0, 37, activityKey: 'Running')
         ..measurements = [
           MeasurementResult('amount', 'Distance (km)', 1, null) as Measurement,
           MeasurementResult('duration', 'Total Time', 2, null) as Measurement,
-          MeasurementResult('rpe', 'RPE (1–10)', 3, null) as Measurement,
+          MeasurementResult('rpe', 'RPE (1-10)', 3, null) as Measurement,
           MeasurementTarget('duration', 'Target Time', 4, null, true) as Measurement,
           MeasurementTarget('rpe', 'Target RPE', 5, null, false) as Measurement,
         ],
-      DrillType('running_sprint', 'Sprint / Speed Work', 'Max-effort runs — distance, time, and rep count', 0, 37, activityKey: 'Running')
+      // Sprints: distance + best time + rep count
+      DrillType('running_sprint', 'Sprint / Speed Work', 'Distance, best split, and rep count for speed sessions', 0, 38, activityKey: 'Running')
         ..measurements = [
           MeasurementResult('amount', 'Distance (m)', 1, null) as Measurement,
           MeasurementResult('duration', 'Best Time', 2, null) as Measurement,
           MeasurementResult('amount', 'Reps', 3, null) as Measurement,
           MeasurementTarget('duration', 'Target Time', 4, null, true) as Measurement,
         ],
-      DrillType('running_drill', 'Running Form Drill', 'Repetitions of a mechanics drill (A-run, B-skip, etc.)', 0, 38, activityKey: 'Running')
+      // Form drills: reps + time
+      DrillType('running_drill', 'Running Form Drill', 'Reps of a mechanics drill (A-skip, B-skip, strides, etc.)', 0, 39, activityKey: 'Running')
         ..measurements = [
           MeasurementResult('amount', 'Reps', 1, null) as Measurement,
           MeasurementResult('duration', 'Time', 2, null) as Measurement,
@@ -641,60 +687,70 @@ List<DrillType> _runningDrillTypes() => [
 // ── Volleyball ────────────────────────────────────────────────────────────────
 
 List<DrillType> _volleyballDrillTypes() => [
-      DrillType('volleyball_serve', 'Serving Accuracy', 'Serves in-bounds or on-target out of total attempts', 0, 39, activityKey: 'Volleyball')
+      // Serving: zone hits / attempts
+      DrillType('volleyball_serve', 'Serving (Zone Accuracy)', 'Serves landing in a called zone out of total attempts', 0, 40, activityKey: 'Volleyball')
         ..measurements = [
-          MeasurementResult('amount', 'Serves In', 1, null) as Measurement,
+          MeasurementResult('amount', 'Zone Hits', 1, null) as Measurement,
           MeasurementResult('amount', 'Attempts', 2, null) as Measurement,
-          MeasurementTarget('amount', 'Target In', 3, null, false) as Measurement,
+          MeasurementTarget('amount', 'Target Zone Hits', 3, null, false) as Measurement,
         ],
-      DrillType('volleyball_pass', 'Passing / Receive', 'Controlled passes to target zone out of attempts', 0, 40, activityKey: 'Volleyball')
+      // Passing / receive: on-target platform passes / attempts
+      DrillType('volleyball_pass', 'Passing / Serve Receive', 'On-target platform passes out of total attempts', 0, 41, activityKey: 'Volleyball')
         ..measurements = [
           MeasurementResult('amount', 'On Target', 1, null) as Measurement,
           MeasurementResult('amount', 'Attempts', 2, null) as Measurement,
           MeasurementTarget('amount', 'Target On Target', 3, null, false) as Measurement,
         ],
-      DrillType('volleyball_attack', 'Attacking / Spiking', 'Successful attacks or kills out of total swings', 0, 41, activityKey: 'Volleyball')
+      // Attacking: kills / errors / attempts
+      DrillType('volleyball_attack', 'Attack / Spike', 'Kills and errors out of total swings', 0, 42, activityKey: 'Volleyball')
         ..measurements = [
-          MeasurementResult('amount', 'Kills / On Target', 1, null) as Measurement,
-          MeasurementResult('amount', 'Attempts', 2, null) as Measurement,
-          MeasurementTarget('amount', 'Target Kills', 3, null, false) as Measurement,
+          MeasurementResult('amount', 'Kills', 1, null) as Measurement,
+          MeasurementResult('amount', 'Errors', 2, null) as Measurement,
+          MeasurementResult('amount', 'Attempts', 3, null) as Measurement,
+          MeasurementTarget('amount', 'Target Kills', 4, null, false) as Measurement,
         ],
-      DrillType('volleyball_setting', 'Setting Consistency', 'Consecutive sets kept on target or best streak', 0, 42, activityKey: 'Volleyball')
+      // Setting: target hits / total sets
+      DrillType('volleyball_setting', 'Setting Accuracy', 'Sets reaching the target window out of total sets', 0, 43, activityKey: 'Volleyball')
         ..measurements = [
-          MeasurementResult('amount', 'Best Streak', 1, null) as Measurement,
+          MeasurementResult('amount', 'Target Hits', 1, null) as Measurement,
           MeasurementResult('amount', 'Total Sets', 2, null) as Measurement,
-          MeasurementTarget('amount', 'Target Streak', 3, null, false) as Measurement,
+          MeasurementTarget('amount', 'Target Hits', 3, null, false) as Measurement,
         ],
     ];
 
 // ── Martial Arts ──────────────────────────────────────────────────────────────
 
 List<DrillType> _martialArtsDrillTypes() => [
-      DrillType('ma_combination', 'Combination Drill', 'Repetitions of a strike/kick combination', 0, 43, activityKey: 'Martial Arts')
+      // Combination: clean reps / total + time
+      DrillType('ma_combination', 'Combination Drill', 'Reps of a combination with time: clean execution tracked', 0, 44, activityKey: 'Martial Arts')
         ..measurements = [
-          MeasurementResult('amount', 'Reps', 1, null) as Measurement,
-          MeasurementResult('duration', 'Time', 2, null) as Measurement,
-          MeasurementTarget('amount', 'Target Reps', 3, null, false) as Measurement,
+          MeasurementResult('amount', 'Clean Reps', 1, null) as Measurement,
+          MeasurementResult('amount', 'Total Reps', 2, null) as Measurement,
+          MeasurementResult('duration', 'Time', 3, null) as Measurement,
+          MeasurementTarget('amount', 'Target Clean', 4, null, false) as Measurement,
         ],
-      DrillType('ma_bag_work', 'Bag / Pad Work', 'Timed rounds with output and RPE tracking', 0, 44, activityKey: 'Martial Arts')
+      // Bag / pad work: rounds + RPE
+      DrillType('ma_bag_work', 'Bag / Pad Work', 'Timed rounds on a bag or pads: rounds and effort tracked', 0, 45, activityKey: 'Martial Arts')
         ..measurements = [
           MeasurementResult('amount', 'Rounds', 1, null) as Measurement,
           MeasurementResult('duration', 'Round Duration', 2, null) as Measurement,
-          MeasurementResult('rpe', 'RPE (1–10)', 3, null) as Measurement,
+          MeasurementResult('rpe', 'RPE (1-10)', 3, null) as Measurement,
           MeasurementTarget('amount', 'Target Rounds', 4, null, false) as Measurement,
           MeasurementTarget('rpe', 'Target RPE', 5, null, false) as Measurement,
         ],
-      DrillType('ma_footwork', 'Footwork Drill', 'Shadow movement patterns — time and reps', 0, 45, activityKey: 'Martial Arts')
+      // Footwork: reps + time
+      DrillType('ma_footwork', 'Footwork Drill', 'Movement pattern reps in a set time', 0, 46, activityKey: 'Martial Arts')
         ..measurements = [
           MeasurementResult('amount', 'Reps', 1, null) as Measurement,
           MeasurementResult('duration', 'Time', 2, null) as Measurement,
           MeasurementTarget('amount', 'Target Reps', 3, null, false) as Measurement,
         ],
-      DrillType('ma_conditioning', 'Martial Arts Conditioning', 'Timed conditioning circuit with RPE', 0, 46, activityKey: 'Martial Arts')
+      // Conditioning circuit: duration + rounds + RPE
+      DrillType('ma_conditioning', 'Conditioning Circuit', 'Timed conditioning circuit: duration, rounds, effort', 0, 47, activityKey: 'Martial Arts')
         ..measurements = [
           MeasurementResult('duration', 'Duration', 1, null) as Measurement,
           MeasurementResult('amount', 'Rounds', 2, null) as Measurement,
-          MeasurementResult('rpe', 'RPE (1–10)', 3, null) as Measurement,
+          MeasurementResult('rpe', 'RPE (1-10)', 3, null) as Measurement,
           MeasurementTarget('duration', 'Target Duration', 4, null, false) as Measurement,
           MeasurementTarget('rpe', 'Target RPE', 5, null, false) as Measurement,
         ],
@@ -703,25 +759,29 @@ List<DrillType> _martialArtsDrillTypes() => [
 // ── Pickleball ────────────────────────────────────────────────────────────────
 
 List<DrillType> _pickleballDrillTypes() => [
-      DrillType('pk_dink', 'Dinking Consistency', 'Consecutive dinks or cross-court dinks in a rally', 0, 47, activityKey: 'Pickleball')
+      // Dinking: best consecutive streak
+      DrillType('pk_dink', 'Dinking Consistency', 'Best consecutive dink rally streak: no errors', 0, 48, activityKey: 'Pickleball')
         ..measurements = [
           MeasurementResult('amount', 'Best Streak', 1, null) as Measurement,
           MeasurementResult('amount', 'Total Dinks', 2, null) as Measurement,
           MeasurementTarget('amount', 'Target Streak', 3, null, false) as Measurement,
         ],
-      DrillType('pk_serve', 'Serve Placement', 'Serves landing in target zones out of attempts', 0, 48, activityKey: 'Pickleball')
+      // Serve placement: zone hits / attempts
+      DrillType('pk_serve', 'Serve Placement', 'Serves landing in the called target zone out of attempts', 0, 49, activityKey: 'Pickleball')
         ..measurements = [
           MeasurementResult('amount', 'Zone Hits', 1, null) as Measurement,
           MeasurementResult('amount', 'Attempts', 2, null) as Measurement,
-          MeasurementTarget('amount', 'Target Zone Hits', 3, null, false) as Measurement,
+          MeasurementTarget('amount', 'Zone Hits', 3, null, false) as Measurement,
         ],
-      DrillType('pk_third_shot', 'Third Shot Drop', 'Successful drops landing in kitchen out of attempts', 0, 49, activityKey: 'Pickleball')
+      // Third shot drop: kitchen landings / attempts
+      DrillType('pk_third_shot', 'Third Shot Drop', 'Drops landing softly in the kitchen out of attempts', 0, 50, activityKey: 'Pickleball')
         ..measurements = [
           MeasurementResult('amount', 'In Kitchen', 1, null) as Measurement,
           MeasurementResult('amount', 'Attempts', 2, null) as Measurement,
           MeasurementTarget('amount', 'Target In Kitchen', 3, null, false) as Measurement,
         ],
-      DrillType('pk_drive', 'Drive & Reset', 'Drives and reset neutralisation — accuracy tracked', 0, 50, activityKey: 'Pickleball')
+      // Volley / reset: clean putaways or neutralising resets / attempts
+      DrillType('pk_volley', 'Volley & Reset', 'Successful volleys or resets out of total attempts', 0, 51, activityKey: 'Pickleball')
         ..measurements = [
           MeasurementResult('amount', 'Successful', 1, null) as Measurement,
           MeasurementResult('amount', 'Attempts', 2, null) as Measurement,
@@ -732,28 +792,32 @@ List<DrillType> _pickleballDrillTypes() => [
 // ── Lacrosse ──────────────────────────────────────────────────────────────────
 
 List<DrillType> _lacrosseDrillTypes() => [
-      DrillType('lax_wall_ball', 'Wall Ball', 'Catches out of total throws against a wall', 0, 51, activityKey: 'Lacrosse')
+      // Wall ball: catches / throws
+      DrillType('lax_wall_ball', 'Wall Ball', 'Catches out of total throws: the core lacrosse volume drill', 0, 52, activityKey: 'Lacrosse')
         ..measurements = [
           MeasurementResult('amount', 'Catches', 1, null) as Measurement,
           MeasurementResult('amount', 'Throws', 2, null) as Measurement,
           MeasurementTarget('amount', 'Target Catches', 3, null, false) as Measurement,
         ],
-      DrillType('lax_shooting', 'Shooting Accuracy', 'Goals or on-target shots out of total rips', 0, 52, activityKey: 'Lacrosse')
+      // Shooting: on-target shots / attempts
+      DrillType('lax_shooting', 'Shooting Accuracy', 'On-target shots or goals out of total rips', 0, 53, activityKey: 'Lacrosse')
         ..measurements = [
           MeasurementResult('amount', 'On Target', 1, null) as Measurement,
           MeasurementResult('amount', 'Shots', 2, null) as Measurement,
           MeasurementTarget('amount', 'Target On Target', 3, null, false) as Measurement,
         ],
-      DrillType('lax_cradling', 'Cradling Circuit', 'Cradling reps or circuit completion time', 0, 53, activityKey: 'Lacrosse')
+      // Cradling / dodging: reps + time
+      DrillType('lax_cradling', 'Cradling / Dodging', 'Reps of a cradling or dodge pattern with time', 0, 54, activityKey: 'Lacrosse')
         ..measurements = [
           MeasurementResult('amount', 'Reps', 1, null) as Measurement,
           MeasurementResult('duration', 'Time', 2, null) as Measurement,
           MeasurementTarget('amount', 'Target Reps', 3, null, false) as Measurement,
         ],
-      DrillType('lax_ground_ball', 'Ground Ball Drill', 'Ground balls secured out of total contests', 0, 54, activityKey: 'Lacrosse')
+      // Ground ball: scoops secured / attempted
+      DrillType('lax_ground_ball', 'Ground Ball', 'Ground balls secured out of total attempts', 0, 55, activityKey: 'Lacrosse')
         ..measurements = [
           MeasurementResult('amount', 'Secured', 1, null) as Measurement,
-          MeasurementResult('amount', 'Contests', 2, null) as Measurement,
+          MeasurementResult('amount', 'Attempts', 2, null) as Measurement,
           MeasurementTarget('amount', 'Target Secured', 3, null, false) as Measurement,
         ],
     ];
@@ -761,13 +825,15 @@ List<DrillType> _lacrosseDrillTypes() => [
 // ── Gymnastics / Calisthenics ─────────────────────────────────────────────────
 
 List<DrillType> _gymnasticsDrillTypes() => [
-      DrillType('gym_hold', 'Static Hold', 'Duration hold of a static skill position', 0, 55, activityKey: 'Gymnastics')
+      // Static hold: best hold time + sets
+      DrillType('gym_hold', 'Static Hold', 'Best hold duration and number of sets attempted', 0, 56, activityKey: 'Gymnastics')
         ..measurements = [
           MeasurementResult('duration', 'Best Hold', 1, null) as Measurement,
           MeasurementResult('amount', 'Sets', 2, null) as Measurement,
           MeasurementTarget('duration', 'Target Hold', 3, null, false) as Measurement,
         ],
-      DrillType('gym_skill_reps', 'Skill Repetitions', 'Clean executions of a skill out of total attempts', 0, 56, activityKey: 'Gymnastics')
+      // Skill reps: clean / total + RIR
+      DrillType('gym_skill_reps', 'Skill Repetitions', 'Clean executions out of total attempts with proximity-to-failure', 0, 57, activityKey: 'Gymnastics')
         ..measurements = [
           MeasurementResult('amount', 'Clean Reps', 1, null) as Measurement,
           MeasurementResult('amount', 'Total Attempts', 2, null) as Measurement,
@@ -775,7 +841,8 @@ List<DrillType> _gymnasticsDrillTypes() => [
           MeasurementTarget('amount', 'Target Clean', 4, null, false) as Measurement,
           MeasurementTarget('rir', 'Target RIR', 5, null, false) as Measurement,
         ],
-      DrillType('gym_conditioning', 'Gymnastics Conditioning', 'Timed conditioning circuit', 0, 57, activityKey: 'Gymnastics')
+      // Strength conditioning: sets x reps + RIR
+      DrillType('gym_conditioning', 'Strength Conditioning', 'Sets and reps of a conditioning movement with RIR', 0, 58, activityKey: 'Gymnastics')
         ..measurements = [
           MeasurementResult('amount', 'Sets', 1, null) as Measurement,
           MeasurementResult('amount', 'Reps', 2, null) as Measurement,
@@ -783,7 +850,8 @@ List<DrillType> _gymnasticsDrillTypes() => [
           MeasurementTarget('amount', 'Target Reps', 4, null, false) as Measurement,
           MeasurementTarget('rir', 'Target RIR', 5, null, false) as Measurement,
         ],
-      DrillType('gym_flexibility', 'Flexibility / Mobility', 'Stretch depth or hold duration for a mobility position', 0, 58, activityKey: 'Gymnastics')
+      // Flexibility: hold time + sets
+      DrillType('gym_flexibility', 'Flexibility / Mobility', 'Timed stretch holds: duration and sets', 0, 59, activityKey: 'Gymnastics')
         ..measurements = [
           MeasurementResult('duration', 'Hold Time', 1, null) as Measurement,
           MeasurementResult('amount', 'Sets', 2, null) as Measurement,
@@ -794,34 +862,36 @@ List<DrillType> _gymnasticsDrillTypes() => [
 // ── Guitar ────────────────────────────────────────────────────────────────────
 
 List<DrillType> _guitarDrillTypes() => [
-      DrillType('guitar_scale', 'Scale Practice', 'Scale runs with tempo (BPM) and accuracy tracking', 0, 59, activityKey: 'Guitar')
+      // Scale / picking: BPM achieved + clean runs / total
+      DrillType('guitar_scale', 'Scale / Picking (BPM)', 'BPM achieved and clean runs out of total: tempo progression', 0, 60, activityKey: 'Guitar')
         ..measurements = [
           MeasurementResult('amount', 'BPM Achieved', 1, null) as Measurement,
           MeasurementResult('amount', 'Clean Runs', 2, null) as Measurement,
           MeasurementResult('amount', 'Total Runs', 3, null) as Measurement,
           MeasurementTarget('amount', 'Target BPM', 4, null, false) as Measurement,
         ],
-      DrillType('guitar_chord', 'Chord Transitions', 'Clean chord changes per minute or streak of clean changes', 0, 60, activityKey: 'Guitar')
+      // Chord transitions: changes per minute + clean streak
+      DrillType('guitar_chord', 'Chord Transitions', 'Changes per minute and longest clean streak', 0, 61, activityKey: 'Guitar')
         ..measurements = [
           MeasurementResult('amount', 'Changes / Min', 1, null) as Measurement,
           MeasurementResult('amount', 'Best Streak (clean)', 2, null) as Measurement,
           MeasurementTarget('amount', 'Target Changes / Min', 3, null, false) as Measurement,
         ],
-      DrillType('guitar_technique', 'Technique Drill', 'Repetitions of a technique pattern at a target BPM', 0, 61, activityKey: 'Guitar')
+      // Technique drill: BPM achieved + clean reps (spider, arpeggios, legato, etc.)
+      DrillType('guitar_technique', 'Technique Drill (BPM)', 'BPM achieved and clean executions for technique patterns', 0, 62, activityKey: 'Guitar')
         ..measurements = [
           MeasurementResult('amount', 'BPM Achieved', 1, null) as Measurement,
-          MeasurementResult('amount', 'Reps / Minutes', 2, null) as Measurement,
+          MeasurementResult('amount', 'Clean Reps / Sets', 2, null) as Measurement,
           MeasurementTarget('amount', 'Target BPM', 3, null, false) as Measurement,
         ],
-      DrillType('guitar_repertoire', 'Song / Repertoire', 'Run-throughs with quality and notes-per-pass rating', 0, 62, activityKey: 'Guitar')
+      // Repertoire / song: run-throughs + quality
+      DrillType('guitar_repertoire', 'Song / Repertoire', 'Full run-throughs with self-rated quality (1-10)', 0, 63, activityKey: 'Guitar')
         ..measurements = [
           MeasurementResult('amount', 'Run-throughs', 1, null) as Measurement,
-          MeasurementResult('amount', 'Quality (1–10)', 2, null) as Measurement,
+          MeasurementResult('amount', 'Quality (1-10)', 2, null) as Measurement,
           MeasurementTarget('amount', 'Target Quality', 3, null, false) as Measurement,
         ],
     ];
-
-// ─────────────────────────────────────────────────────────────────────────────
 // DEFAULT DRILLS  (seeded on first launch only — skipped if any drills exist)
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -980,28 +1050,28 @@ List<_DrillSpec> _defaultDrillSpecs() => [
           title: 'Forward-Back Line Hops',
           description: 'Stand over a line and move your feet back and forth across it as quickly as possible with small, light steps. Improves foot speed and quickness off the mark. Track total reps in the set time.',
           activityTitle: 'Hockey',
-          drillTypeId: 'hockey_skating_time',
+          drillTypeId: 'hockey_office_conditioning',
           skillTitles: ['Skating'],
           measurements: [MeasurementResult('duration', 'Work Time', 1, null) as Measurement, MeasurementResult('rpe', 'RPE (1–10)', 2, null) as Measurement, MeasurementTarget('duration', 'Target Duration', 3, 30, false) as Measurement, MeasurementTarget('rpe', 'Target RPE', 4, 7, false) as Measurement]),
       _DrillSpec(
           title: 'Lateral Hop and Stick',
           description: 'Start on one leg, hop sideways to simulate a skating push-off, and land on the opposite leg. Hold the landing for 3 seconds before the next rep. Builds single-leg stability and landing control.',
           activityTitle: 'Hockey',
-          drillTypeId: 'hockey_skating_time',
+          drillTypeId: 'hockey_office_conditioning',
           skillTitles: ['Skating'],
           measurements: [MeasurementResult('duration', 'Work Time', 1, null) as Measurement, MeasurementResult('rpe', 'RPE (1–10)', 2, null) as Measurement, MeasurementTarget('duration', 'Target Duration', 3, 60, false) as Measurement, MeasurementTarget('rpe', 'Target RPE', 4, 7, false) as Measurement]),
       _DrillSpec(
           title: 'Jump Rope',
           description: 'Simple but essential. Jump rope at a steady pace to build timing, balance, coordination, and aerobic endurance. Alternate between two-foot and single-leg jumps each session.',
           activityTitle: 'Hockey',
-          drillTypeId: 'hockey_skating_time',
+          drillTypeId: 'hockey_office_conditioning',
           skillTitles: ['Skating'],
           measurements: [MeasurementResult('duration', 'Duration', 1, null) as Measurement, MeasurementResult('rpe', 'RPE (1–10)', 2, null) as Measurement, MeasurementTarget('duration', 'Target Duration', 3, 300, false) as Measurement, MeasurementTarget('rpe', 'Target RPE', 4, 6, false) as Measurement]),
       _DrillSpec(
           title: 'Suicides 3-6-9',
           description: 'Set cones at 3, 6, and 9 yards. Sprint to the first cone and stop, backpedal to start, sprint to the second, backpedal, then sprint to the third. Trains explosive stop-and-start acceleration.',
           activityTitle: 'Hockey',
-          drillTypeId: 'hockey_skating_time',
+          drillTypeId: 'hockey_office_conditioning',
           skillTitles: ['Skating'],
           measurements: [MeasurementResult('duration', 'Completion Time', 1, null) as Measurement, MeasurementResult('rpe', 'RPE (1–10)', 2, null) as Measurement, MeasurementTarget('duration', 'Target Time', 3, 20, true) as Measurement, MeasurementTarget('rpe', 'Target RPE', 4, 9, false) as Measurement]),
       // ── Hockey – Passing & Defense
@@ -1018,7 +1088,7 @@ List<_DrillSpec> _defaultDrillSpecs() => [
           description:
               'Set cones 8 feet apart. Drop into a defensive posture: knees bent, stick flat on the floor, weight evenly distributed. Shuffle laterally without crossing the feet. At each cone simulate a poke check (extend stick forward at ice level and retract) then a stick lift (blade up from underneath a simulated opponent stick). Do 3 sets of 10 shuffles per direction. Maintaining proper gap — staying between the puck and the net at 1–1.5 stick-lengths — is the most critical defensive positional concept in hockey. Every foot of gap closed incorrectly creates a scoring opportunity for the attacker.',
           activityTitle: 'Hockey',
-          drillTypeId: 'hockey_skating_time',
+          drillTypeId: 'hockey_office_conditioning',
           skillTitles: ['Defense'],
           measurements: [MeasurementResult('duration', 'Work Time', 1, null) as Measurement, MeasurementResult('rpe', 'RPE (1–10)', 2, null) as Measurement, MeasurementTarget('duration', 'Target Duration', 3, 90, false) as Measurement, MeasurementTarget('rpe', 'Target RPE', 4, 6, false) as Measurement]),
       // ── Basketball – Ball Handling
@@ -1071,7 +1141,7 @@ List<_DrillSpec> _defaultDrillSpecs() => [
           title: 'Free Throw Ritual',
           description: 'Shoot exactly 50 free throws using the same pre-shot routine every single time — same number of dribbles, same breath, same focus point. Track your best consecutive make streak. Consistency of routine is the goal, not just percentage.',
           activityTitle: 'Basketball',
-          drillTypeId: 'basketball_free_throw',
+          drillTypeId: 'basketball_shooting',
           skillTitles: ['Shooting'],
           measurements: [MeasurementResult('amount', 'Makes', 1, null) as Measurement, MeasurementResult('amount', 'Attempts', 2, null) as Measurement, MeasurementTarget('amount', 'Target Makes', 3, 40, false) as Measurement]),
       // ── Baseball – Hitting
@@ -1132,7 +1202,7 @@ List<_DrillSpec> _defaultDrillSpecs() => [
           title: 'Mirror Swing Checkpoints',
           description: 'Stand sideways to a mirror in your setup position. Make slow-motion swings and pause at four positions: address, halfway back (club parallel), top of backswing, and impact position. Check: spine angle, hip turn, club plane, and wrist position. No ball — pure mechanics work.',
           activityTitle: 'Golf',
-          drillTypeId: 'golf_iron_play',
+          drillTypeId: 'golf_swing',
           skillTitles: ['Approach'],
           measurements: [MeasurementResult('amount', 'Quality Reps', 1, null) as Measurement, MeasurementResult('amount', 'Total Reps', 2, null) as Measurement, MeasurementTarget('amount', 'Target Reps', 3, 20, false) as Measurement]),
       _DrillSpec(
@@ -1147,14 +1217,14 @@ List<_DrillSpec> _defaultDrillSpecs() => [
           title: 'Toe Taps',
           description: 'Place the ball on the ground. Rapidly alternate tapping the top of the ball with the sole of each foot — right, left, right, left. Keep the ball stationary and your ankles relaxed. Start slow and increase speed. Builds a quick, soft first touch and coordination between feet.',
           activityTitle: 'Soccer',
-          drillTypeId: 'soccer_dribbling',
+          drillTypeId: 'soccer_touch',
           skillTitles: ['Ball Control'],
           measurements: [MeasurementResult('amount', 'Taps', 1, null) as Measurement, MeasurementResult('duration', 'Time', 2, null) as Measurement, MeasurementTarget('amount', 'Target Taps', 3, 100, false) as Measurement]),
       _DrillSpec(
           title: 'Juggling Challenge',
           description: 'Keep the ball in the air using alternating feet. Start close to the ground, small controlled taps. Track your single best consecutive streak per session. Rotate surfaces each session: feet only, then thighs only, then mixed. Builds touch, concentration, and balance.',
           activityTitle: 'Soccer',
-          drillTypeId: 'soccer_juggling',
+          drillTypeId: 'streak',
           skillTitles: ['Ball Control'],
           measurements: [MeasurementResult('amount', 'Best Streak', 1, null) as Measurement, MeasurementTarget('amount', 'Target Streak', 2, 25, false) as Measurement]),
       // ── Soccer – Passing & Dribbling
@@ -1346,7 +1416,7 @@ List<_DrillSpec> _defaultDrillSpecs() => [
           title: 'Lag Putting Ladder',
           description: 'Set targets at 10, 20, 30, and 40 feet. Hit 3 putts to each distance trying to stop within a 3-foot circle. Track how many of 12 finish inside the circle. Lag putting eliminates 3-putts far more effectively than short-putt practice — most amateurs lose more shots to distance control than to direction.',
           activityTitle: 'Golf',
-          drillTypeId: 'golf_putting',
+          drillTypeId: 'golf_lag',
           skillTitles: ['Putt'],
           measurements: [MeasurementResult('amount', 'In Zone', 1, null) as Measurement, MeasurementResult('amount', 'Total Putts', 2, null) as Measurement, MeasurementTarget('amount', 'Target In Zone', 3, 9, false) as Measurement]),
       _DrillSpec(
@@ -1360,21 +1430,21 @@ List<_DrillSpec> _defaultDrillSpecs() => [
           title: 'Impact Bag Drill',
           description: 'Swing against a heavy bag, folded pillow, or commercial impact bag placed at ball position. Make a full swing and hold the impact position for 3 seconds — you will immediately feel whether hands are ahead (correct) or flipping (incorrect). The tactile resistance makes impact position tangible in a way mirrors cannot. 20 held reps.',
           activityTitle: 'Golf',
-          drillTypeId: 'golf_iron_play',
+          drillTypeId: 'golf_swing',
           skillTitles: ['Iron Play'],
           measurements: [MeasurementResult('amount', 'Clean Impacts', 1, null) as Measurement, MeasurementResult('amount', 'Total Reps', 2, null) as Measurement, MeasurementTarget('amount', 'Target Clean', 3, 16, false) as Measurement]),
       _DrillSpec(
           title: 'Headcover Avoid (Draw Path)',
           description: 'Place a headcover 6–8 inches outside the ball on the far side. Swing on an inside-out path — if the club strikes it, your path was over-the-top. Trains the in-to-out swing path that produces a controlled draw and eliminates the slice. 20 slow-motion practice swings before 10 at full speed with a 7-iron.',
           activityTitle: 'Golf',
-          drillTypeId: 'golf_driving',
+          drillTypeId: 'golf_swing',
           skillTitles: ['Drive'],
           measurements: [MeasurementResult('amount', 'Clean Swings', 1, null) as Measurement, MeasurementResult('amount', 'Total Swings', 2, null) as Measurement, MeasurementTarget('amount', 'Target Clean', 3, 16, false) as Measurement]),
       _DrillSpec(
           title: 'Pause at the Top',
           description: 'Make a full backswing then pause completely for a 2-second count before starting down. The pause forces a complete shoulder turn, exposes incomplete rotation, and stops the most common amateur fault: rushing from the top. Alternate 5 paused swings with 5 normal to feel the contrast. 20 total swings.',
           activityTitle: 'Golf',
-          drillTypeId: 'golf_driving',
+          drillTypeId: 'golf_swing',
           skillTitles: ['Drive', 'Iron Play'],
           measurements: [MeasurementResult('amount', 'Quality Reps', 1, null) as Measurement, MeasurementResult('amount', 'Total Reps', 2, null) as Measurement, MeasurementTarget('amount', 'Target Reps', 3, 20, false) as Measurement]),
       // ── Golf – Bunker
@@ -1391,7 +1461,7 @@ List<_DrillSpec> _defaultDrillSpecs() => [
           title: 'Inside-Outside Touch Roll',
           description: 'Trap the ball under your right foot. Roll it left with the inside, then push it back right with the outside — tight 8-inch zone, ball always close. Switch foot every 30 seconds. Builds the neurological feel for three foot surfaces in rapid succession, the foundation of tight dribbling under pressure.',
           activityTitle: 'Soccer',
-          drillTypeId: 'soccer_dribbling',
+          drillTypeId: 'soccer_touch',
           skillTitles: ['Ball Control'],
           measurements: [MeasurementResult('amount', 'Touches', 1, null) as Measurement, MeasurementResult('duration', 'Time', 2, null) as Measurement, MeasurementTarget('amount', 'Target Touches', 3, 80, false) as Measurement]),
       _DrillSpec(
@@ -1419,7 +1489,7 @@ List<_DrillSpec> _defaultDrillSpecs() => [
           title: 'Coever Step-Over',
           description: 'The foundation of European youth skill development. Step the right foot over the ball right-to-left, then push it away with the outside of the right foot. Repeat left-to-right with the left foot. Build speed over 30 seconds then switch. Named after Dutch coach Wiel Coerver — these patterns form the base of all modern 1v1 skill work.',
           activityTitle: 'Soccer',
-          drillTypeId: 'soccer_dribbling',
+          drillTypeId: 'soccer_touch',
           skillTitles: ['Dribbling'],
           measurements: [MeasurementResult('amount', 'Reps', 1, null) as Measurement, MeasurementResult('duration', 'Time', 2, null) as Measurement, MeasurementTarget('amount', 'Target Reps', 3, 60, false) as Measurement]),
       _DrillSpec(
@@ -1551,7 +1621,7 @@ List<_DrillSpec> _defaultDrillSpecs() => [
           description:
               'Stand 6–8 feet from a wall and rally continuously forehand-only. The wall returns immediately — there is no time to reset a bad position. Aim for a best consecutive rally streak. Start slow (full swing, controlled), then speed up as consistency improves. 15 minutes of wall work trains reflexes faster than any partner drill because the ball comes back immediately.',
           activityTitle: 'Tennis',
-          drillTypeId: 'tennis_groundstroke',
+          drillTypeId: 'streak',
           skillTitles: ['Forehand'],
           measurements: [MeasurementResult('amount', 'Best Streak', 1, null) as Measurement, MeasurementResult('amount', 'Total Hits', 2, null) as Measurement, MeasurementTarget('amount', 'Target Streak', 3, 30, false) as Measurement]),
       _DrillSpec(
@@ -1752,7 +1822,7 @@ List<_DrillSpec> _defaultDrillSpecs() => [
           description:
               'Stand 4 feet from a wall, serve posture (platform arms, knees bent, weight forward). Pass the ball against the wall and platform-control the return continuously. The wall gives immediate feedback — any arm swing creates an uncontrollable bounce. Track your best consecutive streak per session. Goal: 30+ without moving your feet. Passing mechanics are the #1 skill separator in volleyball.',
           activityTitle: 'Volleyball',
-          drillTypeId: 'volleyball_pass',
+          drillTypeId: 'streak',
           skillTitles: ['Pass'],
           measurements: [MeasurementResult('amount', 'Best Streak', 1, null) as Measurement, MeasurementResult('amount', 'Total Passes', 2, null) as Measurement, MeasurementTarget('amount', 'Target Streak', 3, 30, false) as Measurement]),
       _DrillSpec(
@@ -1775,7 +1845,7 @@ List<_DrillSpec> _defaultDrillSpecs() => [
           title: 'Wall Set Streak',
           description: 'Stand 5 feet from a wall and repeatedly set the ball against it to yourself without letting it drop. Use perfect hand technique — spread fingers, thumbs at forehead level, contact with finger pads only. Target 50 consecutive reps without error. Then move sideways 2 feet and set at a slight angle to a different wall zone each time.',
           activityTitle: 'Volleyball',
-          drillTypeId: 'volleyball_setting',
+          drillTypeId: 'streak',
           skillTitles: ['Set'],
           measurements: [MeasurementResult('amount', 'Best Streak', 1, null) as Measurement, MeasurementResult('amount', 'Total Sets', 2, null) as Measurement, MeasurementTarget('amount', 'Target Streak', 3, 50, false) as Measurement]),
       _DrillSpec(
@@ -1983,7 +2053,7 @@ List<_DrillSpec> _defaultDrillSpecs() => [
           description:
               'Practice the Erne — jump or step around the net post, plant outside the court, and volley a ball that was going cross-court. Start from the kitchen line, sidestep to the sideline, and simulate the poach volley with a firm continental grip punch. Do 10 reps each side. Advanced kitchen-line execution of the Erne wins more points per attempt than almost any other shot in bangers\' and dink players\' games alike.',
           activityTitle: 'Pickleball',
-          drillTypeId: 'pk_drive',
+          drillTypeId: 'pk_volley',
           skillTitles: ['Volley', 'Footwork'],
           measurements: [MeasurementResult('amount', 'Clean Attempts', 1, null) as Measurement, MeasurementResult('amount', 'Total Reps', 2, null) as Measurement, MeasurementTarget('amount', 'Target Clean', 3, 7, false) as Measurement]),
       _DrillSpec(
@@ -1999,7 +2069,7 @@ List<_DrillSpec> _defaultDrillSpecs() => [
           description:
               'Have a partner or machine feed balls to your forehand at mid-court height. Drive the ball hard cross-court (the speed-up), then immediately reset your stance for the expected counter. Do 20 reps. In pickleball, the speed-up is most effective when the opponent is square and close to the net — not when they are in a defensive posture. This drill trains both the attack and the recovery.',
           activityTitle: 'Pickleball',
-          drillTypeId: 'pk_drive',
+          drillTypeId: 'pk_volley',
           skillTitles: ['Drive', 'Volley'],
           measurements: [MeasurementResult('amount', 'Successful Attacks', 1, null) as Measurement, MeasurementResult('amount', 'Attempts', 2, null) as Measurement, MeasurementTarget('amount', 'Target Successful', 3, 14, false) as Measurement]),
       _DrillSpec(
@@ -2007,7 +2077,7 @@ List<_DrillSpec> _defaultDrillSpecs() => [
           description:
               'Toss a ball high in the air (or have a partner lob) and track it above your hitting shoulder. Rotate shoulders, keep paddle scratching-your-back position, and snap through contact. Deliver to open-court zones. Hit 20. The overhead is the highest-percentage point-winner in pickleball when executed correctly — yet almost never practiced solo.',
           activityTitle: 'Pickleball',
-          drillTypeId: 'pk_drive',
+          drillTypeId: 'pk_volley',
           skillTitles: ['Drive'],
           measurements: [MeasurementResult('amount', 'Winners', 1, null) as Measurement, MeasurementResult('amount', 'Attempts', 2, null) as Measurement, MeasurementTarget('amount', 'Target Winners', 3, 14, false) as Measurement]),
       _DrillSpec(
@@ -2015,7 +2085,7 @@ List<_DrillSpec> _defaultDrillSpecs() => [
           description:
               'Practice the return of serve by bouncing a ball and hitting it deep down the middle or cross-court. Keep the return low and deep — do not attack unless the serve lands short. Hit 20 to each zone. Returning deep and down the middle removes the serving team\'s angle advantage, neutralising the third-shot opportunity that a short return creates.',
           activityTitle: 'Pickleball',
-          drillTypeId: 'pk_drive',
+          drillTypeId: 'pk_volley',
           skillTitles: ['Drive'],
           measurements: [MeasurementResult('amount', 'Deep in Zone', 1, null) as Measurement, MeasurementResult('amount', 'Attempts', 2, null) as Measurement, MeasurementTarget('amount', 'Target Deep', 3, 14, false) as Measurement]),
       _DrillSpec(
@@ -2031,7 +2101,7 @@ List<_DrillSpec> _defaultDrillSpecs() => [
           description:
               'Stand near the sideline at or past the kitchen line. Have a partner hit a wide angled dink or pass. Let the ball travel past the net post and hit it around the post — below net level is legal on an ATP. Do 10 reps each side. The ATP is the single most crowd-pleasing play in pickleball and is completely legal yet practiced by almost no recreational players, because it requires specific approach footwork.',
           activityTitle: 'Pickleball',
-          drillTypeId: 'pk_drive',
+          drillTypeId: 'pk_volley',
           skillTitles: ['Drive', 'Footwork'],
           measurements: [MeasurementResult('amount', 'Clean ATPs', 1, null) as Measurement, MeasurementResult('amount', 'Attempts', 2, null) as Measurement, MeasurementTarget('amount', 'Target Clean', 3, 6, false) as Measurement]),
       // ── Lacrosse ────────────────────────────────────────────────────────────────
