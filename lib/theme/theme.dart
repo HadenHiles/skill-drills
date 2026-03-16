@@ -198,6 +198,14 @@ class SkillDrillsTheme {
         borderRadius: SkillDrillsRadius.smBorderRadius,
         borderSide: const BorderSide(color: SkillDrillsColors.error, width: 2),
       ),
+      prefixIconColor: WidgetStateColor.resolveWith((states) {
+        if (states.contains(WidgetState.focused)) return SkillDrillsColors.brandBlue;
+        return SkillDrillsColors.lightOnSurfaceMuted;
+      }),
+      suffixIconColor: WidgetStateColor.resolveWith((states) {
+        if (states.contains(WidgetState.focused)) return SkillDrillsColors.brandBlue;
+        return SkillDrillsColors.lightOnSurfaceMuted;
+      }),
       labelStyle: const TextStyle(
         color: SkillDrillsColors.lightOnSurfaceMuted,
         fontWeight: FontWeight.w500,
@@ -334,8 +342,8 @@ class SkillDrillsTheme {
 
     // Color scheme
     colorScheme: const ColorScheme.light(
-      primary: SkillDrillsColors.lightAppBar,
-      onPrimary: SkillDrillsColors.lightOnSurfaceMuted,
+      primary: SkillDrillsColors.brandBlue,
+      onPrimary: Colors.white,
       secondary: SkillDrillsColors.brandBlue,
       onSecondary: Colors.white,
       tertiary: SkillDrillsColors.energyOrange,

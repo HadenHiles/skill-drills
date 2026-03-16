@@ -1,5 +1,6 @@
 // ignore_for_file: avoid_print
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
@@ -37,21 +38,32 @@ const Map<String, String> _activityEmoji = {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class WelcomeScreen extends StatefulWidget {
-  const WelcomeScreen({super.key});
+  const WelcomeScreen({super.key, this.initialPage = 0});
+
+  /// The page index to start on. Use 2 to skip intro + paywall pages
+  /// and start directly at the activity picker (e.g. when shown post-login).
+  final int initialPage;
 
   @override
   State<WelcomeScreen> createState() => _WelcomeScreenState();
 }
 
 class _WelcomeScreenState extends State<WelcomeScreen> {
-  final _pageController = PageController();
-  int _currentPage = 0;
+  late final PageController _pageController;
+  late int _currentPage;
   static const int _totalPages = 5;
 
   // ── Onboarding state ──────────────────────────────────────────────────────
   List<String> _selectedActivities = [];
   bool _includeDefaultDrills = true;
   bool _isPro = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentPage = widget.initialPage;
+    _pageController = PageController(initialPage: widget.initialPage);
+  }
 
   // ── Navigation ────────────────────────────────────────────────────────────
 
@@ -81,9 +93,15 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
       print('Welcome: failed to save onboarding prefs: $e');
     }
     if (!mounted) return;
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const Login()),
-    );
+    if (FirebaseAuth.instance.currentUser != null) {
+      // Already authenticated — shown as a post-login onboarding continuation.
+      // Just pop back to Nav; bootstrap will pick up the saved preferences.
+      Navigator.of(context).pop();
+    } else {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const Login()),
+      );
+    }
   }
 
   // ── Shared gradient decoration ────────────────────────────────────────────

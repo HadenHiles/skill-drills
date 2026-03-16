@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
+import 'package:skilldrills/models/onboarding_preferences.dart';
+import 'package:skilldrills/onboarding/welcome_screen.dart';
 import 'package:skilldrills/services/haptics.dart';
 import 'package:skilldrills/services/subscription.dart';
 import 'package:skilldrills/widgets/paywall_screen.dart';
@@ -207,12 +209,34 @@ class _NavState extends State<Nav> {
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         final alreadyPro = await hasActiveSubscription();
         if (!alreadyPro) {
-          navigatorKey.currentState!.push(
+          navigatorKey.currentState!
+              .push(
             MaterialPageRoute(
               fullscreenDialog: true,
               builder: (_) => const PaywallScreen(showSkip: true),
             ),
-          );
+          )
+              .then((_) async {
+            final seen = await OnboardingPreferences.hasSeenWelcome();
+            if (!seen && navigatorKey.currentState != null) {
+              navigatorKey.currentState!.push(
+                MaterialPageRoute(
+                  fullscreenDialog: true,
+                  builder: (_) => const WelcomeScreen(initialPage: 2),
+                ),
+              );
+            }
+          });
+        } else {
+          final seen = await OnboardingPreferences.hasSeenWelcome();
+          if (!seen && navigatorKey.currentState != null) {
+            navigatorKey.currentState!.push(
+              MaterialPageRoute(
+                fullscreenDialog: true,
+                builder: (_) => const WelcomeScreen(initialPage: 2),
+              ),
+            );
+          }
         }
       });
     }
@@ -409,8 +433,8 @@ class _NavState extends State<Nav> {
             ],
             currentIndex: _selectedIndex,
             backgroundColor: Theme.of(context).colorScheme.surface,
-            selectedItemColor: Theme.of(context).primaryColor,
-            unselectedItemColor: Theme.of(context).colorScheme.onPrimary,
+            selectedItemColor: Theme.of(context).bottomNavigationBarTheme.selectedItemColor,
+            unselectedItemColor: Theme.of(context).bottomNavigationBarTheme.unselectedItemColor,
             onTap: _onItemTapped,
           ),
         ),
