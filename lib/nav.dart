@@ -224,7 +224,7 @@ class _NavState extends State<Nav> {
               navigatorKey.currentState!.push(
                 MaterialPageRoute(
                   fullscreenDialog: true,
-                  builder: (_) => const WelcomeScreen(initialPage: 2),
+                  builder: (_) => const WelcomeScreen(initialPage: 1),
                 ),
               );
             }
@@ -236,7 +236,7 @@ class _NavState extends State<Nav> {
             navigatorKey.currentState!.push(
               MaterialPageRoute(
                 fullscreenDialog: true,
-                builder: (_) => const WelcomeScreen(initialPage: 2),
+                builder: (_) => const WelcomeScreen(initialPage: 1),
               ),
             );
           }

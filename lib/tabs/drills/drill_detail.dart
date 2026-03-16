@@ -159,7 +159,7 @@ class _DrillDetailState extends State<DrillDetail> {
                 child: IconButton(
                   icon: Icon(
                     Icons.arrow_back,
-                    color: Theme.of(context).colorScheme.onPrimary,
+                    color: Theme.of(context).colorScheme.onSurface,
                     size: 28,
                   ),
                   onPressed: () => Navigator.of(context).pop(),
@@ -634,7 +634,7 @@ class _DrillDetailState extends State<DrillDetail> {
                   labelText: t.label,
                   labelStyle: TextStyle(
                     fontSize: 14,
-                    color: Theme.of(context).colorScheme.onPrimary,
+                    color: Theme.of(context).colorScheme.onSurface.withAlpha(170),
                   ),
                 ),
                 onChanged: (value) {
@@ -665,7 +665,7 @@ class _DrillDetailState extends State<DrillDetail> {
                   labelText: t.label,
                   labelStyle: TextStyle(
                     fontSize: 14,
-                    color: Theme.of(context).colorScheme.onPrimary,
+                    color: Theme.of(context).colorScheme.onSurface.withAlpha(170),
                   ),
                   hintStyle: Theme.of(context).textTheme.bodyLarge,
                 ),
@@ -745,13 +745,14 @@ class _DrillDetailState extends State<DrillDetail> {
         children: [
           Row(
             children: [
-              Icon(icon, size: 13, color: Theme.of(context).colorScheme.onPrimary),
+              Icon(icon, size: 13, color: Theme.of(context).colorScheme.onSurface.withAlpha(180)),
               const SizedBox(width: 6),
               Text(
                 label.toUpperCase(),
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       fontWeight: FontWeight.w700,
                       letterSpacing: 1.2,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
               ),
             ],
@@ -761,7 +762,7 @@ class _DrillDetailState extends State<DrillDetail> {
             Text(
               subtitle,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onPrimary.withAlpha(150),
+                    color: Theme.of(context).colorScheme.onSurface.withAlpha(150),
                   ),
             ),
           ],
@@ -837,63 +838,68 @@ class _DrillDetailState extends State<DrillDetail> {
   }
 
   Widget _buildInfoSection() {
+    final theme = Theme.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildSectionHeader(Icons.edit_rounded, 'Basic Info'),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: SkillDrillsSpacing.md),
-          child: Card(
-            child: Padding(
-              padding: const EdgeInsets.all(SkillDrillsSpacing.md),
-              child: Form(
-                key: _formKey,
-                autovalidateMode: AutovalidateMode.onUserInteraction,
-                child: Column(
-                  children: [
-                    TextFormField(
-                      validator: (String? value) {
-                        if (value!.isEmpty) {
-                          return 'Please enter a title';
-                        } else if (!RegExp(r"^[a-zA-Z0-9 ]+$").hasMatch(value)) {
-                          return 'No special characters are allowed';
-                        }
-                        return null;
-                      },
-                      controller: _titleFieldController,
-                      decoration: InputDecoration(
-                        labelText: 'Title',
-                        hintText: 'e.g. Wall passes, Scale runs, Free throws',
-                        hintStyle: Theme.of(context).textTheme.bodyMedium,
+        Container(
+          color: theme.colorScheme.surface,
+          child: Column(
+            children: [
+              Divider(height: 1, color: theme.dividerColor),
+              Padding(
+                padding: const EdgeInsets.all(SkillDrillsSpacing.md),
+                child: Form(
+                  key: _formKey,
+                  autovalidateMode: AutovalidateMode.onUserInteraction,
+                  child: Column(
+                    children: [
+                      TextFormField(
+                        validator: (String? value) {
+                          if (value!.isEmpty) {
+                            return 'Please enter a title';
+                          } else if (!RegExp(r"^[a-zA-Z0-9 ]+$").hasMatch(value)) {
+                            return 'No special characters are allowed';
+                          }
+                          return null;
+                        },
+                        controller: _titleFieldController,
+                        decoration: InputDecoration(
+                          labelText: 'Title',
+                          hintText: 'e.g. Wall passes, Scale runs, Free throws',
+                          hintStyle: theme.textTheme.bodyMedium,
+                        ),
+                        style: TextStyle(color: theme.colorScheme.onSurface),
+                        onChanged: (value) {
+                          setState(() {
+                            _drill = Drill(value, _drill!.description, _drill!.activity, _drill!.drillType);
+                          });
+                        },
                       ),
-                      style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
-                      onChanged: (value) {
-                        setState(() {
-                          _drill = Drill(value, _drill!.description, _drill!.activity, _drill!.drillType);
-                        });
-                      },
-                    ),
-                    const SizedBox(height: SkillDrillsSpacing.sm),
-                    TextFormField(
-                      controller: _descriptionFieldController,
-                      decoration: InputDecoration(
-                        labelText: 'Description',
-                        hintText: 'Optional — what does this drill practice?',
-                        hintStyle: Theme.of(context).textTheme.bodyMedium,
+                      const SizedBox(height: SkillDrillsSpacing.sm),
+                      TextFormField(
+                        controller: _descriptionFieldController,
+                        decoration: InputDecoration(
+                          labelText: 'Description',
+                          hintText: 'Optional — what does this drill practice?',
+                          hintStyle: theme.textTheme.bodyMedium,
+                        ),
+                        minLines: 2,
+                        maxLines: 4,
+                        style: TextStyle(color: theme.colorScheme.onSurface),
+                        onChanged: (value) {
+                          setState(() {
+                            _drill = Drill(_drill!.title, value, _drill!.activity, _drill!.drillType);
+                          });
+                        },
                       ),
-                      minLines: 2,
-                      maxLines: 4,
-                      style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
-                      onChanged: (value) {
-                        setState(() {
-                          _drill = Drill(_drill!.title, value, _drill!.activity, _drill!.drillType);
-                        });
-                      },
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-            ),
+              Divider(height: 1, color: theme.dividerColor),
+            ],
           ),
         ),
       ],
@@ -901,59 +907,60 @@ class _DrillDetailState extends State<DrillDetail> {
   }
 
   Widget _buildCategorySection() {
+    final theme = Theme.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildSectionHeader(Icons.category_rounded, 'Categorize'),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: SkillDrillsSpacing.md),
-          child: Card(
-            child: Column(
-              children: [
-                _buildSelectorRow(
-                  label: 'Activity',
-                  isLoading: _activities == null,
-                  selectedValue: _activity!.title!.isNotEmpty ? _activity!.title : null,
-                  hasError: _activityError,
-                  onTap: () => _showActivityPicker(),
-                  onClear: () {
-                    setState(() {
-                      _activityError = false;
-                      _activity = Activity('', null);
-                      _selectedCategories = [];
-                      _drill = Drill(_drill!.title, _drill!.description, Activity('', null), _drill!.drillType);
-                    });
-                  },
-                ),
-                AnimatedSize(
-                  duration: const Duration(milliseconds: 250),
-                  curve: Curves.easeOutCubic,
-                  child: (_activity!.skills?.length ?? 0) > 0
-                      ? Column(
-                          children: [
-                            Divider(height: 1, color: Theme.of(context).dividerColor),
-                            _buildSelectorRow(
-                              label: _selectedCategories!.length <= 1 ? 'Skill' : 'Skills',
-                              isLoading: false,
-                              selectedValue: _selectedCategories!.isNotEmpty ? _outputCategories() : null,
-                              hasError: _categoryError,
-                              onTap: () => _showSkillsPicker(),
-                              onClear: () {
-                                setState(() {
-                                  _categoryError = false;
-                                  _selectedCategories = [];
-                                  Activity a = Activity(_activity!.title, null);
-                                  a.skills = [];
-                                  _drill = Drill(_drill!.title, _drill!.description, a, _drill!.drillType);
-                                });
-                              },
-                            ),
-                          ],
-                        )
-                      : const SizedBox.shrink(),
-                ),
-              ],
-            ),
+        Container(
+          color: theme.colorScheme.surface,
+          child: Column(
+            children: [
+              Divider(height: 1, color: theme.dividerColor),
+              _buildSelectorRow(
+                label: 'Activity',
+                isLoading: _activities == null,
+                selectedValue: _activity!.title!.isNotEmpty ? _activity!.title : null,
+                hasError: _activityError,
+                onTap: () => _showActivityPicker(),
+                onClear: () {
+                  setState(() {
+                    _activityError = false;
+                    _activity = Activity('', null);
+                    _selectedCategories = [];
+                    _drill = Drill(_drill!.title, _drill!.description, Activity('', null), _drill!.drillType);
+                  });
+                },
+              ),
+              AnimatedSize(
+                duration: const Duration(milliseconds: 250),
+                curve: Curves.easeOutCubic,
+                child: (_activity!.skills?.length ?? 0) > 0
+                    ? Column(
+                        children: [
+                          Divider(height: 1, color: theme.dividerColor),
+                          _buildSelectorRow(
+                            label: _selectedCategories!.length <= 1 ? 'Skill' : 'Skills',
+                            isLoading: false,
+                            selectedValue: _selectedCategories!.isNotEmpty ? _outputCategories() : null,
+                            hasError: _categoryError,
+                            onTap: () => _showSkillsPicker(),
+                            onClear: () {
+                              setState(() {
+                                _categoryError = false;
+                                _selectedCategories = [];
+                                Activity a = Activity(_activity!.title, null);
+                                a.skills = [];
+                                _drill = Drill(_drill!.title, _drill!.description, a, _drill!.drillType);
+                              });
+                            },
+                          ),
+                        ],
+                      )
+                    : const SizedBox.shrink(),
+              ),
+              Divider(height: 1, color: theme.dividerColor),
+            ],
           ),
         ),
       ],
@@ -966,153 +973,161 @@ class _DrillDetailState extends State<DrillDetail> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionHeader(Icons.tune_rounded, 'Drill Type', subtitle: 'Choose the format that matches how you measure this drill.\nTap a type to see what it tracks.'),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: SkillDrillsSpacing.md),
-          child: Card(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // ── Type selection list ────────────────────────────────────
-                if (_drillTypes == null)
-                  const Padding(
-                    padding: EdgeInsets.all(SkillDrillsSpacing.lg),
-                    child: Center(child: CircularProgressIndicator()),
-                  )
-                else if (_drillTypes!.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.all(SkillDrillsSpacing.md),
-                    child: Text('No drill types set up yet.', style: theme.textTheme.bodyMedium),
-                  )
-                else
-                  Builder(builder: (context) {
-                    final curated = _activity?.title != null ? _drillTypes!.where((dt) => dt.activityKey == _activity!.title).toList() : <DrillType>[];
-                    final universal = _drillTypes!.where((dt) => dt.activityKey == null).toList();
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (curated.isNotEmpty) ...[
-                          _buildTypeGroupLabel('Suggested for ${_activity!.title}', theme),
-                          for (int i = 0; i < curated.length; i++) ...[
-                            if (i > 0) Divider(height: 1, color: theme.dividerColor),
-                            _buildDrillTypeItem(curated[i], theme),
-                          ],
-                          Divider(height: 1, color: theme.dividerColor),
-                        ],
-                        _buildTypeGroupLabel(curated.isEmpty ? 'All Types' : 'General Purpose', theme),
-                        for (int i = 0; i < universal.length; i++) ...[
+        _buildSectionHeader(Icons.tune_rounded, 'Drill Type'),
+        Container(
+          color: theme.colorScheme.surface,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Divider(height: 1, color: theme.dividerColor),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(SkillDrillsSpacing.md, 10, SkillDrillsSpacing.md, 8),
+                child: Text(
+                  'Choose the format that matches how you measure this drill. Tap a type to see what it tracks.',
+                  style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurface.withAlpha(150)),
+                ),
+              ),
+              Divider(height: 1, color: theme.dividerColor),
+              // ── Type selection list ────────────────────────────────────
+              if (_drillTypes == null)
+                const Padding(
+                  padding: EdgeInsets.all(SkillDrillsSpacing.lg),
+                  child: Center(child: CircularProgressIndicator()),
+                )
+              else if (_drillTypes!.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.all(SkillDrillsSpacing.md),
+                  child: Text('No drill types set up yet.', style: theme.textTheme.bodyMedium),
+                )
+              else
+                Builder(builder: (context) {
+                  final curated = _activity?.title != null ? _drillTypes!.where((dt) => dt.activityKey == _activity!.title).toList() : <DrillType>[];
+                  final universal = _drillTypes!.where((dt) => dt.activityKey == null).toList();
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (curated.isNotEmpty) ...[
+                        _buildTypeGroupLabel('Suggested for ${_activity!.title}', theme),
+                        for (int i = 0; i < curated.length; i++) ...[
                           if (i > 0) Divider(height: 1, color: theme.dividerColor),
-                          _buildDrillTypeItem(universal[i], theme),
+                          _buildDrillTypeItem(curated[i], theme),
                         ],
+                        Divider(height: 1, color: theme.dividerColor),
                       ],
-                    );
-                  }),
-                // ── Timer ─────────────────────────────────────────────────
-                AnimatedSize(
-                  duration: const Duration(milliseconds: 250),
-                  curve: Curves.easeOutCubic,
-                  child: _drillType?.timerInSeconds != null
-                      ? Column(
-                          children: [
-                            Divider(height: 1, color: theme.dividerColor),
-                            Padding(
-                              padding: const EdgeInsets.fromLTRB(
-                                SkillDrillsSpacing.md,
-                                SkillDrillsSpacing.sm,
-                                SkillDrillsSpacing.md,
-                                SkillDrillsSpacing.md,
-                              ),
-                              child: TextField(
-                                controller: _timerTextController,
-                                keyboardType: TextInputType.number,
-                                readOnly: true,
-                                style: theme.textTheme.bodyLarge,
-                                decoration: InputDecoration(
-                                  labelText: 'Default Duration',
-                                  hintText: 'Tap to set',
-                                  hintStyle: theme.textTheme.bodyMedium,
-                                  prefixIcon: Icon(Icons.timer_rounded, size: 20, color: theme.colorScheme.onPrimary),
-                                  labelStyle: TextStyle(fontSize: 14, color: theme.colorScheme.onPrimary),
-                                ),
-                                onTap: () {
-                                  const TextStyle suffixStyle = TextStyle(fontSize: 14, height: 1.5);
-                                  Picker(
-                                    adapter: NumberPickerAdapter(data: <NumberPickerColumn>[
-                                      const NumberPickerColumn(begin: 0, end: 24, suffix: Text(' hrs', style: suffixStyle), jump: 1),
-                                      const NumberPickerColumn(begin: 0, end: 59, suffix: Text(' mins', style: suffixStyle), jump: 1),
-                                      const NumberPickerColumn(begin: 0, end: 59, suffix: Text(' secs', style: suffixStyle), jump: 5),
-                                    ]),
-                                    height: 200,
-                                    backgroundColor: theme.colorScheme.surface,
-                                    textStyle: theme.textTheme.headlineSmall,
-                                    hideHeader: true,
-                                    confirmText: 'Ok',
-                                    confirmTextStyle: TextStyle(inherit: false, color: theme.primaryColor),
-                                    title: const Text('Select duration'),
-                                    selectedTextStyle: TextStyle(color: theme.primaryColor),
-                                    onConfirm: (Picker picker, List<int> value) {
-                                      final duration = Duration(
-                                        hours: picker.getSelectedValues()[0],
-                                        minutes: picker.getSelectedValues()[1],
-                                        seconds: picker.getSelectedValues()[2],
-                                      );
-                                      _timerTextController.text = printDuration(duration);
-                                      setState(() => _drillType!.timerInSeconds = duration.inSeconds);
-                                    },
-                                  ).showDialog(context);
-                                },
-                              ),
+                      _buildTypeGroupLabel(curated.isEmpty ? 'All Types' : 'General Purpose', theme),
+                      for (int i = 0; i < universal.length; i++) ...[
+                        if (i > 0) Divider(height: 1, color: theme.dividerColor),
+                        _buildDrillTypeItem(universal[i], theme),
+                      ],
+                    ],
+                  );
+                }),
+              // ── Timer ─────────────────────────────────────────────────
+              AnimatedSize(
+                duration: const Duration(milliseconds: 250),
+                curve: Curves.easeOutCubic,
+                child: _drillType?.timerInSeconds != null
+                    ? Column(
+                        children: [
+                          Divider(height: 1, color: theme.dividerColor),
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(
+                              SkillDrillsSpacing.md,
+                              SkillDrillsSpacing.sm,
+                              SkillDrillsSpacing.md,
+                              SkillDrillsSpacing.md,
                             ),
-                          ],
-                        )
-                      : const SizedBox.shrink(),
-                ),
-                // ── Goals ─────────────────────────────────────────────────
-                AnimatedSize(
-                  duration: const Duration(milliseconds: 250),
-                  curve: Curves.easeOutCubic,
-                  child: (hasGoals && _drillType != null)
-                      ? Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Divider(height: 1, color: theme.dividerColor),
-                            Padding(
-                              padding: const EdgeInsets.fromLTRB(
-                                SkillDrillsSpacing.md,
-                                SkillDrillsSpacing.md,
-                                SkillDrillsSpacing.md,
-                                4,
+                            child: TextField(
+                              controller: _timerTextController,
+                              keyboardType: TextInputType.number,
+                              readOnly: true,
+                              style: theme.textTheme.bodyLarge,
+                              decoration: InputDecoration(
+                                labelText: 'Default Duration',
+                                hintText: 'Tap to set',
+                                hintStyle: theme.textTheme.bodyMedium,
+                                prefixIcon: Icon(Icons.timer_rounded, size: 20, color: theme.colorScheme.onSurface.withAlpha(170)),
+                                labelStyle: TextStyle(fontSize: 14, color: theme.colorScheme.onSurface.withAlpha(170)),
                               ),
-                              child: Row(
-                                children: [
-                                  Icon(Icons.flag_rounded, size: 13, color: theme.colorScheme.secondary),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    'GOALS',
-                                    style: theme.textTheme.bodySmall?.copyWith(
-                                      fontWeight: FontWeight.w700,
-                                      letterSpacing: 1.2,
-                                      color: theme.colorScheme.secondary,
-                                    ),
+                              onTap: () {
+                                const TextStyle suffixStyle = TextStyle(fontSize: 14, height: 1.5);
+                                Picker(
+                                  adapter: NumberPickerAdapter(data: <NumberPickerColumn>[
+                                    const NumberPickerColumn(begin: 0, end: 24, suffix: Text(' hrs', style: suffixStyle), jump: 1),
+                                    const NumberPickerColumn(begin: 0, end: 59, suffix: Text(' mins', style: suffixStyle), jump: 1),
+                                    const NumberPickerColumn(begin: 0, end: 59, suffix: Text(' secs', style: suffixStyle), jump: 5),
+                                  ]),
+                                  height: 200,
+                                  backgroundColor: theme.colorScheme.surface,
+                                  textStyle: theme.textTheme.headlineSmall,
+                                  hideHeader: true,
+                                  confirmText: 'Ok',
+                                  confirmTextStyle: TextStyle(inherit: false, color: theme.primaryColor),
+                                  title: const Text('Select duration'),
+                                  selectedTextStyle: TextStyle(color: theme.primaryColor),
+                                  onConfirm: (Picker picker, List<int> value) {
+                                    final duration = Duration(
+                                      hours: picker.getSelectedValues()[0],
+                                      minutes: picker.getSelectedValues()[1],
+                                      seconds: picker.getSelectedValues()[2],
+                                    );
+                                    _timerTextController.text = printDuration(duration);
+                                    setState(() => _drillType!.timerInSeconds = duration.inSeconds);
+                                  },
+                                ).showDialog(context);
+                              },
+                            ),
+                          ),
+                        ],
+                      )
+                    : const SizedBox.shrink(),
+              ),
+              // ── Goals ─────────────────────────────────────────────────
+              AnimatedSize(
+                duration: const Duration(milliseconds: 250),
+                curve: Curves.easeOutCubic,
+                child: (hasGoals && _drillType != null)
+                    ? Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Divider(height: 1, color: theme.dividerColor),
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(
+                              SkillDrillsSpacing.md,
+                              SkillDrillsSpacing.md,
+                              SkillDrillsSpacing.md,
+                              4,
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.flag_rounded, size: 13, color: theme.colorScheme.secondary),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'GOALS',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 1.2,
+                                    color: theme.colorScheme.secondary,
                                   ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
-                            Padding(
-                              padding: const EdgeInsets.fromLTRB(
-                                SkillDrillsSpacing.md,
-                                0,
-                                SkillDrillsSpacing.md,
-                                SkillDrillsSpacing.md,
-                              ),
-                              child: _targetFields,
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(
+                              SkillDrillsSpacing.md,
+                              0,
+                              SkillDrillsSpacing.md,
+                              SkillDrillsSpacing.md,
                             ),
-                          ],
-                        )
-                      : const SizedBox.shrink(),
-                ),
-              ],
-            ),
+                            child: _targetFields,
+                          ),
+                        ],
+                      )
+                    : const SizedBox.shrink(),
+              ),
+              Divider(height: 1, color: theme.dividerColor),
+            ],
           ),
         ),
       ],
@@ -1126,7 +1141,7 @@ class _DrillDetailState extends State<DrillDetail> {
           style: theme.textTheme.bodySmall?.copyWith(
             fontWeight: FontWeight.w700,
             letterSpacing: 1.2,
-            color: theme.colorScheme.onPrimary.withAlpha(110),
+            color: theme.colorScheme.onSurface.withAlpha(140),
           ),
         ),
       );
@@ -1448,7 +1463,7 @@ class _DrillDetailState extends State<DrillDetail> {
                                   contextHint,
                                   style: theme.textTheme.bodySmall?.copyWith(
                                     fontStyle: FontStyle.italic,
-                                    color: theme.colorScheme.onPrimary.withAlpha(130),
+                                    color: theme.colorScheme.onSurface.withAlpha(150),
                                   ),
                                 ),
                               ],
@@ -1463,7 +1478,7 @@ class _DrillDetailState extends State<DrillDetail> {
                                       'Tracks:',
                                       style: theme.textTheme.bodySmall?.copyWith(
                                         fontWeight: FontWeight.w600,
-                                        color: theme.colorScheme.onPrimary.withAlpha(110),
+                                        color: theme.colorScheme.onSurface.withAlpha(140),
                                       ),
                                     ),
                                     ...resultLabels.map(
@@ -1505,222 +1520,146 @@ class _DrillDetailState extends State<DrillDetail> {
     final theme = Theme.of(context);
     final measurements = _drill?.measurements ?? _drillType?.measurements ?? <Measurement>[];
     final results = measurements.where((m) => m.role == 'result').toList();
-    final targets = measurements.where((m) => m.role == 'target').toList();
-    final drillTitle = (_drill?.title?.isNotEmpty ?? false) ? _drill!.title! : 'Drill Name';
+    final drillTitle = (_drill?.title?.isNotEmpty ?? false) ? _drill!.title! : 'Your Drill';
+    final activityIcon = _activity?.icon ?? '🎯';
+    final activityLabel = (_activity?.title?.isNotEmpty ?? false) ? _activity!.title! : 'Activity';
     final hasTimer = (_drillType?.timerInSeconds ?? 0) > 0;
+    final labelStyle = theme.textTheme.bodySmall?.copyWith(
+      fontWeight: FontWeight.w600,
+      color: theme.colorScheme.onSurface.withAlpha(150),
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildSectionHeader(Icons.play_circle_outline_rounded, 'Session Preview'),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: SkillDrillsSpacing.md),
+        Container(
+          color: theme.colorScheme.surface,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Divider(height: 1, color: theme.dividerColor),
+              // Activity badge + drill menu — mirrors _DrillPage header in session.dart
               Padding(
-                padding: const EdgeInsets.only(bottom: SkillDrillsSpacing.sm),
-                child: Text(
-                  "This is what you'll track when running this drill in a session.",
-                  style: theme.textTheme.bodyMedium,
-                ),
-              ),
-              // Mock session card
-              Container(
-                decoration: BoxDecoration(
-                  borderRadius: SkillDrillsRadius.mdBorderRadius,
-                  border: Border.all(color: theme.dividerColor),
-                  color: theme.colorScheme.surface,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                padding: const EdgeInsets.fromLTRB(16, 12, 8, 0),
+                child: Row(
                   children: [
-                    // Header
                     Container(
-                      padding: const EdgeInsets.all(SkillDrillsSpacing.md),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: theme.colorScheme.secondary.withAlpha(12),
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(SkillDrillsRadius.md)),
-                        border: Border(bottom: BorderSide(color: theme.dividerColor)),
+                        color: theme.primaryColor.withAlpha(18),
+                        borderRadius: SkillDrillsRadius.fullBorderRadius,
                       ),
                       child: Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  drillTitle,
-                                  style: theme.textTheme.titleMedium?.copyWith(fontFamily: 'Choplin'),
-                                ),
-                                if (_drillType?.descriptor?.isNotEmpty ?? false) ...[
-                                  const SizedBox(height: 2),
-                                  Text(_drillType!.descriptor!, style: theme.textTheme.bodySmall),
-                                ],
-                              ],
-                            ),
-                          ),
-                          if (hasTimer)
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: theme.colorScheme.secondary.withAlpha(20),
-                                borderRadius: SkillDrillsRadius.smBorderRadius,
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.timer_rounded, size: 12, color: theme.colorScheme.secondary),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    _timerTextController.text.isNotEmpty ? _timerTextController.text : '--:--',
-                                    style: TextStyle(
-                                      color: theme.colorScheme.secondary,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                    // Measurements
-                    Padding(
-                      padding: const EdgeInsets.all(SkillDrillsSpacing.md),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (results.isEmpty)
-                            Text('No result measurements defined.', style: theme.textTheme.bodyMedium)
-                          else ...[
-                            Text(
-                              'Metrics to track each rep:',
-                              style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
-                            ),
-                            const SizedBox(height: SkillDrillsSpacing.sm),
-                            ...results.map((m) {
-                              Measurement? goalM;
-                              try {
-                                goalM = targets.firstWhere((t) => t.label == m.label);
-                              } catch (_) {
-                                goalM = null;
-                              }
-                              return Padding(
-                                padding: const EdgeInsets.only(bottom: 8),
-                                child: Row(
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.all(7),
-                                      decoration: BoxDecoration(
-                                        color: theme.scaffoldBackgroundColor,
-                                        borderRadius: SkillDrillsRadius.smBorderRadius,
-                                      ),
-                                      child: Icon(
-                                        m.type == 'duration' ? Icons.timer_rounded : Icons.pin_rounded,
-                                        size: 16,
-                                        color: theme.colorScheme.secondary,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 10),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(m.label, style: theme.textTheme.bodyLarge),
-                                          Text(
-                                            m.type == 'duration' ? 'Enter time' : 'Enter number',
-                                            style: theme.textTheme.bodySmall,
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    if (goalM?.target != null)
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                        decoration: BoxDecoration(
-                                          color: SkillDrillsColors.success.withAlpha(20),
-                                          borderRadius: SkillDrillsRadius.fullBorderRadius,
-                                          border: Border.all(color: SkillDrillsColors.success.withAlpha(80)),
-                                        ),
-                                        child: Text(
-                                          'Goal: ${m.type == 'duration' ? printDuration(Duration(seconds: goalM!.target!.toInt())) : goalM!.target!.toInt()}',
-                                          style: const TextStyle(
-                                            color: SkillDrillsColors.success,
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ),
-                                  ],
-                                ),
-                              );
-                            }),
-                          ],
-                        ],
-                      ),
-                    ),
-                    // Mock action buttons
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(
-                        SkillDrillsSpacing.md,
-                        0,
-                        SkillDrillsSpacing.md,
-                        SkillDrillsSpacing.md,
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(vertical: 10),
-                              decoration: BoxDecoration(
-                                border: Border.all(color: theme.dividerColor),
-                                borderRadius: SkillDrillsRadius.smBorderRadius,
-                              ),
-                              child: Center(child: Text('Skip', style: theme.textTheme.bodyMedium)),
-                            ),
-                          ),
-                          const SizedBox(width: SkillDrillsSpacing.sm),
-                          Expanded(
-                            flex: 2,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(vertical: 10),
-                              decoration: BoxDecoration(
-                                color: theme.colorScheme.secondary,
-                                borderRadius: SkillDrillsRadius.smBorderRadius,
-                              ),
-                              child: Center(
-                                child: Text(
-                                  'Log Rep',
-                                  style: TextStyle(
-                                    color: theme.colorScheme.onSecondary,
-                                    fontWeight: FontWeight.w700,
-                                    fontFamily: 'Choplin',
-                                  ),
-                                ),
-                              ),
+                          Text(activityIcon, style: const TextStyle(fontSize: 12)),
+                          const SizedBox(width: 4),
+                          Text(
+                            activityLabel,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.primaryColor,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
                         ],
                       ),
                     ),
+                    const Spacer(),
+                    Icon(Icons.more_vert_rounded, color: theme.colorScheme.onSurface.withAlpha(80), size: 22),
                   ],
                 ),
               ),
-              const SizedBox(height: SkillDrillsSpacing.sm),
-              Row(
-                children: [
-                  Icon(Icons.info_outline_rounded, size: 12, color: theme.colorScheme.onPrimary),
-                  const SizedBox(width: 4),
-                  Expanded(
-                    child: Text(
-                      'Preview only — actual session UI may vary slightly.',
-                      style: theme.textTheme.bodySmall,
+              // Drill title + optional timer badge — mirrors _DrillPage title row
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 6, 16, 12),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        drillTitle,
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          fontFamily: 'Choplin',
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    if (hasTimer) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.secondary.withAlpha(20),
+                          borderRadius: SkillDrillsRadius.smBorderRadius,
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.timer_rounded, size: 12, color: theme.colorScheme.secondary),
+                            const SizedBox(width: 4),
+                            Text(
+                              _timerTextController.text.isNotEmpty ? _timerTextController.text : '--:--',
+                              style: TextStyle(
+                                color: theme.colorScheme.secondary,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              // Set row header — mirrors _SetRowHeader in session.dart
+              if (results.isNotEmpty) ...[
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+                  child: Row(
+                    children: [
+                      SizedBox(width: 36, child: Text('#', textAlign: TextAlign.center, style: labelStyle)),
+                      ...results.map(
+                        (m) => Expanded(
+                          child: Text(
+                            (m.label.isNotEmpty) ? m.label : (m.type == 'duration' ? 'Time' : 'Value'),
+                            textAlign: TextAlign.center,
+                            overflow: TextOverflow.ellipsis,
+                            style: labelStyle,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 42),
+                    ],
+                  ),
+                ),
+                Divider(height: 1, color: theme.dividerColor),
+              ],
+              // Empty state — mirrors _DrillPage ListView empty state
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 20),
+                child: Center(
+                  child: Text('No sets yet', style: theme.textTheme.bodyMedium),
+                ),
+              ),
+              // 'Add Set' button — mirrors session.dart OutlinedButton.icon
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.add_rounded, size: 16),
+                    label: const Text('Add Set'),
+                    onPressed: null,
+                    style: OutlinedButton.styleFrom(
+                      disabledForegroundColor: theme.primaryColor.withAlpha(180),
+                      side: BorderSide(color: theme.primaryColor.withAlpha(60)),
                     ),
                   ),
-                ],
+                ),
               ),
+              Divider(height: 1, color: theme.dividerColor),
             ],
           ),
         ),

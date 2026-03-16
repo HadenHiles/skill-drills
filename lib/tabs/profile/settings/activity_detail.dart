@@ -236,7 +236,7 @@ class _ActivityDetailState extends State<ActivityDetail> {
                 child: IconButton(
                   icon: Icon(
                     Icons.arrow_back,
-                    color: Theme.of(context).colorScheme.onPrimary,
+                    color: Theme.of(context).colorScheme.onSurface,
                     size: 28,
                   ),
                   onPressed: () => Navigator.of(context).pop(),

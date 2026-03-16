@@ -91,7 +91,7 @@ class _ProfileSettingsState extends State<ProfileSettings> {
                 child: IconButton(
                   icon: Icon(
                     Icons.arrow_back,
-                    color: Theme.of(context).colorScheme.onPrimary,
+                    color: Theme.of(context).colorScheme.onSurface,
                     size: 28,
                   ),
                   onPressed: () {
@@ -133,7 +133,7 @@ class _ProfileSettingsState extends State<ProfileSettings> {
                   ),
                   leading: Icon(
                     Icons.vibration,
-                    color: Theme.of(context).colorScheme.onPrimary,
+                    color: Theme.of(context).colorScheme.primary,
                   ),
                   onToggle: (bool value) async {
                     SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -156,7 +156,7 @@ class _ProfileSettingsState extends State<ProfileSettings> {
                   ),
                   leading: Icon(
                     Icons.brightness_2,
-                    color: Theme.of(context).colorScheme.onPrimary,
+                    color: Theme.of(context).colorScheme.primary,
                   ),
                   onToggle: (bool value) async {
                     SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -187,7 +187,7 @@ class _ProfileSettingsState extends State<ProfileSettings> {
                   ),
                   leading: Icon(
                     Icons.directions_run_rounded,
-                    color: Theme.of(context).colorScheme.onPrimary,
+                    color: Theme.of(context).colorScheme.primary,
                   ),
                   onPressed: (BuildContext context) {
                     navigatorKey.currentState!.push(MaterialPageRoute(builder: (context) {
@@ -214,7 +214,7 @@ class _ProfileSettingsState extends State<ProfileSettings> {
                     ),
                     leading: Icon(
                       Icons.verified,
-                      color: Theme.of(context).colorScheme.onPrimary,
+                      color: Theme.of(context).colorScheme.primary,
                     ),
                   ),
                   SettingsTile(
@@ -225,7 +225,7 @@ class _ProfileSettingsState extends State<ProfileSettings> {
                     ),
                     leading: Icon(
                       Icons.manage_accounts_outlined,
-                      color: Theme.of(context).colorScheme.onPrimary,
+                      color: Theme.of(context).colorScheme.primary,
                     ),
                     onPressed: (_) => presentCustomerCenter(),
                   ),
@@ -244,7 +244,7 @@ class _ProfileSettingsState extends State<ProfileSettings> {
                     ),
                     leading: Icon(
                       Icons.star_rounded,
-                      color: Theme.of(context).colorScheme.onPrimary,
+                      color: Theme.of(context).colorScheme.primary,
                     ),
                     onPressed: (_) => navigatorKey.currentState!.push(
                       MaterialPageRoute(
@@ -257,7 +257,7 @@ class _ProfileSettingsState extends State<ProfileSettings> {
                   title: Text('Restore Purchases', style: Theme.of(context).textTheme.bodyLarge),
                   leading: Icon(
                     Icons.restore_rounded,
-                    color: Theme.of(context).colorScheme.onPrimary,
+                    color: Theme.of(context).colorScheme.primary,
                   ),
                   onPressed: (_) async {
                     final messenger = ScaffoldMessenger.of(context);

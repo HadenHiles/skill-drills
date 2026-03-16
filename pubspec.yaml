@@ -47,6 +47,7 @@ dependencies:
   flutter_isolate: ^2.0.4
   sliding_up_panel: ^2.0.0+1
   flutter_native_splash: ^2.4.4
+  auto_size_text: ^3.0.0
 
   flutter: # Required for every Flutter project
     sdk: flutter # Required for every Flutter project

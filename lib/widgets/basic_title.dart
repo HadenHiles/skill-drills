@@ -1,3 +1,4 @@
+import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
 
 class BasicTitle extends StatelessWidget {
@@ -9,7 +10,7 @@ class BasicTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(bottom: 2),
-      child: Text(
+      child: AutoSizeText(
         title!.toUpperCase(),
         style: TextStyle(
           fontSize: 22,
@@ -18,6 +19,9 @@ class BasicTitle extends StatelessWidget {
           fontWeight: FontWeight.w900,
         ),
         textAlign: TextAlign.center,
+        maxLines: 1,
+        minFontSize: 12,
+        overflow: TextOverflow.ellipsis,
       ),
     );
   }
