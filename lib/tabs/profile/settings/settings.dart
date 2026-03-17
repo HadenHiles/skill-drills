@@ -8,6 +8,7 @@ import 'package:skilldrills/login.dart';
 import 'package:skilldrills/main.dart';
 import 'package:skilldrills/models/settings.dart';
 import 'package:skilldrills/services/auth.dart';
+import 'package:skilldrills/services/export.dart';
 import 'package:skilldrills/services/factory.dart';
 import 'package:skilldrills/services/subscription.dart';
 import 'package:skilldrills/tabs/profile/settings/activities.dart';
@@ -286,6 +287,53 @@ class _ProfileSettingsState extends State<ProfileSettings> {
                 style: Theme.of(context).textTheme.titleLarge,
               ),
               tiles: [
+                SettingsTile(
+                  title: Text(
+                    _isPro == true ? 'Export Session History' : 'Export Session History',
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                          color: _isPro == true ? null : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4),
+                        ),
+                  ),
+                  description: Text(
+                    _isPro == true ? 'Download your complete session history as a CSV file' : 'Pro feature — upgrade to export your session data',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                  leading: Icon(
+                    _isPro == true ? Icons.download_rounded : Icons.lock_outline_rounded,
+                    color: _isPro == true ? Theme.of(context).primaryColor : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4),
+                  ),
+                  onPressed: (ctx) async {
+                    if (_isPro != true) {
+                      showDialog<void>(
+                        context: ctx,
+                        builder: (_) => AlertDialog(
+                          title: const Text('Pro Feature'),
+                          content: const Text(
+                            'Data export is a Pro feature. Upgrade to export your complete session history as CSV.',
+                            textAlign: TextAlign.center,
+                          ),
+                          actions: [
+                            TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Cancel')),
+                            TextButton(
+                              onPressed: () {
+                                Navigator.of(ctx).pop();
+                                navigatorKey.currentState!.push(MaterialPageRoute(fullscreenDialog: true, builder: (_) => const PaywallScreen()));
+                              },
+                              child: const Text('Upgrade'),
+                            ),
+                          ],
+                        ),
+                      );
+                      return;
+                    }
+                    final messenger = ScaffoldMessenger.of(ctx);
+                    try {
+                      await exportSessionHistory();
+                    } catch (e) {
+                      messenger.showSnackBar(SnackBar(content: Text('Export failed: $e')));
+                    }
+                  },
+                ),
                 SettingsTile(
                   title: Text(
                     'Restore Default Data',

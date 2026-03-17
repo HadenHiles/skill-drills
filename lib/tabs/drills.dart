@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:skilldrills/models/firestore/activity.dart';
 import 'package:skilldrills/models/firestore/drill.dart';
 import 'package:skilldrills/services/factory.dart';
+import 'package:skilldrills/services/subscription.dart';
 import 'package:skilldrills/tabs/drills/drill_item.dart';
 import 'package:skilldrills/theme/theme.dart';
 
@@ -46,6 +49,9 @@ class _DrillsState extends State<Drills> with SingleTickerProviderStateMixin {
   late Animation<double> _fadeAnim;
   late Animation<Offset> _slideAnim;
 
+  bool _isPro = false;
+  StreamSubscription<dynamic>? _customerInfoSub;
+
   /// Expanded state per activity title. Defaults to true (open).
   final Map<String, bool> _expanded = {};
 
@@ -74,10 +80,20 @@ class _DrillsState extends State<Drills> with SingleTickerProviderStateMixin {
     _fadeAnim = CurvedAnimation(parent: _animController, curve: Curves.easeOut);
     _slideAnim = Tween<Offset>(begin: const Offset(0, 0.08), end: Offset.zero).animate(CurvedAnimation(parent: _animController, curve: Curves.easeOutCubic));
     _animController.forward();
+    _initProStatus();
+  }
+
+  Future<void> _initProStatus() async {
+    final isPro = await hasActiveSubscription();
+    if (mounted) setState(() => _isPro = isPro);
+    _customerInfoSub = customerInfoStream.listen((info) {
+      if (mounted) setState(() => _isPro = info.entitlements.active.containsKey(kProEntitlement));
+    });
   }
 
   @override
   void dispose() {
+    _customerInfoSub?.cancel();
     _animController.dispose();
     super.dispose();
   }
@@ -169,6 +185,8 @@ class _DrillsState extends State<Drills> with SingleTickerProviderStateMixin {
                     expanded: open,
                     onHeaderTap: () => _toggle(title),
                     deleteCallback: _deleteDrill,
+                    isPro: _isPro,
+                    uid: auth.currentUser!.uid,
                   ),
                 );
               },
@@ -308,6 +326,8 @@ class _ActivitySection extends StatelessWidget {
   final bool expanded;
   final VoidCallback onHeaderTap;
   final Function deleteCallback;
+  final bool isPro;
+  final String uid;
 
   const _ActivitySection({
     required this.activityTitle,
@@ -315,7 +335,23 @@ class _ActivitySection extends StatelessWidget {
     required this.expanded,
     required this.onHeaderTap,
     required this.deleteCallback,
+    required this.isPro,
+    required this.uid,
   });
+
+  Future<void> _reorderPinned(List<Drill> pinned, int oldIndex, int newIndex) async {
+    if (oldIndex < newIndex) newIndex--;
+    final reordered = List.of(pinned);
+    final moved = reordered.removeAt(oldIndex);
+    reordered.insert(newIndex, moved);
+    final batch = FirebaseFirestore.instance.batch();
+    for (var i = 0; i < reordered.length; i++) {
+      if (reordered[i].reference != null) {
+        batch.update(reordered[i].reference!, {'sort_order': i});
+      }
+    }
+    await batch.commit();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -389,6 +425,7 @@ class _ActivitySection extends StatelessWidget {
             alignment: Alignment.topCenter,
             child: expanded
                 ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Divider(
                         height: 1,
@@ -396,23 +433,7 @@ class _ActivitySection extends StatelessWidget {
                         color: colorScheme.onSurface.withValues(alpha: 0.07),
                       ),
                       if (drills.isEmpty) _emptyGroup(context),
-                      for (int i = 0; i < drills.length; i++) ...[
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 8),
-                          child: DrillItem(
-                            drill: drills[i],
-                            deleteCallback: deleteCallback,
-                          ),
-                        ),
-                        if (i < drills.length - 1)
-                          Divider(
-                            height: 1,
-                            thickness: 1,
-                            indent: 16,
-                            endIndent: 16,
-                            color: colorScheme.onSurface.withValues(alpha: 0.05),
-                          ),
-                      ],
+                      if (isPro) _buildProDrillList(context) else _buildFreeDrillList(context),
                       if (drills.isNotEmpty) const SizedBox(height: 6),
                     ],
                   )
@@ -420,6 +441,80 @@ class _ActivitySection extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildFreeDrillList(BuildContext context) {
+    return Column(
+      children: [
+        for (int i = 0; i < drills.length; i++) ...[
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: DrillItem(drill: drills[i], deleteCallback: deleteCallback, isPro: isPro),
+          ),
+          if (i < drills.length - 1) Divider(height: 1, thickness: 1, indent: 16, endIndent: 16, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.05)),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildProDrillList(BuildContext context) {
+    final pinned = drills.where((d) => d.isPinned).toList()..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+    final unpinned = drills.where((d) => !d.isPinned).toList();
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (pinned.isNotEmpty) ...[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
+            child: Text(
+              'PINNED',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.1,
+                    color: Theme.of(context).primaryColor,
+                  ),
+            ),
+          ),
+          ReorderableListView(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            buildDefaultDragHandles: false,
+            onReorder: (oldIndex, newIndex) => _reorderPinned(pinned, oldIndex, newIndex),
+            children: [
+              for (int i = 0; i < pinned.length; i++)
+                Padding(
+                  key: ValueKey(pinned[i].reference!.id),
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Row(
+                    children: [
+                      ReorderableDragStartListener(
+                        index: i,
+                        child: Padding(
+                          padding: const EdgeInsets.only(left: 4, right: 2),
+                          child: Icon(Icons.drag_handle_rounded, size: 18, color: colorScheme.onSurface.withValues(alpha: 0.35)),
+                        ),
+                      ),
+                      Expanded(
+                        child: DrillItem(drill: pinned[i], deleteCallback: deleteCallback, isPro: isPro),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+          if (unpinned.isNotEmpty) Divider(height: 1, thickness: 1, indent: 16, endIndent: 16, color: colorScheme.onSurface.withValues(alpha: 0.07)),
+        ],
+        for (int i = 0; i < unpinned.length; i++) ...[
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: DrillItem(drill: unpinned[i], deleteCallback: deleteCallback, isPro: isPro),
+          ),
+          if (i < unpinned.length - 1) Divider(height: 1, thickness: 1, indent: 16, endIndent: 16, color: colorScheme.onSurface.withValues(alpha: 0.05)),
+        ],
+      ],
     );
   }
 

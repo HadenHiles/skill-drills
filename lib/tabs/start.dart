@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -8,6 +9,7 @@ import 'package:skilldrills/models/firestore/session.dart' as session_model;
 import 'package:skilldrills/models/skill_drills_dialog.dart';
 import 'package:skilldrills/services/dialogs.dart';
 import 'package:skilldrills/services/session.dart';
+import 'package:skilldrills/services/subscription.dart';
 import 'package:skilldrills/theme/theme.dart';
 import 'package:sliding_up_panel/sliding_up_panel.dart';
 
@@ -27,6 +29,9 @@ class _StartState extends State<Start> with SingleTickerProviderStateMixin {
 
   Stream<List<Routine>>? _routinesStream;
   Stream<List<session_model.Session>>? _recentSessionsStream;
+  Stream<Map<String, int>>? _streakStream;
+  bool _isPro = false;
+  StreamSubscription<dynamic>? _customerInfoSub;
   final Map<String, bool> _loadingRoutines = {};
 
   @override
@@ -51,11 +56,31 @@ class _StartState extends State<Start> with SingleTickerProviderStateMixin {
                 d as DocumentSnapshot<Map<String, dynamic>>,
               ))
           .toList());
+      _streakStream = FirebaseFirestore.instance.collection('streaks').doc(uid).collection('streaks').snapshots().map((snap) {
+        final result = <String, int>{};
+        for (final doc in snap.docs) {
+          final data = doc.data();
+          final title = (data['activity_title'] as String?) ?? '';
+          final current = (data['current_streak'] as int?) ?? 0;
+          if (title.isNotEmpty) result[title] = current;
+        }
+        return result;
+      });
     }
+    _initProStatus();
+  }
+
+  Future<void> _initProStatus() async {
+    final isPro = await hasActiveSubscription();
+    if (mounted) setState(() => _isPro = isPro);
+    _customerInfoSub = customerInfoStream.listen((info) {
+      if (mounted) setState(() => _isPro = info.entitlements.active.containsKey(kProEntitlement));
+    });
   }
 
   @override
   void dispose() {
+    _customerInfoSub?.cancel();
     _animController.dispose();
     super.dispose();
   }
@@ -143,6 +168,10 @@ class _StartState extends State<Start> with SingleTickerProviderStateMixin {
           order: i,
           sets: rd.sets,
           reps: rd.reps,
+          weight: rd.weight,
+          rir: rd.rir,
+          routineNotes: rd.notes,
+          routineId: routineId,
         );
         results.add(drillResult);
       }
@@ -242,6 +271,23 @@ class _StartState extends State<Start> with SingleTickerProviderStateMixin {
                               'Start a free-form session and add drills as you go',
                               style: Theme.of(context).textTheme.bodyMedium,
                             ),
+                            if (_isPro) ...[
+                              const SizedBox(height: 6),
+                              StreamBuilder<Map<String, int>>(
+                                stream: _streakStream,
+                                builder: (context, snap) {
+                                  final streaks = snap.data ?? {};
+                                  if (streaks.isEmpty) return const SizedBox.shrink();
+                                  final topEntries = streaks.entries.where((e) => e.value > 0).toList()..sort((a, b) => b.value.compareTo(a.value));
+                                  if (topEntries.isEmpty) return const SizedBox.shrink();
+                                  return Wrap(
+                                    spacing: 4,
+                                    runSpacing: 4,
+                                    children: topEntries.take(3).map((e) => _StreakChip(title: e.key, count: e.value)).toList(),
+                                  );
+                                },
+                              ),
+                            ],
                           ],
                         ),
                       ),
@@ -501,6 +547,31 @@ class _Chip extends StatelessWidget {
       style: Theme.of(context).textTheme.bodySmall?.copyWith(
             color: Theme.of(context).colorScheme.onPrimary,
           ),
+    );
+  }
+}
+
+class _StreakChip extends StatelessWidget {
+  const _StreakChip({required this.title, required this.count});
+
+  final String title;
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.secondary.withAlpha(20),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        '🔥 $count  $title',
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Theme.of(context).colorScheme.secondary,
+              fontWeight: FontWeight.w600,
+            ),
+      ),
     );
   }
 }

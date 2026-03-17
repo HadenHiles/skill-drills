@@ -1,12 +1,20 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:skilldrills/main.dart';
+import 'package:skilldrills/models/firestore/activity.dart';
+import 'package:skilldrills/models/firestore/drill_note.dart';
+import 'package:skilldrills/models/firestore/personal_best.dart';
 import 'package:skilldrills/models/firestore/routine.dart';
 import 'package:skilldrills/models/firestore/session.dart';
 import 'package:skilldrills/models/skill_drills_dialog.dart';
 import 'package:skilldrills/services/dialogs.dart';
 import 'package:skilldrills/services/factory.dart' as firestore_factory;
+import 'package:skilldrills/services/subscription.dart';
 import 'package:skilldrills/theme/theme.dart';
+import 'package:skilldrills/widgets/paywall_screen.dart';
 
 final FirebaseAuth _auth = FirebaseAuth.instance;
 
@@ -24,7 +32,18 @@ class _HistoryState extends State<History> with SingleTickerProviderStateMixin {
   late Animation<double> _fadeAnim;
   late Animation<Offset> _slideAnim;
 
-  late final Stream<List<Session>> _sessionsStream;
+  bool _isPro = false;
+  String? _activeActivityTitle;
+
+  /// Pro-only: the activity title the user has selected via the filter chips.
+  /// Null = show all activities.
+  String? _selectedFilterActivity;
+
+  late Stream<List<Session>> _sessionsStream;
+
+  /// Pro-only: maps "drillId_label" → best value for PB badges in the drill result tiles.
+  Stream<Map<String, num>>? _pbStream;
+  StreamSubscription<dynamic>? _customerInfoSub;
 
   @override
   void initState() {
@@ -40,12 +59,69 @@ class _HistoryState extends State<History> with SingleTickerProviderStateMixin {
     ).animate(CurvedAnimation(parent: _animController, curve: Curves.easeOutCubic));
     _animController.forward();
 
+    _initState();
+  }
+
+  Future<void> _initState() async {
     final uid = _auth.currentUser!.uid;
-    _sessionsStream = FirebaseFirestore.instance.collection('sessions').doc(uid).collection('sessions').orderBy('started_at', descending: true).snapshots().map((snap) => snap.docs.map((d) => Session.fromSnapshot(d as DocumentSnapshot<Map<String, dynamic>>)).toList());
+    final results = await Future.wait([
+      hasActiveSubscription(),
+      FirebaseFirestore.instance.collection('activities').doc(uid).collection('activities').where('is_active', isEqualTo: true).limit(1).get(),
+    ]);
+    final isPro = results[0] as bool;
+    final actSnap = results[1] as QuerySnapshot;
+    final activeTitle = actSnap.docs.isNotEmpty ? Activity.fromSnapshot(actSnap.docs.first as DocumentSnapshot<Map<String, dynamic>>).title : null;
+
+    if (mounted) {
+      setState(() {
+        _isPro = isPro;
+        _activeActivityTitle = activeTitle;
+      });
+      _rebuildStream();
+    }
+
+    _customerInfoSub = customerInfoStream.listen((info) {
+      final nowPro = info.entitlements.active.containsKey(kProEntitlement);
+      if (mounted && nowPro != _isPro) {
+        setState(() => _isPro = nowPro);
+        _rebuildStream();
+      }
+    });
+  }
+
+  void _rebuildStream() {
+    final uid = _auth.currentUser!.uid;
+    var query = FirebaseFirestore.instance.collection('sessions').doc(uid).collection('sessions').orderBy('started_at', descending: true);
+
+    if (!_isPro && _activeActivityTitle != null) {
+      // Free users: restrict to sessions containing the active activity.
+      query = query.where('activity_titles', arrayContains: _activeActivityTitle);
+    }
+
+    // Pro: maintain a live stream of personal bests for badge display.
+    if (_isPro) {
+      _pbStream = FirebaseFirestore.instance.collection('personal_bests').doc(uid).collection('bests').snapshots().map((snap) {
+        final map = <String, num>{};
+        for (final doc in snap.docs) {
+          final val = doc.data()['best_value'];
+          if (val != null) map[doc.id] = val as num;
+        }
+        return map;
+      });
+    } else {
+      _pbStream = null;
+    }
+
+    setState(() {
+      _sessionsStream = query.snapshots().map(
+            (snap) => snap.docs.map((d) => Session.fromSnapshot(d as DocumentSnapshot<Map<String, dynamic>>)).toList(),
+          );
+    });
   }
 
   @override
   void dispose() {
+    _customerInfoSub?.cancel();
     _animController.dispose();
     super.dispose();
   }
@@ -84,11 +160,58 @@ class _HistoryState extends State<History> with SingleTickerProviderStateMixin {
             if (!snap.hasData) {
               return const Center(child: CircularProgressIndicator());
             }
-            final sessions = snap.data!;
-            if (sessions.isEmpty) return _buildEmptyState(context);
-            return _buildList(context, sessions);
+            // For Pro users, apply client-side filter when a chip is selected.
+            var sessions = snap.data!;
+            if (_isPro && _selectedFilterActivity != null) {
+              sessions = sessions.where((s) => s.activityTitles.contains(_selectedFilterActivity)).toList();
+            }
+            return Column(
+              children: [
+                if (_isPro) _buildProFilterRow(snap.data!),
+                Expanded(
+                  child: sessions.isEmpty
+                      ? _buildEmptyState(context)
+                      : _pbStream != null
+                          ? StreamBuilder<Map<String, num>>(
+                              stream: _pbStream,
+                              builder: (context, pbSnap) => _buildList(context, sessions, pbSnap.data),
+                            )
+                          : _buildList(context, sessions, null),
+                ),
+              ],
+            );
           },
         ),
+      ),
+    );
+  }
+
+  /// Activity filter chip row shown for Pro users above the session list.
+  Widget _buildProFilterRow(List<Session> allSessions) {
+    final activities = allSessions.expand((s) => s.activityTitles).toSet().toList()..sort();
+    if (activities.isEmpty) return const SizedBox.shrink();
+    return SizedBox(
+      height: 46,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+        children: [
+          ChoiceChip(
+            label: const Text('All'),
+            selected: _selectedFilterActivity == null,
+            onSelected: (_) => setState(() => _selectedFilterActivity = null),
+          ),
+          ...activities.map(
+            (a) => Padding(
+              padding: const EdgeInsets.only(left: 8),
+              child: ChoiceChip(
+                label: Text(a),
+                selected: _selectedFilterActivity == a,
+                onSelected: (_) => setState(() => _selectedFilterActivity = _selectedFilterActivity == a ? null : a),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -130,7 +253,7 @@ class _HistoryState extends State<History> with SingleTickerProviderStateMixin {
     );
   }
 
-  Widget _buildList(BuildContext context, List<Session> sessions) {
+  Widget _buildList(BuildContext context, List<Session> sessions, Map<String, num>? pbMap) {
     final Map<String, List<Session>> grouped = {};
     for (final s in sessions) {
       final key = _dateKey(s.startedAt);
@@ -162,6 +285,8 @@ class _HistoryState extends State<History> with SingleTickerProviderStateMixin {
                     ),
                     ...group.map((s) => _SessionCard(
                           session: s,
+                          isPro: _isPro,
+                          pbMap: pbMap,
                           onDelete: () => _deleteSession(s),
                         )),
                   ],
@@ -209,10 +334,12 @@ class _HistoryState extends State<History> with SingleTickerProviderStateMixin {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _SessionCard extends StatefulWidget {
-  const _SessionCard({required this.session, required this.onDelete});
+  const _SessionCard({required this.session, required this.isPro, required this.onDelete, this.pbMap});
 
   final Session session;
+  final bool isPro;
   final VoidCallback onDelete;
+  final Map<String, num>? pbMap;
 
   @override
   State<_SessionCard> createState() => _SessionCardState();
@@ -356,7 +483,7 @@ class _SessionCardState extends State<_SessionCard> {
               padding: const EdgeInsets.fromLTRB(SkillDrillsSpacing.md, 8, SkillDrillsSpacing.md, SkillDrillsSpacing.sm),
               child: Column(
                 children: [
-                  ...session.drillResults.map((d) => _DrillResultTile(drillResult: d)),
+                  ...session.drillResults.map((d) => _DrillResultTile(drillResult: d, isPro: widget.isPro, pbMap: widget.pbMap)),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -417,23 +544,57 @@ class _StatChip extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _DrillResultTile extends StatelessWidget {
-  const _DrillResultTile({required this.drillResult});
+  const _DrillResultTile({required this.drillResult, required this.isPro, this.pbMap});
 
   final DrillResult drillResult;
+  final bool isPro;
 
-  String _formatMeasurement(dynamic m) {
-    if (m.value == null) return '—';
-    if (m.type == 'duration') {
-      final d = Duration(seconds: (m.value as num).toInt());
+  /// Maps "docId" (PersonalBest.docId(drillId, label)) → best value.
+  /// Non-null only for Pro users.
+  final Map<String, num>? pbMap;
+
+  String _formatMeasurement(String type, num? value) {
+    if (value == null) return '—';
+    if (type == 'duration') {
+      final d = Duration(seconds: value.toInt());
       final mins = d.inMinutes.remainder(60).toString().padLeft(2, '0');
       final secs = d.inSeconds.remainder(60).toString().padLeft(2, '0');
       return d.inHours >= 1 ? '${d.inHours}:$mins:$secs' : '$mins:$secs';
     }
-    return '${m.value}';
+    return '$value';
+  }
+
+  /// Computes the best value per measurement label across all set results.
+  Map<String, num> _bestValues() {
+    final result = <String, num>{};
+    for (final setResult in drillResult.setResults) {
+      for (final m in setResult.measurementResults) {
+        if (m.value == null) continue;
+        if (!result.containsKey(m.label)) {
+          result[m.label] = m.value!;
+        } else {
+          final existing = result[m.label]!;
+          if (m.type == 'duration' ? m.value! < existing : m.value! > existing) {
+            result[m.label] = m.value!;
+          }
+        }
+      }
+    }
+    return result;
+  }
+
+  bool _isPb(String label, num value) {
+    if (pbMap == null) return false;
+    final key = PersonalBest.docId(drillResult.drillId, label);
+    return pbMap![key] == value;
   }
 
   @override
   Widget build(BuildContext context) {
+    final bestValues = _bestValues();
+    final displayMeasurements = drillResult.measurementResults.map((m) {
+      return (label: m.label, type: m.type, value: bestValues[m.label] ?? m.value);
+    }).toList();
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Column(
@@ -474,7 +635,8 @@ class _DrillResultTile extends StatelessWidget {
               child: Wrap(
                 spacing: 12,
                 runSpacing: 4,
-                children: drillResult.measurementResults.map((m) {
+                children: displayMeasurements.where((m) => m.value != null).map((m) {
+                  final isPb = isPro && _isPb(m.label, m.value!);
                   return Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -485,14 +647,42 @@ class _DrillResultTile extends StatelessWidget {
                             ),
                       ),
                       Text(
-                        _formatMeasurement(m),
+                        _formatMeasurement(m.type, m.value),
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                               fontWeight: FontWeight.w700,
                             ),
                       ),
+                      if (isPb) ...[const SizedBox(width: 3), Icon(Icons.emoji_events_rounded, size: 12, color: SkillDrillsColors.energyOrange)],
                     ],
                   );
                 }).toList(),
+              ),
+            ),
+          if (isPro && drillResult.notes.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(left: 20, top: 6),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: drillResult.notes.map((n) => _NoteRow(note: n)).toList(),
+              ),
+            ),
+          if (!isPro && drillResult.notes.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(left: 20, top: 6),
+              child: Row(
+                children: [
+                  Icon(Icons.lock_outline_rounded, size: 12, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4)),
+                  const SizedBox(width: 4),
+                  GestureDetector(
+                    onTap: () => navigatorKey.currentState!.push(MaterialPageRoute(fullscreenDialog: true, builder: (_) => const PaywallScreen())),
+                    child: Text(
+                      'Session notes are a Pro feature. Upgrade to unlock.',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Theme.of(context).primaryColor,
+                          ),
+                    ),
+                  ),
+                ],
               ),
             ),
         ],
@@ -507,5 +697,47 @@ class _DrillResultTile extends StatelessWidget {
     if (drillResult.sets != null) return '${drillResult.sets} ${drillResult.setsLabel}';
     if (drillResult.reps != null) return '${drillResult.reps} ${drillResult.repsLabel}';
     return '';
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Single note row in the history drill tile
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _NoteRow extends StatelessWidget {
+  const _NoteRow({required this.note});
+
+  final DrillNote note;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Icon(Icons.circle, size: 4, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.35)),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              note.text,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                    fontStyle: FontStyle.italic,
+                    height: 1.4,
+                  ),
+            ),
+          ),
+          if (note.isPinned)
+            Padding(
+              padding: const EdgeInsets.only(left: 4),
+              child: Icon(Icons.push_pin_rounded, size: 11, color: Theme.of(context).primaryColor.withValues(alpha: 0.5)),
+            ),
+        ],
+      ),
+    );
   }
 }

@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:skilldrills/models/firestore/drill_note.dart';
 import 'package:skilldrills/models/firestore/measurement_result.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -74,6 +75,14 @@ class DrillResult {
   /// recorded value for that position in history.
   final List<List<num?>> historicSetValues;
 
+  /// Notes attached to this drill for this session.
+  ///
+  /// Includes:
+  ///   - Notes pre-loaded from the routine definition (source='routine')
+  ///   - Pinned notes forwarded from the most recent prior session (source='session')
+  ///   - New notes added on the fly by the user during this session
+  List<DrillNote> notes;
+
   DocumentReference? reference;
 
   DrillResult(
@@ -90,9 +99,11 @@ class DrillResult {
     List<MeasurementResult>? measurementResults,
     List<SetResult>? setResults,
     List<List<num?>>? historicSetValues,
+    List<DrillNote>? notes,
   })  : measurementResults = measurementResults ?? [],
         setResults = setResults ?? [],
-        historicSetValues = historicSetValues ?? [];
+        historicSetValues = historicSetValues ?? [],
+        notes = notes ?? [];
 
   // ── Computed helpers ───────────────────────────────────────────────────────
 
@@ -115,6 +126,7 @@ class DrillResult {
         if (restTimerSeconds != null) 'rest_timer_seconds': restTimerSeconds,
         'measurement_results': measurementResults.map((m) => m.toMap()).toList(),
         'set_results': setResults.map((s) => s.toMap()).toList(),
+        'notes': notes.map((n) => n.toMap()).toList(),
       };
 
   DrillResult.fromMap(Map<String, dynamic> map)
@@ -130,7 +142,8 @@ class DrillResult {
         restTimerSeconds = map['rest_timer_seconds'] != null ? (map['rest_timer_seconds'] as num).toInt() : null,
         measurementResults = (map['measurement_results'] as List?)?.map((m) => MeasurementResult.fromMap(m as Map<String, dynamic>)).toList() ?? [],
         setResults = (map['set_results'] as List?)?.map((s) => SetResult.fromMap(s as Map<String, dynamic>)).toList() ?? [],
-        historicSetValues = []; // not persisted
+        historicSetValues = [], // not persisted
+        notes = (map['notes'] as List?)?.map((n) => DrillNote.fromMap(n as Map<String, dynamic>)).toList() ?? [];
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

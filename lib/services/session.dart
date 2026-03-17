@@ -3,9 +3,14 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:skilldrills/models/firestore/drill_note.dart';
 import 'package:skilldrills/models/firestore/measurement_result.dart';
+import 'package:skilldrills/models/firestore/personal_best.dart';
 import 'package:skilldrills/models/firestore/session.dart' as session_model;
 import 'package:skilldrills/services/haptics.dart';
+import 'package:skilldrills/services/personal_bests.dart';
+import 'package:skilldrills/services/streaks.dart';
+import 'package:skilldrills/services/subscription.dart';
 
 class SessionService extends ChangeNotifier {
   // ── Stopwatch ──────────────────────────────────────────────────────────────
@@ -186,6 +191,42 @@ class SessionService extends ChangeNotifier {
     notifyListeners();
   }
 
+  // ── Notes management ──────────────────────────────────────────────────────
+
+  /// Adds [note] to the drill at [drillIndex].
+  void addNoteToDrill(int drillIndex, DrillNote note) {
+    if (drillIndex < 0 || drillIndex >= _drillResults.length) return;
+    _drillResults[drillIndex].notes.add(note);
+    notifyListeners();
+  }
+
+  /// Toggles the [isPinned] flag on the note at [noteIndex] within [drillIndex].
+  void toggleNotePin(int drillIndex, int noteIndex) {
+    if (drillIndex < 0 || drillIndex >= _drillResults.length) return;
+    final notes = _drillResults[drillIndex].notes;
+    if (noteIndex < 0 || noteIndex >= notes.length) return;
+    notes[noteIndex].isPinned = !notes[noteIndex].isPinned;
+    notifyListeners();
+  }
+
+  /// Removes the note at [noteIndex] from the drill at [drillIndex].
+  void deleteNote(int drillIndex, int noteIndex) {
+    if (drillIndex < 0 || drillIndex >= _drillResults.length) return;
+    final notes = _drillResults[drillIndex].notes;
+    if (noteIndex < 0 || noteIndex >= notes.length) return;
+    notes.removeAt(noteIndex);
+    notifyListeners();
+  }
+
+  /// Updates the text of an existing note.
+  void updateNoteText(int drillIndex, int noteIndex, String text) {
+    if (drillIndex < 0 || drillIndex >= _drillResults.length) return;
+    final notes = _drillResults[drillIndex].notes;
+    if (noteIndex < 0 || noteIndex >= notes.length) return;
+    notes[noteIndex].text = text;
+    notifyListeners();
+  }
+
   void removeDrill(int index) {
     if (index >= 0 && index < _drillResults.length) {
       _drillResults.removeAt(index);
@@ -311,7 +352,12 @@ class SessionService extends ChangeNotifier {
 
   /// Stops the timer, builds a [Session] document, and persists it to Firestore.
   /// Resets service state when done.
-  Future<void> finishSession() async {
+  /// Saves the current session to Firestore.
+  ///
+  /// For Pro users, also updates personal bests and streak records, and
+  /// returns the list of newly beaten [PersonalBest] records so the UI can
+  /// show a post-session summary. Returns an empty list for free users.
+  Future<List<PersonalBest>> finishSession() async {
     _stop();
     _saving = true;
     notifyListeners();
@@ -327,13 +373,27 @@ class SessionService extends ChangeNotifier {
     session.endedAt = now;
     session.durationSeconds = _currentDuration?.inSeconds;
 
+    List<PersonalBest> newBests = [];
     try {
       final uid = FirebaseAuth.instance.currentUser!.uid;
-      await FirebaseFirestore.instance.collection('sessions').doc(uid).collection('sessions').add(session.toMap());
+      final docRef = await FirebaseFirestore.instance.collection('sessions').doc(uid).collection('sessions').add(session.toMap());
+
+      // Pro-only post-save hooks.
+      final isPro = await hasActiveSubscription();
+      if (isPro && session.drillResults.isNotEmpty) {
+        // Compute personal bests.
+        newBests = await updatePersonalBests(uid, session, docRef.id);
+        // Update streak for each distinct activity in this session.
+        final activityTitles = session.drillResults.map((d) => d.activityTitle).toSet();
+        await Future.wait(
+          activityTitles.map((a) => updateStreak(uid, a, now)),
+        );
+      }
     } finally {
       _saving = false;
       reset();
     }
+    return newBests;
   }
 
   // ── Provider ───────────────────────────────────────────────────────────────
@@ -377,6 +437,19 @@ Future<session_model.DrillResult> buildDrillResultForSession({
   required int order,
   int? sets,
   int? reps,
+
+  /// Target weight (Weight Training — used as default for the weight column).
+  num? weight,
+
+  /// Target RIR (Weight Training — used as default for the RIR column).
+  int? rir,
+
+  /// Notes pre-authored in the routine builder. Always shown in‐session.
+  List<DrillNote>? routineNotes,
+
+  /// The routine ID — used to fetch pinned notes from the most recent
+  /// prior session of the same routine+drill.
+  String? routineId,
 }) async {
   final uid = FirebaseAuth.instance.currentUser!.uid;
 
@@ -424,8 +497,15 @@ Future<session_model.DrillResult> buildDrillResultForSession({
   // Find the most recent session that contains this drill and extract
   // per-set defaults indexed by set position.
   List<List<num?>> historicSetValues = []; // historicSetValues[setIndex][measIndex]
+  List<DrillNote> pinnedHistoricNotes = [];
+
   for (final sessionDoc in sessSnap.docs) {
     final data = sessionDoc.data();
+
+    // Only pull pinned notes from sessions created from the same routine.
+    final sessionRoutineId = data['routine_id'] as String?;
+    final isMatchingRoutine = routineId != null && sessionRoutineId == routineId;
+
     final drillResultsList = data['drill_results'] as List?;
     if (drillResultsList == null) continue;
     final matchingDrill = drillResultsList.cast<Map<String, dynamic>>().cast<Map<String, dynamic>?>().firstWhere(
@@ -434,20 +514,34 @@ Future<session_model.DrillResult> buildDrillResultForSession({
         );
     if (matchingDrill == null) continue;
 
-    final setResultsList = matchingDrill['set_results'] as List?;
-    if (setResultsList == null || setResultsList.isEmpty) continue;
+    // Extract historic set values from the most recent matching session.
+    if (historicSetValues.isEmpty) {
+      final setResultsList = matchingDrill['set_results'] as List?;
+      if (setResultsList != null && setResultsList.isNotEmpty) {
+        historicSetValues = setResultsList.map<List<num?>>((s) {
+          final measList = (s as Map<String, dynamic>)['measurement_results'] as List?;
+          if (measList == null) return [];
+          return measList.map<num?>((m) => (m as Map<String, dynamic>)['value'] as num?).toList();
+        }).toList();
+      }
+    }
 
-    historicSetValues = setResultsList.map<List<num?>>((s) {
-      final measList = (s as Map<String, dynamic>)['measurement_results'] as List?;
-      if (measList == null) return [];
-      return measList.map<num?>((m) => (m as Map<String, dynamic>)['value'] as num?).toList();
-    }).toList();
-    break; // use the most recent match only
+    // Extract pinned session notes from the same routine.
+    if (isMatchingRoutine && pinnedHistoricNotes.isEmpty) {
+      final rawNotes = matchingDrill['notes'] as List?;
+      if (rawNotes != null) {
+        pinnedHistoricNotes = rawNotes.map((n) => DrillNote.fromMap(n as Map<String, dynamic>)).where((n) => n.isPinned && n.source == 'session').toList();
+      }
+    }
+
+    if (historicSetValues.isNotEmpty && (routineId == null || pinnedHistoricNotes.isNotEmpty || !isMatchingRoutine)) {
+      break; // found what we need
+    }
   }
 
   // Build a set pre-filled with historic values for the given set position.
-  // Falls back to the routine's reps value (for the reps-matching measurement)
-  // or 0 (for all other measurements) when no history exists.
+  // Falls back to routine target values (weight / reps / rir) when no history
+  // exists, then 0 for any remaining measurements.
   final repsLabelLower = repsLabel.toLowerCase();
 
   session_model.SetResult makeSet(int setIndex) {
@@ -460,9 +554,13 @@ Future<session_model.DrillResult> buildDrillResultForSession({
         if (mi < vals.length) defaultVal = vals[mi];
       }
       if (defaultVal == null) {
-        // Use the routine's reps value for the matching measurement; 0 elsewhere.
+        // Use routine target values for matching measurements; fall back to 0.
         if (reps != null && m.label.toLowerCase() == repsLabelLower) {
           defaultVal = reps;
+        } else if (weight != null && (m.label.toLowerCase().contains('weight') || m.label.toLowerCase().contains('load'))) {
+          defaultVal = weight;
+        } else if (rir != null && m.type == 'rir') {
+          defaultVal = rir;
         } else {
           defaultVal = 0;
         }
@@ -476,6 +574,15 @@ Future<session_model.DrillResult> buildDrillResultForSession({
   // Otherwise start with a single set (the user can add more).
   final initialSetCount = sets != null && sets > 0 ? sets : 1;
 
+  // Combine routine notes and pinned historic session notes into the initial
+  // notes list for this drill result. Duplicate texts (same source+text)
+  // are de-duped so we don't show the same note twice.
+  final combinedNotes = <DrillNote>[...?routineNotes];
+  for (final hn in pinnedHistoricNotes) {
+    final alreadyPresent = combinedNotes.any((n) => n.text == hn.text && n.source == 'session');
+    if (!alreadyPresent) combinedNotes.add(hn);
+  }
+
   return session_model.DrillResult(
     drillId,
     drillTitle,
@@ -488,6 +595,7 @@ Future<session_model.DrillResult> buildDrillResultForSession({
     reps: reps,
     measurementResults: measurementResults,
     historicSetValues: historicSetValues,
+    notes: combinedNotes,
     // Seed the initial set rows. If the routine specified a set count, create
     // that many rows; otherwise start with one so the user sees a row to fill in.
     setResults: List.generate(initialSetCount, makeSet),

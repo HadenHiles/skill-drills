@@ -5,8 +5,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 /// [tier] – subscription level: 'free' or 'premium'.
 ///
 /// Free-tier limits (enforced in the UI and checked before writes):
-/// - [freeActiveActivityLimit]: max 2 activities active at a time.
-/// - [freeRoutineLimit]: max 3 saved routines.
+/// - [freeActiveActivityLimit]: max 1 activity active at a time.
+/// - [freeRoutineLimit]: max 3 saved routines per active activity.
 class SkillDrillsUser {
   final String? displayName;
   final String? email;
@@ -16,7 +16,7 @@ class SkillDrillsUser {
 
   bool get isPremium => tier == 'premium';
 
-  static const int freeActiveActivityLimit = 2;
+  static const int freeActiveActivityLimit = 1;
   static const int freeRoutineLimit = 3;
 
   SkillDrillsUser(this.displayName, this.email, this.photoURL, {this.tier = 'free'});

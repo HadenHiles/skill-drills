@@ -8,14 +8,18 @@ import 'package:flutter/services.dart';
 import 'package:skilldrills/main.dart';
 import 'package:skilldrills/models/firestore/activity.dart';
 import 'package:skilldrills/models/firestore/drill.dart';
+import 'package:skilldrills/models/firestore/drill_note.dart';
 import 'package:skilldrills/models/firestore/measurement.dart';
+import 'package:skilldrills/models/firestore/personal_best.dart';
 import 'package:skilldrills/models/firestore/session.dart' as session_model;
 import 'package:skilldrills/models/firestore/skill.dart';
 import 'package:skilldrills/models/skill_drills_dialog.dart';
 import 'package:skilldrills/services/dialogs.dart';
+import 'package:skilldrills/services/subscription.dart';
 import 'package:skilldrills/services/utility.dart';
 import 'package:skilldrills/tabs/session/add_drill_sheet.dart';
 import 'package:skilldrills/theme/theme.dart';
+import 'package:skilldrills/widgets/paywall_screen.dart';
 import 'package:sliding_up_panel/sliding_up_panel.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -37,6 +41,9 @@ class _SessionState extends State<Session> with SingleTickerProviderStateMixin {
   int _lastDrillCount = 0;
   int _lastDrillIndex = 0;
 
+  bool _isPro = false;
+  StreamSubscription<dynamic>? _customerInfoSub;
+
   @override
   void initState() {
     super.initState();
@@ -51,11 +58,22 @@ class _SessionState extends State<Session> with SingleTickerProviderStateMixin {
     _lastDrillCount = sessionService.drillResults.length;
     _lastDrillIndex = sessionService.currentDrillIndex;
     sessionService.addListener(_onServiceChanged);
+    _initProStatus();
+  }
+
+  Future<void> _initProStatus() async {
+    final isPro = await hasActiveSubscription();
+    if (mounted) setState(() => _isPro = isPro);
+    _customerInfoSub = customerInfoStream.listen((info) {
+      final nowPro = info.entitlements.active.containsKey(kProEntitlement);
+      if (mounted) setState(() => _isPro = nowPro);
+    });
   }
 
   @override
   void dispose() {
     sessionService.removeListener(_onServiceChanged);
+    _customerInfoSub?.cancel();
     _pulseCtrl.dispose();
     _pageController.dispose();
     _tabScrollCtrl.dispose();
@@ -160,19 +178,32 @@ class _SessionState extends State<Session> with SingleTickerProviderStateMixin {
         'Save & Finish',
         () async {
           Navigator.of(context).pop();
-          await sessionService.finishSession();
+          final newPbs = await sessionService.finishSession();
           widget.sessionPanelController.close();
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-              content: Text('"$title" saved!'),
-              behavior: SnackBarBehavior.floating,
-              duration: const Duration(seconds: 3),
-            ));
+            if (_isPro && newPbs.isNotEmpty) {
+              _showPbSummary(context, newPbs);
+            } else {
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                content: Text('"$title" saved!'),
+                behavior: SnackBarBehavior.floating,
+                duration: const Duration(seconds: 3),
+              ));
+            }
           }
         },
         isDangerous: false,
         icon: Icons.check_circle_outline_rounded,
       ),
+    );
+  }
+
+  void _showPbSummary(BuildContext context, List<PersonalBest> pbs) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (_) => _PbSummarySheet(pbs: pbs),
     );
   }
 
@@ -254,6 +285,7 @@ class _SessionState extends State<Session> with SingleTickerProviderStateMixin {
                       itemBuilder: (context, i) => _DrillPage(
                         drillResult: drills[i],
                         drillIndex: i,
+                        isPro: _isPro,
                         onRemove: () => sessionService.removeDrill(i),
                       ),
                     ),
@@ -524,11 +556,13 @@ class _DrillPage extends StatelessWidget {
   const _DrillPage({
     required this.drillResult,
     required this.drillIndex,
+    required this.isPro,
     required this.onRemove,
   });
 
   final session_model.DrillResult drillResult;
   final int drillIndex;
+  final bool isPro;
   final VoidCallback onRemove;
 
   @override
@@ -550,7 +584,7 @@ class _DrillPage extends StatelessWidget {
                 label: drillResult.activityTitle,
               ),
               const Spacer(),
-              _DrillMenu(drillIndex: drillIndex, onRemove: onRemove),
+              _DrillMenu(drillIndex: drillIndex, isPro: isPro, onRemove: onRemove),
             ],
           ),
         ),
@@ -583,6 +617,10 @@ class _DrillPage extends StatelessWidget {
             ],
           ),
         ),
+
+        // Notes section — pinned routine notes + session notes
+        if (isPro && drillResult.notes.isNotEmpty) _DrillNotesSection(drillIndex: drillIndex, notes: drillResult.notes),
+        if (!isPro && drillResult.notes.isNotEmpty) _ProNotesUpsell(),
 
         // Column headers — only show when there are sets to display
         if (hasMeasurements && sets.isNotEmpty)
@@ -651,12 +689,13 @@ class _DrillPage extends StatelessWidget {
 // 3-dot drill menu
 // ─────────────────────────────────────────────────────────────────────────────
 
-enum _DrillMenuAction { restTimer, remove }
+enum _DrillMenuAction { addNote, restTimer, remove }
 
 class _DrillMenu extends StatelessWidget {
-  const _DrillMenu({required this.drillIndex, required this.onRemove});
+  const _DrillMenu({required this.drillIndex, required this.isPro, required this.onRemove});
 
   final int drillIndex;
+  final bool isPro;
   final VoidCallback onRemove;
 
   @override
@@ -666,6 +705,12 @@ class _DrillMenu extends StatelessWidget {
       icon: Icon(Icons.more_vert_rounded, color: Theme.of(context).colorScheme.onSurface.withAlpha(130)),
       onSelected: (action) {
         switch (action) {
+          case _DrillMenuAction.addNote:
+            if (isPro) {
+              _showAddNoteSheet(context);
+            } else {
+              navigatorKey.currentState!.push(MaterialPageRoute(fullscreenDialog: true, builder: (_) => const PaywallScreen()));
+            }
           case _DrillMenuAction.restTimer:
             _showRestTimerDialog(context, drill.restTimerSeconds);
           case _DrillMenuAction.remove:
@@ -673,6 +718,15 @@ class _DrillMenu extends StatelessWidget {
         }
       },
       itemBuilder: (_) => [
+        PopupMenuItem(
+          value: _DrillMenuAction.addNote,
+          child: Row(children: [
+            Icon(isPro ? Icons.sticky_note_2_outlined : Icons.lock_outline_rounded, size: 18, color: Theme.of(context).colorScheme.onSurface),
+            const SizedBox(width: 10),
+            Text(isPro ? 'Add Note' : 'Add Note (Pro)'),
+          ]),
+        ),
+        const PopupMenuDivider(),
         const PopupMenuItem(
           value: _DrillMenuAction.restTimer,
           child: Row(children: [
@@ -737,6 +791,308 @@ class _DrillMenu extends StatelessWidget {
     if (m > 0 && sec > 0) return '${m}m ${sec}s';
     if (m > 0) return '$m min';
     return '${sec}s';
+  }
+
+  void _showAddNoteSheet(BuildContext context) {
+    final ctrl = TextEditingController();
+    bool isPinned = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(SkillDrillsRadius.lg))),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheet) => Padding(
+          padding: EdgeInsets.only(
+            left: SkillDrillsSpacing.md,
+            right: SkillDrillsSpacing.md,
+            top: SkillDrillsSpacing.md,
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + SkillDrillsSpacing.lg,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Theme.of(context).dividerColor, borderRadius: BorderRadius.circular(2)))),
+              const SizedBox(height: 14),
+              Text('Add Session Note', style: Theme.of(context).textTheme.titleLarge),
+              const SizedBox(height: 4),
+              Text(
+                'Notes are visible during this session. Pin them to carry forward to future sessions.',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.55)),
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: ctrl,
+                autofocus: true,
+                textCapitalization: TextCapitalization.sentences,
+                keyboardType: TextInputType.multiline,
+                maxLines: 4,
+                minLines: 2,
+                decoration: const InputDecoration(
+                  hintText: 'e.g. Felt strong today, increase weight next time…',
+                  border: OutlineInputBorder(),
+                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                ),
+              ),
+              const SizedBox(height: 12),
+              InkWell(
+                borderRadius: BorderRadius.circular(SkillDrillsRadius.sm),
+                onTap: () => setSheet(() => isPinned = !isPinned),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  child: Row(
+                    children: [
+                      Icon(
+                        isPinned ? Icons.push_pin_rounded : Icons.push_pin_outlined,
+                        size: 18,
+                        color: isPinned ? SkillDrillsColors.brandBlue : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Pin to future sessions',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: isPinned ? SkillDrillsColors.brandBlue : null,
+                              ),
+                        ),
+                      ),
+                      Text(
+                        isPinned ? 'On' : 'Off',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: isPinned ? SkillDrillsColors.brandBlue : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4),
+                            ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Cancel')),
+                  const SizedBox(width: 8),
+                  FilledButton(
+                    onPressed: () {
+                      final text = ctrl.text.trim();
+                      if (text.isEmpty) return;
+                      sessionService.addNoteToDrill(drillIndex, DrillNote.session(text, isPinned: isPinned));
+                      Navigator.of(ctx).pop();
+                    },
+                    child: const Text('Add Note'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Drill notes section (shown between title and set column headers)
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _DrillNotesSection extends StatelessWidget {
+  const _DrillNotesSection({required this.drillIndex, required this.notes});
+
+  final int drillIndex;
+  final List<DrillNote> notes;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.04),
+        borderRadius: BorderRadius.circular(SkillDrillsRadius.sm),
+        border: Border.all(color: Theme.of(context).dividerColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: notes.asMap().entries.map((e) {
+          final i = e.key;
+          final note = e.value;
+          final isRoutineNote = note.source == 'routine';
+          return Padding(
+            padding: EdgeInsets.only(bottom: i < notes.length - 1 ? 6 : 0),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Icon(
+                    isRoutineNote ? Icons.format_list_bulleted_rounded : Icons.circle,
+                    size: isRoutineNote ? 12 : 5,
+                    color: isRoutineNote ? Theme.of(context).primaryColor.withValues(alpha: 0.7) : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    note.text,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.75),
+                          height: 1.4,
+                        ),
+                  ),
+                ),
+                const SizedBox(width: 4),
+                GestureDetector(
+                  onTap: () => sessionService.toggleNotePin(drillIndex, i),
+                  child: Tooltip(
+                    message: note.isPinned ? 'Pinned — carries to next session' : 'Tap to pin',
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 2),
+                      child: Icon(
+                        note.isPinned ? Icons.push_pin_rounded : Icons.push_pin_outlined,
+                        size: 13,
+                        color: note.isPinned ? SkillDrillsColors.brandBlue : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.25),
+                      ),
+                    ),
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () => sessionService.deleteNote(drillIndex, i),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 2),
+                    child: Icon(Icons.close_rounded, size: 13, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.25)),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Post-session personal bests summary sheet
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _PbSummarySheet extends StatelessWidget {
+  const _PbSummarySheet({required this.pbs});
+
+  final List<PersonalBest> pbs;
+
+  String _formatValue(PersonalBest pb) {
+    if (pb.measurementType == 'duration') {
+      final d = Duration(seconds: pb.bestValue.toInt());
+      final mins = d.inMinutes.remainder(60).toString().padLeft(2, '0');
+      final secs = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+      return d.inHours >= 1 ? '${d.inHours}:$mins:$secs' : '$mins:$secs';
+    }
+    return '${pb.bestValue}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: SkillDrillsRadius.lgBorderRadius,
+      ),
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(SkillDrillsSpacing.lg),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('🏆', style: TextStyle(fontSize: 36)),
+              const SizedBox(height: 8),
+              Text(
+                pbs.length == 1 ? 'New Personal Best!' : '${pbs.length} New Personal Bests!',
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontFamily: 'Choplin'),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'You crushed your previous records.',
+                style: Theme.of(context).textTheme.bodyMedium,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: SkillDrillsSpacing.md),
+              ...pbs.map(
+                (pb) => Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(
+                    children: [
+                      Icon(Icons.emoji_events_rounded, size: 16, color: SkillDrillsColors.energyOrange),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          '${pb.drillTitle} · ${pb.measurementLabel}',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                      Text(
+                        _formatValue(pb),
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.w800,
+                              color: Theme.of(context).primaryColor,
+                            ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: SkillDrillsSpacing.lg),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Keep it up! 💪', style: TextStyle(fontFamily: 'Choplin', fontWeight: FontWeight.w700)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Pro-only notes upsell (shown to free users in place of notes section)
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _ProNotesUpsell extends StatelessWidget {
+  const _ProNotesUpsell();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.04),
+        borderRadius: BorderRadius.circular(SkillDrillsRadius.sm),
+        border: Border.all(color: Theme.of(context).dividerColor),
+      ),
+      child: GestureDetector(
+        onTap: () => navigatorKey.currentState!.push(MaterialPageRoute(fullscreenDialog: true, builder: (_) => const PaywallScreen())),
+        child: Row(
+          children: [
+            Icon(Icons.lock_outline_rounded, size: 13, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4)),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                'Session notes are a Pro feature. Upgrade to unlock.',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).primaryColor),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

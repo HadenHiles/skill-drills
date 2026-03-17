@@ -11,9 +11,17 @@ class Drill {
   final DrillType? drillType;
   List<Measurement>? measurements;
   List<Skill>? skills;
+
+  /// Pro: whether this drill is pinned to the top of the list.
+  bool isPinned;
+
+  /// Pro: sort position within the pinned section (0-indexed, lower = higher).
+  int sortOrder;
   DocumentReference? reference;
 
-  Drill(this.title, this.description, this.activity, this.drillType);
+  Drill(this.title, this.description, this.activity, this.drillType)
+      : isPinned = false,
+        sortOrder = 0;
 
   Drill.fromMap(Map<String, dynamic>? map, {this.reference})
       : assert(map!['title'] != null),
@@ -23,7 +31,9 @@ class Drill {
         title = map!['title'],
         description = map['description'],
         activity = Activity.fromMap(map['activity']),
-        drillType = DrillType.fromMap(map['drill_type']);
+        drillType = DrillType.fromMap(map['drill_type']),
+        isPinned = (map['is_pinned'] as bool?) ?? false,
+        sortOrder = (map['sort_order'] as int?) ?? 0;
 
   Map<String, dynamic> toMap() {
     return {
@@ -31,6 +41,8 @@ class Drill {
       'description': description,
       "activity": activity!.toMap(),
       'drill_type': drillType!.toMap(),
+      'is_pinned': isPinned,
+      'sort_order': sortOrder,
     };
   }
 

@@ -2480,6 +2480,12 @@ Future<int> routineCount() async {
   return snap.count ?? 0;
 }
 
+/// Returns the number of routines belonging to [activityTitle] for the current user.
+Future<int> routineCountForActivity(String activityTitle) async {
+  final snap = await _routinesRef().where('activity_title', isEqualTo: activityTitle).count().get();
+  return snap.count ?? 0;
+}
+
 /// Saves a new [Routine] (and its ordered drills subcollection) to Firestore.
 /// Returns the new [DocumentReference].
 Future<DocumentReference> saveRoutine(Routine routine) async {

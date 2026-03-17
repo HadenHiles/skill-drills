@@ -37,7 +37,7 @@ const String kLifetimeProductId = 'lifetime';
 
 /// The maximum number of activities a free (non-subscribed) user may have
 /// active simultaneously.
-const int kFreeActiveActivityLimit = 2;
+const int kFreeActiveActivityLimit = 1;
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 

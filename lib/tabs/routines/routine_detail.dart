@@ -144,11 +144,13 @@ class _RoutineDetailState extends State<RoutineDetail> {
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
 
-    // Enforce free-tier routine limit on new routine creation only
+    // Enforce free-tier routine limit on new routine creation only (per active activity)
     if (widget.routine?.reference == null) {
       final subscribed = await hasActiveSubscription();
       if (!subscribed) {
-        final count = await firestore_factory.routineCount();
+        // Count routines for the selected activity only.
+        final actTitle = _selectedActivity?.title ?? '';
+        final count = actTitle.isNotEmpty ? await firestore_factory.routineCountForActivity(actTitle) : await firestore_factory.routineCount();
         if (count >= SkillDrillsUser.freeRoutineLimit) {
           if (mounted) {
             dialog(
@@ -156,7 +158,7 @@ class _RoutineDetailState extends State<RoutineDetail> {
               SkillDrillsDialog(
                 'Routine Limit Reached',
                 Text(
-                  'Free plan users can save up to ${SkillDrillsUser.freeRoutineLimit} routines.\n\nUpgrade to Premium for unlimited routines.',
+                  'Free plan users can save up to ${SkillDrillsUser.freeRoutineLimit} routines per activity.\n\nUpgrade to Pro for unlimited routines across all activities.',
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
