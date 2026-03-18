@@ -399,103 +399,115 @@ class _NavState extends State<Nav> {
     showModalBottomSheet(
       context: context,
       backgroundColor: Theme.of(context).colorScheme.surface,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Drag handle
-            Center(
-              child: Container(
-                margin: const EdgeInsets.symmetric(vertical: 10),
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
-              child: Text(
-                'Switch Activity',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-              ),
-            ),
-            for (final activity in activities)
-              ListTile(
-                leading: Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: activity.id == primaryId ? Theme.of(context).primaryColor.withValues(alpha: 0.12) : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.06),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Center(child: Text(activity.icon, style: const TextStyle(fontSize: 18))),
-                ),
-                title: Text(
-                  activity.title ?? '',
-                  style: TextStyle(
-                    fontWeight: activity.id == primaryId ? FontWeight.w700 : FontWeight.normal,
+      builder: (ctx) {
+        final maxHeight = MediaQuery.of(ctx).size.height * 0.6;
+        return SafeArea(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxHeight: maxHeight),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Drag handle
+                Center(
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(vertical: 10),
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
                 ),
-                trailing: activity.id == primaryId
-                    ? Icon(Icons.check_rounded, color: Theme.of(context).primaryColor)
-                    : activity.isActive
-                        ? Icon(Icons.circle, size: 8, color: Theme.of(context).primaryColor.withValues(alpha: 0.45))
-                        : null,
-                onTap: () async {
-                  Navigator.pop(ctx);
-                  await _switchToActivity(activity);
-                },
-              ),
-            const SizedBox(height: 8),
-          ],
-        ),
-      ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
+                  child: Text(
+                    'Switch Activity',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                  ),
+                ),
+                Flexible(
+                  child: ListView(
+                    shrinkWrap: true,
+                    children: [
+                      for (final activity in activities)
+                        ListTile(
+                          leading: Container(
+                            width: 36,
+                            height: 36,
+                            decoration: BoxDecoration(
+                              color: activity.id == primaryId ? Theme.of(context).primaryColor.withValues(alpha: 0.12) : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.06),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Center(child: Text(activity.icon, style: const TextStyle(fontSize: 18))),
+                          ),
+                          title: Text(
+                            activity.title ?? '',
+                            style: TextStyle(
+                              fontWeight: activity.id == primaryId ? FontWeight.w700 : FontWeight.normal,
+                            ),
+                          ),
+                          trailing: activity.id == primaryId
+                              ? Icon(Icons.check_rounded, color: Theme.of(context).primaryColor)
+                              : activity.isActive
+                                  ? Icon(Icons.circle, size: 8, color: Theme.of(context).primaryColor.withValues(alpha: 0.45))
+                                  : null,
+                          onTap: () async {
+                            Navigator.pop(ctx);
+                            await _switchToActivity(activity);
+                          },
+                        ),
+                      const SizedBox(height: 8),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
-  /// The activity-switcher pill shown in the expanded Start-tab header.
-  Widget _buildActivitySwitcherPill(BuildContext context) {
+  /// Compact leading button shown in the AppBar on every tab: the active
+  /// activity emoji + a small dropdown chevron.  Tapping opens the switcher
+  /// bottom sheet.
+  Widget _buildActivityLeadingButton(BuildContext context) {
     final notifier = context.watch<ActiveActivityNotifier>();
-    final activityName = notifier.primary?.title ?? 'Select Activity';
     return GestureDetector(
       onTap: () => _showActivitySwitcher(context),
+      behavior: HitTestBehavior.opaque,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+        margin: const EdgeInsets.only(left: 10, top: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.18),
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.25), width: 1),
+          color: _showLogoToolbar
+              ? Colors.white.withValues(alpha: 0.18)
+              : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(20),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(notifier.icon, style: const TextStyle(fontSize: 15, height: 1.2)),
-            const SizedBox(width: 7),
-            Text(
-              activityName,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
-                fontSize: 13,
-                letterSpacing: 0.2,
-              ),
+            Text(notifier.icon, style: const TextStyle(fontSize: 18, height: 1.1)),
+            const SizedBox(width: 2),
+            Icon(
+              Icons.arrow_drop_down_rounded,
+              size: 18,
+              color: _showLogoToolbar ? Colors.white : Theme.of(context).colorScheme.onSurface,
             ),
-            const SizedBox(width: 3),
-            const Icon(Icons.arrow_drop_down_rounded, color: Colors.white, size: 18),
           ],
         ),
       ),
     );
   }
 
-  /// The full background of the Start-tab expanded header: logo + switcher pill.
+  /// The full background of the Start-tab expanded header: logo centred.
   Widget _buildStartTabBackground(BuildContext context, String activityIcon, bool isDefaultTheme) {
     final headerColor = Theme.of(context).primaryColor;
     return Container(
@@ -503,15 +515,7 @@ class _NavState extends State<Nav> {
       child: SafeArea(
         bottom: false,
         child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              isDefaultTheme ? _buildDefaultLogo() : _buildLogoWithEmoji(activityIcon, headerColor),
-              const SizedBox(height: 14),
-              _buildActivitySwitcherPill(context),
-            ],
-          ),
+          child: isDefaultTheme ? _buildDefaultLogo() : _buildLogoWithEmoji(activityIcon, headerColor),
         ),
       ),
     );
@@ -643,6 +647,9 @@ class _NavState extends State<Nav> {
                       actionsIconTheme: Theme.of(context).iconTheme,
                       floating: true,
                       pinned: true,
+                      // The activity switcher lives in the top-left on every tab.
+                      leading: _buildActivityLeadingButton(context),
+                      leadingWidth: 72,
                       flexibleSpace: DecoratedBox(
                         decoration: BoxDecoration(
                           color: _showLogoToolbar ? Theme.of(context).primaryColor : Theme.of(context).colorScheme.surface,
