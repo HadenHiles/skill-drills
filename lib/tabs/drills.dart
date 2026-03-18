@@ -330,6 +330,7 @@ class _ActivitySection extends StatelessWidget {
   final Function deleteCallback;
   final bool isPro;
   final String uid;
+
   /// When true the section is always fully expanded and the collapse
   /// chevron / tap target are hidden (only one active activity — no need
   /// to manage which section is open).

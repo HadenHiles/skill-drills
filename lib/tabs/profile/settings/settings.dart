@@ -134,7 +134,7 @@ class _ProfileSettingsState extends State<ProfileSettings> {
                   ),
                   leading: Icon(
                     Icons.vibration,
-                    color: Theme.of(context).colorScheme.primary,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                   onToggle: (bool value) async {
                     SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -157,7 +157,7 @@ class _ProfileSettingsState extends State<ProfileSettings> {
                   ),
                   leading: Icon(
                     Icons.brightness_2,
-                    color: Theme.of(context).colorScheme.primary,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                   onToggle: (bool value) async {
                     SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -188,7 +188,7 @@ class _ProfileSettingsState extends State<ProfileSettings> {
                   ),
                   leading: Icon(
                     Icons.directions_run_rounded,
-                    color: Theme.of(context).colorScheme.primary,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                   onPressed: (BuildContext context) {
                     navigatorKey.currentState!.push(MaterialPageRoute(builder: (context) {
@@ -235,7 +235,7 @@ class _ProfileSettingsState extends State<ProfileSettings> {
                     title: Text(
                       'Upgrade to Skill Drills Pro',
                       style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                            color: Theme.of(context).primaryColor,
+                            color: Theme.of(context).colorScheme.secondary,
                             fontWeight: FontWeight.w600,
                           ),
                     ),
@@ -245,7 +245,7 @@ class _ProfileSettingsState extends State<ProfileSettings> {
                     ),
                     leading: Icon(
                       Icons.star_rounded,
-                      color: Theme.of(context).colorScheme.primary,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                     onPressed: (_) => navigatorKey.currentState!.push(
                       MaterialPageRoute(
@@ -258,7 +258,7 @@ class _ProfileSettingsState extends State<ProfileSettings> {
                   title: Text('Restore Purchases', style: Theme.of(context).textTheme.bodyLarge),
                   leading: Icon(
                     Icons.restore_rounded,
-                    color: Theme.of(context).colorScheme.primary,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                   onPressed: (_) async {
                     final messenger = ScaffoldMessenger.of(context);

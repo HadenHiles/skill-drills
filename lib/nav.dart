@@ -269,13 +269,7 @@ class _NavState extends State<Nav> {
 
       // Keep a live snapshot of all activities so the switcher sheet can
       // list them and the free-tier auto-swap logic has a current view.
-      _activitiesSubscription = FirebaseFirestore.instance
-          .collection('activities')
-          .doc(uid)
-          .collection('activities')
-          .orderBy('title')
-          .snapshots()
-          .listen((snap) {
+      _activitiesSubscription = FirebaseFirestore.instance.collection('activities').doc(uid).collection('activities').orderBy('title').snapshots().listen((snap) {
         if (mounted) {
           setState(() => _allActivitiesSnapshot = List.of(snap.docs));
         }
@@ -355,11 +349,7 @@ class _NavState extends State<Nav> {
     // Already the primary — nothing to do.
     if (activity.id == activeActivityNotifier.primary?.id) return;
 
-    final actRef = FirebaseFirestore.instance
-        .collection('activities')
-        .doc(uid)
-        .collection('activities')
-        .doc(activity.reference!.id);
+    final actRef = FirebaseFirestore.instance.collection('activities').doc(uid).collection('activities').doc(activity.reference!.id);
 
     if (activity.isActive) {
       // Already active but not the primary — bump timestamp to make it primary.
@@ -380,11 +370,7 @@ class _NavState extends State<Nav> {
         if (tb == null) return b;
         return ta.isBefore(tb) ? a : b;
       });
-      final oldRef = FirebaseFirestore.instance
-          .collection('activities')
-          .doc(uid)
-          .collection('activities')
-          .doc(oldest.reference!.id);
+      final oldRef = FirebaseFirestore.instance.collection('activities').doc(uid).collection('activities').doc(oldest.reference!.id);
       final batch = FirebaseFirestore.instance.batch();
       batch.update(oldRef, {'is_active': false});
       batch.update(actRef, {'is_active': true, kActivityLastActivatedAtField: FieldValue.serverTimestamp()});
@@ -446,9 +432,7 @@ class _NavState extends State<Nav> {
                   width: 36,
                   height: 36,
                   decoration: BoxDecoration(
-                    color: activity.id == primaryId
-                        ? Theme.of(context).primaryColor.withValues(alpha: 0.12)
-                        : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.06),
+                    color: activity.id == primaryId ? Theme.of(context).primaryColor.withValues(alpha: 0.12) : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.06),
                     shape: BoxShape.circle,
                   ),
                   child: Center(child: Text(activity.icon, style: const TextStyle(fontSize: 18))),
@@ -523,9 +507,7 @@ class _NavState extends State<Nav> {
             mainAxisAlignment: MainAxisAlignment.center,
             mainAxisSize: MainAxisSize.min,
             children: [
-              isDefaultTheme
-                  ? _buildDefaultLogo()
-                  : _buildLogoWithEmoji(activityIcon, headerColor),
+              isDefaultTheme ? _buildDefaultLogo() : _buildLogoWithEmoji(activityIcon, headerColor),
               const SizedBox(height: 14),
               _buildActivitySwitcherPill(context),
             ],
@@ -673,9 +655,7 @@ class _NavState extends State<Nav> {
                           titlePadding: _showLogoToolbar ? EdgeInsets.zero : null,
                           centerTitle: !_showLogoToolbar,
                           title: _showLogoToolbar ? null : _title,
-                          background: _showLogoToolbar
-                              ? _buildStartTabBackground(context, activityIcon, isDefaultTheme)
-                              : Container(color: Theme.of(context).scaffoldBackgroundColor),
+                          background: _showLogoToolbar ? _buildStartTabBackground(context, activityIcon, isDefaultTheme) : Container(color: Theme.of(context).scaffoldBackgroundColor),
                         ),
                       ),
                       actions: _actions,
