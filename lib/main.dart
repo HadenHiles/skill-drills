@@ -21,6 +21,7 @@ import 'models/settings.dart';
 
 // Setup a navigation key so that we can navigate without context
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
 Settings settings = Settings(true, false);
 final sessionService = SessionService();
 final activeActivityNotifier = ActiveActivityNotifier();
@@ -112,6 +113,7 @@ class SkillDrills extends StatelessWidget {
         return MaterialApp(
           title: 'Skill Drills',
           navigatorKey: navigatorKey,
+          scaffoldMessengerKey: scaffoldMessengerKey,
           theme: SkillDrillsTheme.lightThemeWithPrimary(
             headerAccent,
             ActivityColors.adaptAccentForUi(headerAccent, isDarkMode: false),

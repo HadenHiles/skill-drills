@@ -376,7 +376,7 @@ class _NavState extends State<Nav> {
       batch.update(actRef, {'is_active': true, kActivityLastActivatedAtField: FieldValue.serverTimestamp()});
       await batch.commit();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        scaffoldMessengerKey.currentState?.showSnackBar(SnackBar(
           duration: const Duration(seconds: 5),
           behavior: SnackBarBehavior.floating,
           content: Text('"${oldest.title}" was deactivated to make room. Upgrade to Pro for unlimited active activities.'),
