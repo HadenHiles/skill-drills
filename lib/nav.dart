@@ -378,6 +378,7 @@ class _NavState extends State<Nav> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           duration: const Duration(seconds: 5),
+          behavior: SnackBarBehavior.floating,
           content: Text('"${oldest.title}" was deactivated to make room. Upgrade to Pro for unlimited active activities.'),
           action: SnackBarAction(
             label: 'Upgrade',
@@ -486,9 +487,7 @@ class _NavState extends State<Nav> {
         margin: const EdgeInsets.only(left: 10, top: 8),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: _showLogoToolbar
-              ? Colors.white.withValues(alpha: 0.18)
-              : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.08),
+          color: _showLogoToolbar ? Colors.white.withValues(alpha: 0.18) : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(20),
         ),
         child: Row(
@@ -508,19 +507,6 @@ class _NavState extends State<Nav> {
   }
 
   /// The full background of the Start-tab expanded header: logo centred.
-  Widget _buildStartTabBackground(BuildContext context, String activityIcon, bool isDefaultTheme) {
-    final headerColor = Theme.of(context).primaryColor;
-    return Container(
-      color: headerColor,
-      child: SafeArea(
-        bottom: false,
-        child: Center(
-          child: isDefaultTheme ? _buildDefaultLogo() : _buildLogoWithEmoji(activityIcon, headerColor),
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder<bool>(
@@ -649,20 +635,17 @@ class _NavState extends State<Nav> {
                       pinned: true,
                       // The activity switcher lives in the top-left on every tab.
                       leading: _buildActivityLeadingButton(context),
-                      leadingWidth: 72,
+                      leadingWidth: 80,
                       flexibleSpace: DecoratedBox(
                         decoration: BoxDecoration(
                           color: _showLogoToolbar ? Theme.of(context).primaryColor : Theme.of(context).colorScheme.surface,
                         ),
                         child: FlexibleSpaceBar(
-                          collapseMode: CollapseMode.parallax,
-                          // For the Start tab the logo + switcher pill live
-                          // entirely in the background (scrolls away on scroll).
-                          // For other tabs the title is the tab name.
-                          titlePadding: _showLogoToolbar ? EdgeInsets.zero : null,
-                          centerTitle: !_showLogoToolbar,
-                          title: _showLogoToolbar ? null : _title,
-                          background: _showLogoToolbar ? _buildStartTabBackground(context, activityIcon, isDefaultTheme) : Container(color: Theme.of(context).scaffoldBackgroundColor),
+                          collapseMode: CollapseMode.pin,
+                          titlePadding: _showLogoToolbar ? const EdgeInsets.only(bottom: 16) : null,
+                          centerTitle: true,
+                          title: _showLogoToolbar ? (isDefaultTheme ? _buildDefaultLogo() : _buildLogoWithEmoji(activityIcon, Theme.of(context).primaryColor)) : _title,
+                          background: _showLogoToolbar ? Container(color: Theme.of(context).primaryColor) : Container(color: Theme.of(context).scaffoldBackgroundColor),
                         ),
                       ),
                       actions: _actions,

@@ -421,7 +421,7 @@ class _ActivityDetailState extends State<ActivityDetail> {
                 child: _AppearanceColorPicker(
                   selectedColor: _customColor != null ? Color(_customColor!) : null,
                   isPro: _isPro,
-                  onSelected: (c) => setState(() => _customColor = c?.value),
+                  onSelected: (c) => setState(() => _customColor = c?.toARGB32()),
                 ),
               ),
 
@@ -572,7 +572,7 @@ class _AppearanceIconRowState extends State<_AppearanceIconRow> {
     // comprise multiple code points (e.g. skin tone modifiers, ZWJ sequences).
     // We accept any non-empty single-grapheme-cluster string as a valid icon.
     // Simple heuristic: ≤ 8 code points and the length in runes is ≥ 1.
-    return v.runes.length >= 1 && v.runes.length <= 8;
+    return v.runes.isNotEmpty && v.runes.length <= 8;
   }
 
   @override
@@ -689,7 +689,7 @@ class _AppearanceColorPicker extends StatelessWidget {
               for (final c in swatches)
                 _SwatchTile(
                   color: c,
-                  isSelected: selectedColor?.value == c.value,
+                  isSelected: selectedColor?.toARGB32() == c.toARGB32(),
                   isEnabled: isPro,
                   onTap: isPro ? () => onSelected(c) : null,
                 ),
