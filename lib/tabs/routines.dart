@@ -257,8 +257,14 @@ class _RoutinesState extends State<Routines> with SingleTickerProviderStateMixin
     return StreamBuilder<QuerySnapshot>(
       stream: firestore_factory.routinesStream(),
       builder: (context, snapshot) {
-        if (!snapshot.hasData) {
+        if (snapshot.hasError) {
+          return _buildEmptyState(context);
+        }
+        if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
           return const Center(child: CircularProgressIndicator());
+        }
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return _buildEmptyState(context);
         }
         return _buildRoutineList(
           context,
