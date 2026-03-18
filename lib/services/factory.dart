@@ -618,35 +618,33 @@ List<DrillType> _soccerDrillTypes() => [
 // ── Weight Training ───────────────────────────────────────────────────────────
 
 List<DrillType> _weightTrainingDrillTypes() => [
-      // Compound lift: sets x reps x load + RIR
-      DrillType('weight_compound', 'Compound Lift', 'Multi-joint barbell/dumbbell: sets, reps, load, and RIR', 0, 28, activityKey: 'Weight Training')
+      // Compound lift: weight x reps + RIR
+      DrillType('weight_compound', 'Compound Lift', 'Multi-joint barbell/dumbbell: weight, reps, and RIR', 0, 28, activityKey: 'Weight Training')
         ..measurements = [
-          MeasurementResult('amount', 'Sets', 1, null) as Measurement,
+          MeasurementResult('amount', 'Weight (kg)', 1, null) as Measurement,
           MeasurementResult('amount', 'Reps', 2, null) as Measurement,
-          MeasurementResult('amount', 'Weight (kg)', 3, null) as Measurement,
-          MeasurementResult('rir', 'RIR', 4, null) as Measurement,
-          MeasurementTarget('amount', 'Target Reps', 5, null, false) as Measurement,
-          MeasurementTarget('amount', 'Target Weight (kg)', 6, null, false) as Measurement,
-          MeasurementTarget('rir', 'Target RIR', 7, null, false) as Measurement,
-        ],
-      // Isolation exercise: sets x reps x load + RIR
-      DrillType('weight_isolation', 'Isolation Exercise', 'Single-joint accessory: sets, reps, load, and RIR', 0, 29, activityKey: 'Weight Training')
-        ..measurements = [
-          MeasurementResult('amount', 'Sets', 1, null) as Measurement,
-          MeasurementResult('amount', 'Reps', 2, null) as Measurement,
-          MeasurementResult('amount', 'Weight (kg)', 3, null) as Measurement,
-          MeasurementResult('rir', 'RIR', 4, null) as Measurement,
+          MeasurementResult('rir', 'RIR', 3, null) as Measurement,
+          MeasurementTarget('amount', 'Target Weight (kg)', 4, null, false) as Measurement,
           MeasurementTarget('amount', 'Target Reps', 5, null, false) as Measurement,
           MeasurementTarget('rir', 'Target RIR', 6, null, false) as Measurement,
         ],
-      // Bodyweight: sets x reps + RIR
-      DrillType('weight_bodyweight', 'Bodyweight Exercise', 'No-equipment exercise: sets, reps, and RIR', 0, 30, activityKey: 'Weight Training')
+      // Isolation exercise: weight x reps + RIR
+      DrillType('weight_isolation', 'Isolation Exercise', 'Single-joint accessory: weight, reps, and RIR', 0, 29, activityKey: 'Weight Training')
         ..measurements = [
-          MeasurementResult('amount', 'Sets', 1, null) as Measurement,
+          MeasurementResult('amount', 'Weight (kg)', 1, null) as Measurement,
           MeasurementResult('amount', 'Reps', 2, null) as Measurement,
           MeasurementResult('rir', 'RIR', 3, null) as Measurement,
-          MeasurementTarget('amount', 'Target Reps', 4, null, false) as Measurement,
-          MeasurementTarget('rir', 'Target RIR', 5, null, false) as Measurement,
+          MeasurementTarget('amount', 'Target Weight (kg)', 4, null, false) as Measurement,
+          MeasurementTarget('amount', 'Target Reps', 5, null, false) as Measurement,
+          MeasurementTarget('rir', 'Target RIR', 6, null, false) as Measurement,
+        ],
+      // Bodyweight: reps + RIR
+      DrillType('weight_bodyweight', 'Bodyweight Exercise', 'No-equipment exercise: reps and RIR', 0, 30, activityKey: 'Weight Training')
+        ..measurements = [
+          MeasurementResult('amount', 'Reps', 1, null) as Measurement,
+          MeasurementResult('rir', 'RIR', 2, null) as Measurement,
+          MeasurementTarget('amount', 'Target Reps', 3, null, false) as Measurement,
+          MeasurementTarget('rir', 'Target RIR', 4, null, false) as Measurement,
         ],
       // Cardio: duration + distance + RPE
       DrillType('weight_cardio', 'Cardio / Aerobic', 'Aerobic session: duration, distance, and RPE', 0, 31, activityKey: 'Weight Training')
