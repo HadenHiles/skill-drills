@@ -173,13 +173,13 @@ class _RoutinesState extends State<Routines> with SingleTickerProviderStateMixin
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: SkillDrillsColors.brandBlue.withValues(alpha: 0.10),
+                color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.10),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.event_note_rounded,
                 size: 52,
-                color: SkillDrillsColors.brandBlue,
+                color: Theme.of(context).colorScheme.secondary,
               ),
             ),
             const SizedBox(height: SkillDrillsSpacing.lg),
