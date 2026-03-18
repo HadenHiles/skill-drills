@@ -228,7 +228,8 @@ class _ActivitiesSettingsState extends State<ActivitiesSettings> {
           await batch.commit();
 
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
+            ScaffoldMessenger.of(context).clearSnackBars();
+            final controller = ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 duration: const Duration(seconds: 5),
                 behavior: SnackBarBehavior.floating,
@@ -244,6 +245,7 @@ class _ActivitiesSettingsState extends State<ActivitiesSettings> {
                 ),
               ),
             );
+            Future.delayed(const Duration(seconds: 5), () => controller.close());
           }
           return;
         }

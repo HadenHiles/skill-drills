@@ -376,7 +376,8 @@ class _NavState extends State<Nav> {
       batch.update(actRef, {'is_active': true, kActivityLastActivatedAtField: FieldValue.serverTimestamp()});
       await batch.commit();
       if (mounted) {
-        scaffoldMessengerKey.currentState?.showSnackBar(SnackBar(
+        scaffoldMessengerKey.currentState?.clearSnackBars();
+        final controller = scaffoldMessengerKey.currentState?.showSnackBar(SnackBar(
           duration: const Duration(seconds: 5),
           behavior: SnackBarBehavior.floating,
           content: Text('"${oldest.title}" was deactivated to make room. Upgrade to Pro for unlimited active activities.'),
@@ -385,6 +386,7 @@ class _NavState extends State<Nav> {
             onPressed: () => navigatorKey.currentState!.push(MaterialPageRoute(builder: (_) => const PaywallScreen())),
           ),
         ));
+        Future.delayed(const Duration(seconds: 5), () => controller?.close());
       }
     } else {
       await actRef.update({'is_active': true, kActivityLastActivatedAtField: FieldValue.serverTimestamp()});
