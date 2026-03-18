@@ -623,4 +623,162 @@ class SkillDrillsTheme {
       onSurface: SkillDrillsColors.darkOnSurface,
     ),
   );
+
+  // ── Activity-tinted theme factories ──────────────────────────────────────
+  // These copy the base light/dark themes and swap every primary-colour
+  // reference to [primary].  Use these when an active [Activity] should skin
+  // the app with its own brand accent.
+
+  /// Returns [lightTheme] with all primary-colour references replaced by
+  /// [primary].  The structural neutrals (backgrounds, surfaces, text) are
+  /// untouched so readability is preserved at any hue.
+  static ThemeData lightThemeWithPrimary(Color primary) {
+    return lightTheme.copyWith(
+      primaryColor: primary,
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: primary,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          shadowColor: Colors.transparent,
+          padding: _buttonPadding,
+          minimumSize: const Size(0, 48),
+          shape: _buttonShape,
+          textStyle: const TextStyle(
+            fontFamily: 'Choplin',
+            fontWeight: FontWeight.w700,
+            fontSize: 15,
+            letterSpacing: 0.4,
+          ),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: primary,
+          padding: _buttonPadding,
+          minimumSize: const Size(0, 48),
+          shape: _buttonShape,
+          textStyle: const TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 15,
+            letterSpacing: 0.4,
+          ),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: primary,
+          side: BorderSide(color: primary, width: 1.5),
+          padding: _buttonPadding,
+          minimumSize: const Size(0, 48),
+          shape: _buttonShape,
+          textStyle: const TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 15,
+            letterSpacing: 0.4,
+          ),
+        ),
+      ),
+      inputDecorationTheme: lightTheme.inputDecorationTheme.copyWith(
+        focusedBorder: OutlineInputBorder(
+          borderRadius: SkillDrillsRadius.smBorderRadius,
+          borderSide: BorderSide(color: primary, width: 2),
+        ),
+        prefixIconColor: WidgetStateColor.resolveWith((s) => s.contains(WidgetState.focused) ? primary : SkillDrillsColors.lightOnSurfaceMuted),
+        suffixIconColor: WidgetStateColor.resolveWith((s) => s.contains(WidgetState.focused) ? primary : SkillDrillsColors.lightOnSurfaceMuted),
+      ),
+      bottomNavigationBarTheme: lightTheme.bottomNavigationBarTheme.copyWith(selectedItemColor: primary),
+      snackBarTheme: lightTheme.snackBarTheme.copyWith(actionTextColor: primary),
+      progressIndicatorTheme: ProgressIndicatorThemeData(
+        color: primary,
+        linearTrackColor: primary.withValues(alpha: 0.18),
+      ),
+      textSelectionTheme: TextSelectionThemeData(
+        cursorColor: SkillDrillsColors.lightOnSurface,
+        selectionColor: primary.withValues(alpha: 0.20),
+        selectionHandleColor: primary,
+      ),
+      colorScheme: lightTheme.colorScheme.copyWith(
+        primary: primary,
+        secondary: primary,
+      ),
+    );
+  }
+
+  /// Returns [darkTheme] with all primary-colour references replaced by
+  /// [primary].  The `colorScheme.primary` (used for surfaces/app bar in
+  /// dark mode) is preserved as [SkillDrillsColors.darkAppBar] so the
+  /// structural chrome stays dark; only `secondary` (the CTA / tint colour)
+  /// is replaced.
+  static ThemeData darkThemeWithPrimary(Color primary) {
+    return darkTheme.copyWith(
+      primaryColor: primary,
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: primary,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          shadowColor: Colors.transparent,
+          padding: _buttonPadding,
+          minimumSize: const Size(0, 48),
+          shape: _buttonShape,
+          textStyle: const TextStyle(
+            fontFamily: 'Choplin',
+            fontWeight: FontWeight.w700,
+            fontSize: 15,
+            letterSpacing: 0.4,
+          ),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: primary,
+          padding: _buttonPadding,
+          minimumSize: const Size(0, 48),
+          shape: _buttonShape,
+          textStyle: const TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 15,
+            letterSpacing: 0.4,
+          ),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: primary,
+          side: BorderSide(color: primary, width: 1.5),
+          padding: _buttonPadding,
+          minimumSize: const Size(0, 48),
+          shape: _buttonShape,
+          textStyle: const TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 15,
+            letterSpacing: 0.4,
+          ),
+        ),
+      ),
+      inputDecorationTheme: darkTheme.inputDecorationTheme.copyWith(
+        focusedBorder: OutlineInputBorder(
+          borderRadius: SkillDrillsRadius.smBorderRadius,
+          borderSide: BorderSide(color: primary, width: 2),
+        ),
+        prefixIconColor: WidgetStateColor.resolveWith((s) => s.contains(WidgetState.focused) ? primary : SkillDrillsColors.darkOnSurfaceMuted),
+        suffixIconColor: WidgetStateColor.resolveWith((s) => s.contains(WidgetState.focused) ? primary : SkillDrillsColors.darkOnSurfaceMuted),
+      ),
+      bottomNavigationBarTheme: darkTheme.bottomNavigationBarTheme.copyWith(selectedItemColor: primary),
+      snackBarTheme: darkTheme.snackBarTheme.copyWith(actionTextColor: primary),
+      progressIndicatorTheme: ProgressIndicatorThemeData(
+        color: primary,
+        linearTrackColor: primary.withValues(alpha: 0.15),
+      ),
+      textSelectionTheme: TextSelectionThemeData(
+        cursorColor: SkillDrillsColors.darkOnSurface,
+        selectionColor: primary.withValues(alpha: 0.25),
+        selectionHandleColor: primary,
+      ),
+      colorScheme: darkTheme.colorScheme.copyWith(
+        secondary: primary,
+      ),
+    );
+  }
 }

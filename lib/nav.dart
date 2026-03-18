@@ -19,6 +19,7 @@ import 'package:skilldrills/tabs/profile.dart';
 import 'package:skilldrills/tabs/routines.dart';
 import 'package:skilldrills/services/factory.dart';
 import 'package:skilldrills/tabs/Start.dart';
+import 'package:skilldrills/theme/active_activity_notifier.dart';
 import 'package:skilldrills/theme/theme.dart';
 import 'package:skilldrills/tabs/drills/drill_detail.dart';
 import 'package:skilldrills/tabs/routines/routine_detail.dart';
@@ -26,6 +27,7 @@ import 'package:skilldrills/tabs/profile/settings/settings.dart';
 import 'package:skilldrills/widgets/basic_title.dart';
 import 'package:sliding_up_panel/sliding_up_panel.dart';
 import 'package:skilldrills/nav_tab.dart';
+import 'package:provider/provider.dart';
 
 final PanelController sessionPanelController = PanelController();
 
@@ -44,14 +46,6 @@ class Nav extends StatefulWidget {
 
 /// This is the private State class that goes with MyStatefulWidget.
 class _NavState extends State<Nav> {
-  final lightLogo = SizedBox(
-    height: 60,
-    child: SvgPicture.asset(
-      'assets/images/logo/SkillDrills.svg',
-      semanticsLabel: 'Skill Drills',
-    ),
-  );
-
   // State variables
   PanelState _sessionPanelState = PanelState.CLOSED;
   double _bottomNavOffsetPercentage = 0;
@@ -176,10 +170,39 @@ class _NavState extends State<Nav> {
 
     setState(() {
       _selectedIndex = index;
-      _title = index == 2 ? lightLogo : _tabs[index].title;
+      _title = _tabs[index].title;
       _actions = _tabs[index].actions;
       _showLogoToolbar = (_tabs[index].title is Container) || index == 2;
     });
+  }
+
+  /// Builds the Start-tab logo: the activity emoji stacked above the
+  /// SkillDrills wordmark.  Displayed inside the collapsible [SliverAppBar]
+  /// header on the primary/home tab.
+  Widget _buildLogoWithEmoji(String emoji) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(
+          emoji,
+          style: const TextStyle(
+            fontSize: 28,
+            height: 1.0,
+            // Prevent inherited colour overrides from affecting the emoji.
+            color: Colors.white,
+          ),
+        ),
+        const SizedBox(height: 6),
+        SizedBox(
+          height: 34,
+          child: SvgPicture.asset(
+            'assets/images/logo/SkillDrills.svg',
+            semanticsLabel: 'Skill Drills',
+          ),
+        ),
+      ],
+    );
   }
 
   @override
@@ -187,11 +210,18 @@ class _NavState extends State<Nav> {
     super.initState();
 
     setState(() {
-      _title = lightLogo;
+      _title = _tabs[_selectedIndex].title;
       _actions = [];
     });
 
     bootstrap();
+
+    // Start the activity theme notifier so the UI skins itself to the
+    // primary active activity as soon as the user's data loads.
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid != null) {
+      activeActivityNotifier.start(uid);
+    }
 
     // Listen for subscription state changes and enforce the activity limit
     // immediately when the user's Pro entitlement becomes inactive (e.g. on
@@ -269,6 +299,7 @@ class _NavState extends State<Nav> {
         body: AnimatedBuilder(
           animation: sessionService, // listen to ChangeNotifier
           builder: (context, child) {
+            final activityIcon = context.watch<ActiveActivityNotifier>().icon;
             return SlidingUpPanel(
               backdropEnabled: true,
               controller: sessionPanelController,
@@ -307,7 +338,7 @@ class _NavState extends State<Nav> {
                           children: [
                             Expanded(
                               child: Text(
-                                sessionService.sessionTitle ?? SessionService.defaultSessionTitle(),
+                                '$activityIcon  ${sessionService.sessionTitle ?? SessionService.defaultSessionTitle()}',
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontFamily: "Choplin",
@@ -383,7 +414,7 @@ class _NavState extends State<Nav> {
                           collapseMode: CollapseMode.parallax,
                           titlePadding: _showLogoToolbar ? const EdgeInsets.only(left: 10, right: 10, bottom: 20, top: 20) : null,
                           centerTitle: _showLogoToolbar ? true : false,
-                          title: _title,
+                          title: _showLogoToolbar ? _buildLogoWithEmoji(activityIcon) : _title,
                           background: Container(
                             color: _showLogoToolbar ? Theme.of(context).primaryColor : Theme.of(context).scaffoldBackgroundColor,
                           ),

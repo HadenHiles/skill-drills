@@ -12,6 +12,7 @@ import 'package:skilldrills/nav.dart';
 import 'package:skilldrills/onboarding/welcome_screen.dart';
 import 'package:skilldrills/services/session.dart';
 import 'package:skilldrills/services/subscription.dart';
+import 'package:skilldrills/theme/active_activity_notifier.dart';
 import 'package:skilldrills/theme/settings_state_notifier.dart';
 import 'package:skilldrills/theme/theme.dart';
 import 'login.dart';
@@ -21,6 +22,7 @@ import 'models/settings.dart';
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 Settings settings = Settings(true, false);
 final sessionService = SessionService();
+final activeActivityNotifier = ActiveActivityNotifier();
 bool hasSeenWelcome = false;
 
 void main() async {
@@ -42,6 +44,7 @@ void main() async {
   if (currentUser != null) {
     await loginRevenueCatUser(currentUser.uid);
     await enforceActivityLimit(currentUser.uid);
+    activeActivityNotifier.start(currentUser.uid);
   }
 
   // Initialize Google Sign In (7.x singleton pattern).
@@ -70,8 +73,15 @@ void main() async {
   FlutterNativeSplash.remove();
 
   runApp(
-    ChangeNotifierProvider<SettingsStateNotifier>(
-      create: (context) => SettingsStateNotifier(),
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider<SettingsStateNotifier>(
+          create: (_) => SettingsStateNotifier(),
+        ),
+        ChangeNotifierProvider<ActiveActivityNotifier>.value(
+          value: activeActivityNotifier,
+        ),
+      ],
       child: SkillDrills(),
     ),
   );
@@ -92,15 +102,16 @@ class SkillDrills extends StatelessWidget {
       DeviceOrientation.portraitDown,
     ]);
 
-    return Consumer<SettingsStateNotifier>(
-      builder: (context, settingsState, child) {
+    return Consumer2<SettingsStateNotifier, ActiveActivityNotifier>(
+      builder: (context, settingsState, activityState, child) {
         settings = settingsState.settings;
+        final accent = activityState.accentColor;
 
         return MaterialApp(
           title: 'Skill Drills',
           navigatorKey: navigatorKey,
-          theme: SkillDrillsTheme.lightTheme,
-          darkTheme: SkillDrillsTheme.darkTheme,
+          theme: SkillDrillsTheme.lightThemeWithPrimary(accent),
+          darkTheme: SkillDrillsTheme.darkThemeWithPrimary(accent),
           themeMode: settingsState.settings.darkMode ? ThemeMode.dark : ThemeMode.system,
           builder: (context, child) => GestureDetector(
             behavior: HitTestBehavior.opaque,

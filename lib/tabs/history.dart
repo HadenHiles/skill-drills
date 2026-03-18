@@ -39,7 +39,7 @@ class _HistoryState extends State<History> with SingleTickerProviderStateMixin {
   /// Null = show all activities.
   String? _selectedFilterActivity;
 
-  late Stream<List<Session>> _sessionsStream;
+  Stream<List<Session>> _sessionsStream = const Stream.empty();
 
   /// Pro-only: maps "drillId_label" → best value for PB badges in the drill result tiles.
   Stream<Map<String, num>>? _pbStream;
@@ -157,26 +157,28 @@ class _HistoryState extends State<History> with SingleTickerProviderStateMixin {
         child: StreamBuilder<List<Session>>(
           stream: _sessionsStream,
           builder: (context, snap) {
-            if (!snap.hasData) {
+            if (snap.hasError) {
+              return _buildEmptyState(context, isError: true);
+            }
+            if (snap.connectionState == ConnectionState.waiting && !snap.hasData) {
               return const Center(child: CircularProgressIndicator());
             }
             // For Pro users, apply client-side filter when a chip is selected.
-            var sessions = snap.data!;
+            var sessions = snap.data ?? [];
             if (_isPro && _selectedFilterActivity != null) {
               sessions = sessions.where((s) => s.activityTitles.contains(_selectedFilterActivity)).toList();
             }
+            if (sessions.isEmpty) return _buildEmptyState(context);
             return Column(
               children: [
                 if (_isPro) _buildProFilterRow(snap.data!),
                 Expanded(
-                  child: sessions.isEmpty
-                      ? _buildEmptyState(context)
-                      : _pbStream != null
-                          ? StreamBuilder<Map<String, num>>(
-                              stream: _pbStream,
-                              builder: (context, pbSnap) => _buildList(context, sessions, pbSnap.data),
-                            )
-                          : _buildList(context, sessions, null),
+                  child: _pbStream != null
+                      ? StreamBuilder<Map<String, num>>(
+                          stream: _pbStream,
+                          builder: (context, pbSnap) => _buildList(context, sessions, pbSnap.data),
+                        )
+                      : _buildList(context, sessions, null),
                 ),
               ],
             );
@@ -216,7 +218,18 @@ class _HistoryState extends State<History> with SingleTickerProviderStateMixin {
     );
   }
 
-  Widget _buildEmptyState(BuildContext context) {
+  Widget _buildEmptyState(BuildContext context, {bool isError = false}) {
+    final isFiltered = !_isPro && _activeActivityTitle != null;
+    final title = isError
+        ? 'Could Not Load History'
+        : isFiltered
+            ? 'No ${_activeActivityTitle!} Sessions Yet'
+            : 'No Sessions Yet';
+    final body = isError
+        ? 'There was a problem loading your session history. Please try again later.'
+        : isFiltered
+            ? 'Sessions for ${_activeActivityTitle!} will appear here once you complete one.'
+            : 'Your completed sessions will appear here. Start a session from the home tab to begin tracking.';
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 40),
@@ -230,20 +243,20 @@ class _HistoryState extends State<History> with SingleTickerProviderStateMixin {
                 shape: BoxShape.circle,
               ),
               child: Icon(
-                Icons.history_rounded,
+                isError ? Icons.error_outline_rounded : Icons.history_rounded,
                 size: 52,
                 color: Theme.of(context).colorScheme.secondary,
               ),
             ),
             const SizedBox(height: SkillDrillsSpacing.lg),
             Text(
-              'No Sessions Yet',
+              title,
               style: Theme.of(context).textTheme.headlineSmall,
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: SkillDrillsSpacing.sm),
             Text(
-              'Your completed sessions will appear here. Start a session from the home tab to begin tracking.',
+              body,
               style: Theme.of(context).textTheme.bodyMedium,
               textAlign: TextAlign.center,
             ),
