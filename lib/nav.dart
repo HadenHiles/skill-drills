@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -17,6 +18,7 @@ import 'package:skilldrills/tabs/drills.dart';
 import 'package:skilldrills/tabs/history.dart';
 import 'package:skilldrills/tabs/profile.dart';
 import 'package:skilldrills/tabs/routines.dart';
+import 'package:skilldrills/models/firestore/activity.dart';
 import 'package:skilldrills/services/factory.dart';
 import 'package:skilldrills/tabs/Start.dart';
 import 'package:skilldrills/theme/active_activity_notifier.dart';
@@ -59,6 +61,14 @@ class _NavState extends State<Nav> {
   /// activity limit whenever the user's entitlement state changes (e.g. a
   /// subscription lapses while the app is in the foreground).
   StreamSubscription<CustomerInfo>? _subscriptionEnforcementListener;
+
+  /// All user activities (active + inactive), kept in sync for the switcher.
+  List<DocumentSnapshot<Map<String, dynamic>>> _allActivitiesSnapshot = [];
+  StreamSubscription<QuerySnapshot>? _activitiesSubscription;
+
+  /// Whether the current user holds a Pro subscription — used to apply
+  /// the free-tier auto-swap rule in [_switchToActivity].
+  bool _isNavPro = true; // optimistic default
   static final List<NavTab> _tabs = [
     NavTab(
       title: const BasicTitle(title: "Profile"),
@@ -184,7 +194,7 @@ class _NavState extends State<Nav> {
     // The circle icon mark spans roughly x=0..564 (≈28% of total width).
     // We cover that region + a small gap so the emoji clearly replaces it
     // and there is adequate breathing room before the 'SKILL DRILLS' text.
-    const double logoHeight = 44;
+    const double logoHeight = 50;
     const double svgAspect = 2019.16 / 704.84; // ≈ 2.865
     final double logoWidth = logoHeight * svgAspect; // ≈ 126 px
     // 30% covers the icon mark (28%) plus a small gap before the first letter.
@@ -214,8 +224,8 @@ class _NavState extends State<Nav> {
                 child: Text(
                   emoji,
                   style: const TextStyle(
-                    fontSize: 22,
-                    height: 1.0,
+                    fontSize: 28,
+                    height: 1.3,
                     // Prevent the theme's text colour from tinting the emoji.
                     color: Colors.white,
                   ),
@@ -256,6 +266,24 @@ class _NavState extends State<Nav> {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid != null) {
       activeActivityNotifier.start(uid);
+
+      // Keep a live snapshot of all activities so the switcher sheet can
+      // list them and the free-tier auto-swap logic has a current view.
+      _activitiesSubscription = FirebaseFirestore.instance
+          .collection('activities')
+          .doc(uid)
+          .collection('activities')
+          .orderBy('title')
+          .snapshots()
+          .listen((snap) {
+        if (mounted) {
+          setState(() => _allActivitiesSnapshot = List.of(snap.docs));
+        }
+      });
+
+      hasActiveSubscription().then((v) {
+        if (mounted) setState(() => _isNavPro = v);
+      });
     }
 
     // Listen for subscription state changes and enforce the activity limit
@@ -263,6 +291,7 @@ class _NavState extends State<Nav> {
     // subscription lapse or cancellation while the app is open).
     _subscriptionEnforcementListener = customerInfoStream.listen((info) {
       final isPro = info.entitlements.active.containsKey(kProEntitlement);
+      if (mounted) setState(() => _isNavPro = isPro);
       if (!isPro) {
         final uid = FirebaseAuth.instance.currentUser?.uid;
         if (uid != null) enforceActivityLimit(uid);
@@ -313,7 +342,197 @@ class _NavState extends State<Nav> {
   @override
   void dispose() {
     _subscriptionEnforcementListener?.cancel();
+    _activitiesSubscription?.cancel();
     super.dispose();
+  }
+
+  // ── Activity switcher ─────────────────────────────────────────────────────
+
+  /// Activates [activity], applying the free-tier auto-swap if needed.
+  Future<void> _switchToActivity(Activity activity) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    // Already the primary — nothing to do.
+    if (activity.id == activeActivityNotifier.primary?.id) return;
+
+    final actRef = FirebaseFirestore.instance
+        .collection('activities')
+        .doc(uid)
+        .collection('activities')
+        .doc(activity.reference!.id);
+
+    if (activity.isActive) {
+      // Already active but not the primary — bump timestamp to make it primary.
+      await actRef.update({kActivityLastActivatedAtField: FieldValue.serverTimestamp()});
+      return;
+    }
+
+    // Activating an inactive activity.
+    final allActivities = _allActivitiesSnapshot.map(Activity.fromSnapshot).toList();
+    final activeNow = allActivities.where((a) => a.isActive).toList();
+
+    if (!_isNavPro && activeNow.length >= kFreeActiveActivityLimit) {
+      // Auto-deactivate the activity activated the longest ago.
+      final oldest = activeNow.reduce((a, b) {
+        final ta = a.lastActivatedAt;
+        final tb = b.lastActivatedAt;
+        if (ta == null) return a;
+        if (tb == null) return b;
+        return ta.isBefore(tb) ? a : b;
+      });
+      final oldRef = FirebaseFirestore.instance
+          .collection('activities')
+          .doc(uid)
+          .collection('activities')
+          .doc(oldest.reference!.id);
+      final batch = FirebaseFirestore.instance.batch();
+      batch.update(oldRef, {'is_active': false});
+      batch.update(actRef, {'is_active': true, kActivityLastActivatedAtField: FieldValue.serverTimestamp()});
+      await batch.commit();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          duration: const Duration(seconds: 5),
+          content: Text('"${oldest.title}" was deactivated to make room. Upgrade to Pro for unlimited active activities.'),
+          action: SnackBarAction(
+            label: 'Upgrade',
+            onPressed: () => navigatorKey.currentState!.push(MaterialPageRoute(builder: (_) => const PaywallScreen())),
+          ),
+        ));
+      }
+    } else {
+      await actRef.update({'is_active': true, kActivityLastActivatedAtField: FieldValue.serverTimestamp()});
+    }
+  }
+
+  /// Shows a bottom sheet listing all activities so the user can switch
+  /// on the fly.
+  void _showActivitySwitcher(BuildContext context) {
+    final activities = _allActivitiesSnapshot.map(Activity.fromSnapshot).toList();
+    final primaryId = activeActivityNotifier.primary?.id;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Drag handle
+            Center(
+              child: Container(
+                margin: const EdgeInsets.symmetric(vertical: 10),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
+              child: Text(
+                'Switch Activity',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+              ),
+            ),
+            for (final activity in activities)
+              ListTile(
+                leading: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: activity.id == primaryId
+                        ? Theme.of(context).primaryColor.withValues(alpha: 0.12)
+                        : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.06),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Center(child: Text(activity.icon, style: const TextStyle(fontSize: 18))),
+                ),
+                title: Text(
+                  activity.title ?? '',
+                  style: TextStyle(
+                    fontWeight: activity.id == primaryId ? FontWeight.w700 : FontWeight.normal,
+                  ),
+                ),
+                trailing: activity.id == primaryId
+                    ? Icon(Icons.check_rounded, color: Theme.of(context).primaryColor)
+                    : activity.isActive
+                        ? Icon(Icons.circle, size: 8, color: Theme.of(context).primaryColor.withValues(alpha: 0.45))
+                        : null,
+                onTap: () async {
+                  Navigator.pop(ctx);
+                  await _switchToActivity(activity);
+                },
+              ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// The activity-switcher pill shown in the expanded Start-tab header.
+  Widget _buildActivitySwitcherPill(BuildContext context) {
+    final notifier = context.watch<ActiveActivityNotifier>();
+    final activityName = notifier.primary?.title ?? 'Select Activity';
+    return GestureDetector(
+      onTap: () => _showActivitySwitcher(context),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.18),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.25), width: 1),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(notifier.icon, style: const TextStyle(fontSize: 15, height: 1.2)),
+            const SizedBox(width: 7),
+            Text(
+              activityName,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+                letterSpacing: 0.2,
+              ),
+            ),
+            const SizedBox(width: 3),
+            const Icon(Icons.arrow_drop_down_rounded, color: Colors.white, size: 18),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// The full background of the Start-tab expanded header: logo + switcher pill.
+  Widget _buildStartTabBackground(BuildContext context, String activityIcon, bool isDefaultTheme) {
+    final headerColor = Theme.of(context).primaryColor;
+    return Container(
+      color: headerColor,
+      child: SafeArea(
+        bottom: false,
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              isDefaultTheme
+                  ? _buildDefaultLogo()
+                  : _buildLogoWithEmoji(activityIcon, headerColor),
+              const SizedBox(height: 14),
+              _buildActivitySwitcherPill(context),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -435,7 +654,7 @@ class _NavState extends State<Nav> {
                 headerSliverBuilder: (BuildContext context, bool innerBoxIsScrolled) {
                   return [
                     SliverAppBar(
-                      collapsedHeight: _showLogoToolbar ? 100 : 65,
+                      collapsedHeight: 65,
                       expandedHeight: _showLogoToolbar ? 200.0 : 140,
                       backgroundColor: Theme.of(context).colorScheme.surface,
                       iconTheme: Theme.of(context).iconTheme,
@@ -448,19 +667,15 @@ class _NavState extends State<Nav> {
                         ),
                         child: FlexibleSpaceBar(
                           collapseMode: CollapseMode.parallax,
-                          titlePadding: _showLogoToolbar ? const EdgeInsets.only(left: 10, right: 10, bottom: 20, top: 20) : null,
-                          centerTitle: _showLogoToolbar ? true : false,
-                          title: _showLogoToolbar
-                              ? (isDefaultTheme
-                                  ? _buildDefaultLogo()
-                                  : _buildLogoWithEmoji(
-                                      activityIcon,
-                                      Theme.of(context).primaryColor,
-                                    ))
-                              : _title,
-                          background: Container(
-                            color: _showLogoToolbar ? Theme.of(context).primaryColor : Theme.of(context).scaffoldBackgroundColor,
-                          ),
+                          // For the Start tab the logo + switcher pill live
+                          // entirely in the background (scrolls away on scroll).
+                          // For other tabs the title is the tab name.
+                          titlePadding: _showLogoToolbar ? EdgeInsets.zero : null,
+                          centerTitle: !_showLogoToolbar,
+                          title: _showLogoToolbar ? null : _title,
+                          background: _showLogoToolbar
+                              ? _buildStartTabBackground(context, activityIcon, isDefaultTheme)
+                              : Container(color: Theme.of(context).scaffoldBackgroundColor),
                         ),
                       ),
                       actions: _actions,
