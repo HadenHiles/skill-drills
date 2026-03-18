@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:settings_ui/settings_ui.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:skilldrills/login.dart';
 import 'package:skilldrills/main.dart';
 import 'package:skilldrills/models/settings.dart';
@@ -36,7 +35,6 @@ class _ProfileSettingsState extends State<ProfileSettings> {
   void initState() {
     super.initState();
 
-    _loadSettings();
     _loadSubscriptionStatus();
   }
 
@@ -58,20 +56,6 @@ class _ProfileSettingsState extends State<ProfileSettings> {
   void dispose() {
     _customerInfoSub?.cancel();
     super.dispose();
-  }
-
-  //Loading counter value on start
-  _loadSettings() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    bool vibrate = prefs.getBool('vibrate') ?? false; // Provide default if null
-    bool darkMode = prefs.getBool('dark_mode') ?? false; // Provide default if null
-
-    setState(() {
-      _vibrate = vibrate;
-      _darkMode = darkMode;
-      settings.vibrate = vibrate; // Update the settings object
-      settings.darkMode = darkMode; // Update the settings object
-    });
   }
 
   @override
@@ -136,17 +120,12 @@ class _ProfileSettingsState extends State<ProfileSettings> {
                     Icons.vibration,
                     color: Theme.of(context).colorScheme.onSurface,
                   ),
-                  onToggle: (bool value) async {
-                    SharedPreferences prefs = await SharedPreferences.getInstance();
+                  onToggle: (bool value) {
                     setState(() {
                       _vibrate = value;
                       settings.vibrate = value;
-                      prefs.setBool('vibrate', value);
                     });
-
-                    if (context.mounted) {
-                      Provider.of<SettingsStateNotifier>(context, listen: false).updateSettings(Settings(value, _darkMode));
-                    }
+                    Provider.of<SettingsStateNotifier>(context, listen: false).updateSettings(Settings(value, _darkMode));
                   },
                 ),
                 SettingsTile.switchTile(
@@ -159,17 +138,12 @@ class _ProfileSettingsState extends State<ProfileSettings> {
                     Icons.brightness_2,
                     color: Theme.of(context).colorScheme.onSurface,
                   ),
-                  onToggle: (bool value) async {
-                    SharedPreferences prefs = await SharedPreferences.getInstance();
+                  onToggle: (bool value) {
                     setState(() {
                       _darkMode = value;
                       settings.darkMode = value;
-                      prefs.setBool('dark_mode', value);
                     });
-
-                    if (context.mounted) {
-                      Provider.of<SettingsStateNotifier>(context, listen: false).updateSettings(Settings(_vibrate, value));
-                    }
+                    Provider.of<SettingsStateNotifier>(context, listen: false).updateSettings(Settings(_vibrate, value));
                   },
                 ),
               ],

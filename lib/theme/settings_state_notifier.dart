@@ -3,7 +3,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:skilldrills/models/settings.dart';
 
 class SettingsStateNotifier extends ChangeNotifier {
-  Settings _settings = Settings(false, false); // Initialize with defaults
+  late Settings _settings;
+
+  /// Accepts the already-loaded [Settings] so that the notifier always starts
+  /// in sync with what was persisted to SharedPreferences in [main()].
+  SettingsStateNotifier(Settings initial) : _settings = initial;
 
   Settings get settings => _settings;
 

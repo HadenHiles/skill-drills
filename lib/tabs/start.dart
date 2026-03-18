@@ -115,6 +115,24 @@ class _StartState extends State<Start> with SingleTickerProviderStateMixin {
 
   Future<void> _pickActivityAndStart() async {
     if (!mounted) return;
+
+    // If the user already has a primary active activity, skip the picker and
+    // start immediately with that activity.
+    final primary = activeActivityNotifier.primary;
+    if (primary != null) {
+      final terminology = ActivityTerminology.defaultsFor(primary.title);
+      sessionService.start(
+        title: SessionService.defaultSessionTitle(),
+        activityTitle: primary.title,
+        activityIcon: primary.icon,
+        setsLabel: primary.setsLabel.isNotEmpty ? primary.setsLabel : terminology.setsLabel,
+        repsLabel: primary.repsLabel.isNotEmpty ? primary.repsLabel : terminology.repsLabel,
+      );
+      widget.sessionPanelController?.open();
+      return;
+    }
+
+    // No active activity set — show the picker.
     final activity = await showModalBottomSheet<Activity>(
       context: context,
       isScrollControlled: true,

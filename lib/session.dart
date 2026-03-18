@@ -44,12 +44,17 @@ class _SessionState extends State<Session> with SingleTickerProviderStateMixin {
   bool _isPro = false;
   StreamSubscription<dynamic>? _customerInfoSub;
 
+  // Temporary "Add Drill" button highlight when a fresh empty session opens.
+  bool _highlightAddDrill = false;
+  bool _wasRunning = false;
+  Timer? _highlightTimer;
+
   @override
   void initState() {
     super.initState();
     _pulseCtrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1400),
+      duration: const Duration(milliseconds: 600),
     )..repeat(reverse: true);
     _pulseAnim = Tween<double>(begin: 0.7, end: 1.0).animate(
       CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut),
@@ -57,6 +62,7 @@ class _SessionState extends State<Session> with SingleTickerProviderStateMixin {
     _pageController = PageController(initialPage: sessionService.currentDrillIndex);
     _lastDrillCount = sessionService.drillResults.length;
     _lastDrillIndex = sessionService.currentDrillIndex;
+    _wasRunning = sessionService.isRunning;
     sessionService.addListener(_onServiceChanged);
     _initProStatus();
   }
@@ -72,6 +78,7 @@ class _SessionState extends State<Session> with SingleTickerProviderStateMixin {
 
   @override
   void dispose() {
+    _highlightTimer?.cancel();
     sessionService.removeListener(_onServiceChanged);
     _customerInfoSub?.cancel();
     _pulseCtrl.dispose();
@@ -84,6 +91,21 @@ class _SessionState extends State<Session> with SingleTickerProviderStateMixin {
   void _onServiceChanged() {
     final drills = sessionService.drillResults;
     final newIndex = sessionService.currentDrillIndex;
+
+    // Detect session start with no drills → briefly highlight "Add Drill".
+    final nowRunning = sessionService.isRunning;
+    if (nowRunning && !_wasRunning && drills.isEmpty) {
+      _highlightTimer?.cancel();
+      setState(() => _highlightAddDrill = true);
+      _highlightTimer = Timer(const Duration(milliseconds: 1800), () {
+        if (mounted) setState(() => _highlightAddDrill = false);
+      });
+    }
+    if (!nowRunning && _wasRunning) {
+      _highlightTimer?.cancel();
+      if (mounted) setState(() => _highlightAddDrill = false);
+    }
+    _wasRunning = nowRunning;
 
     if (drills.length != _lastDrillCount) {
       if (drills.length > _lastDrillCount && _pageController.hasClients) {
@@ -135,6 +157,11 @@ class _SessionState extends State<Session> with SingleTickerProviderStateMixin {
   }
 
   void _addDrill() {
+    // Dismiss the onboarding highlight the moment the user responds to it.
+    if (_highlightAddDrill) {
+      _highlightTimer?.cancel();
+      setState(() => _highlightAddDrill = false);
+    }
     showAddDrillSheet(
       context,
       nextOrder: sessionService.drillResults.length,
@@ -522,11 +549,38 @@ class _SessionState extends State<Session> with SingleTickerProviderStateMixin {
           if (drills.isEmpty)
             Expanded(
               flex: 2,
-              child: ElevatedButton.icon(
-                icon: const Icon(Icons.add_rounded, size: 18),
-                label: const Text('Add Drill'),
-                onPressed: saving ? null : _addDrill,
-              ),
+              child: _highlightAddDrill
+                  ? AnimatedBuilder(
+                      animation: _pulseAnim,
+                      builder: (context, child) => Transform.scale(
+                        scale: 1.0 + (_pulseAnim.value - 0.7) * 0.06,
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(8),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Theme.of(context).primaryColor.withAlpha(
+                                      ((_pulseAnim.value - 0.7) / 0.3 * 200).round().clamp(0, 255),
+                                    ),
+                                blurRadius: 18 + 14 * _pulseAnim.value,
+                                spreadRadius: 3 + 3 * _pulseAnim.value,
+                              ),
+                            ],
+                          ),
+                          child: child!,
+                        ),
+                      ),
+                      child: ElevatedButton.icon(
+                        icon: const Icon(Icons.add_rounded, size: 18),
+                        label: const Text('Add Drill'),
+                        onPressed: saving ? null : _addDrill,
+                      ),
+                    )
+                  : ElevatedButton.icon(
+                      icon: const Icon(Icons.add_rounded, size: 18),
+                      label: const Text('Add Drill'),
+                      onPressed: saving ? null : _addDrill,
+                    ),
             )
           else
             Expanded(

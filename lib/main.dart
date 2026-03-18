@@ -78,7 +78,7 @@ void main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider<SettingsStateNotifier>(
-          create: (_) => SettingsStateNotifier(),
+          create: (_) => SettingsStateNotifier(settings),
         ),
         ChangeNotifierProvider<ActiveActivityNotifier>.value(
           value: activeActivityNotifier,
