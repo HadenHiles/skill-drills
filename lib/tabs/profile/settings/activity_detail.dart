@@ -318,7 +318,7 @@ class _ActivityDetailState extends State<ActivityDetail> {
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 2, 20, 12),
                 child: Text(
-                  "Customise how drills, sets, and reps are labelled for this activity.",
+                  "Customize how drills, sets, and reps are labelled for this activity.",
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.55),
                       ),

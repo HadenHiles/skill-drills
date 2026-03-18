@@ -382,7 +382,7 @@ class _ActivityPickerPage extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                maxActivities == null ? 'You have Pro — select as many as you like.' : 'Pick up to $maxActivities activities. You can change this later.',
+                maxActivities == null ? 'You have Pro — select as many as you like.' : 'Select your primary activity. You can change this later.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: Colors.white.withValues(alpha: 0.75),
@@ -592,7 +592,7 @@ class _PreferencesPage extends StatelessWidget {
           _PrefToggleCard(
             icon: Icons.library_books_outlined,
             title: 'Include template drills',
-            subtitle: 'Start with pre-built drill types tailored to your selected activities. You can delete or customise them any time.',
+            subtitle: 'Start with pre-built drill types tailored to your selected activity. You can delete or customize them any time.',
             value: includeDefaultDrills,
             onChanged: onIncludeDefaultDrillsChanged,
           ),
