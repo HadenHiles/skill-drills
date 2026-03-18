@@ -148,7 +148,7 @@ class _DrillsState extends State<Drills> with SingleTickerProviderStateMixin {
                 }
                 if (visible.isEmpty) return _emptyState(context);
 
-                return _groupedList(context, visible, grouped, bootstrapping);
+                return _groupedList(context, visible, grouped, bootstrapping, activities.length);
               },
             );
           },
@@ -164,6 +164,7 @@ class _DrillsState extends State<Drills> with SingleTickerProviderStateMixin {
     List<Activity> activities,
     Map<String, List<Drill>> grouped,
     bool bootstrapping,
+    int totalActiveActivities,
   ) {
     return CustomScrollView(
       slivers: [
@@ -187,6 +188,7 @@ class _DrillsState extends State<Drills> with SingleTickerProviderStateMixin {
                     deleteCallback: _deleteDrill,
                     isPro: _isPro,
                     uid: auth.currentUser!.uid,
+                    singleActivity: totalActiveActivities == 1,
                   ),
                 );
               },
@@ -328,6 +330,10 @@ class _ActivitySection extends StatelessWidget {
   final Function deleteCallback;
   final bool isPro;
   final String uid;
+  /// When true the section is always fully expanded and the collapse
+  /// chevron / tap target are hidden (only one active activity — no need
+  /// to manage which section is open).
+  final bool singleActivity;
 
   const _ActivitySection({
     required this.activityTitle,
@@ -337,6 +343,7 @@ class _ActivitySection extends StatelessWidget {
     required this.deleteCallback,
     required this.isPro,
     required this.uid,
+    this.singleActivity = false,
   });
 
   Future<void> _reorderPinned(List<Drill> pinned, int oldIndex, int newIndex) async {
@@ -358,6 +365,10 @@ class _ActivitySection extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     final emoji = _activityEmoji[activityTitle] ?? '🏅';
 
+    // When there is only one active activity the section is always open —
+    // treat `expanded` as true and suppress the interactive header.
+    final effectiveExpanded = singleActivity ? true : expanded;
+
     return Material(
       color: colorScheme.surface,
       borderRadius: SkillDrillsRadius.mdBorderRadius,
@@ -367,7 +378,7 @@ class _ActivitySection extends StatelessWidget {
         children: [
           // ── Header ──────────────────────────────────────────────────
           InkWell(
-            onTap: onHeaderTap,
+            onTap: singleActivity ? null : onHeaderTap,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
               child: Row(
@@ -402,17 +413,18 @@ class _ActivitySection extends StatelessWidget {
                     ),
                     const SizedBox(width: 8),
                   ],
-                  // Animated chevron
-                  AnimatedRotation(
-                    turns: expanded ? 0 : -0.25,
-                    duration: const Duration(milliseconds: 250),
-                    curve: Curves.easeInOut,
-                    child: Icon(
-                      Icons.expand_more_rounded,
-                      size: 22,
-                      color: colorScheme.onSurface.withValues(alpha: 0.4),
+                  // Animated chevron — hidden when only one activity exists
+                  if (!singleActivity)
+                    AnimatedRotation(
+                      turns: expanded ? 0 : -0.25,
+                      duration: const Duration(milliseconds: 250),
+                      curve: Curves.easeInOut,
+                      child: Icon(
+                        Icons.expand_more_rounded,
+                        size: 22,
+                        color: colorScheme.onSurface.withValues(alpha: 0.4),
+                      ),
                     ),
-                  ),
                 ],
               ),
             ),
@@ -423,7 +435,7 @@ class _ActivitySection extends StatelessWidget {
             duration: const Duration(milliseconds: 280),
             curve: Curves.easeInOut,
             alignment: Alignment.topCenter,
-            child: expanded
+            child: effectiveExpanded
                 ? Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [

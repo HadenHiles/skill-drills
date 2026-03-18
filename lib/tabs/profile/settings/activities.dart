@@ -230,6 +230,7 @@ class _ActivitiesSettingsState extends State<ActivitiesSettings> {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
+                duration: const Duration(seconds: 5),
                 content: Text(
                   '"${oldest.title}" was deactivated to make room. '
                   'Upgrade to Pro for unlimited active activities.',
