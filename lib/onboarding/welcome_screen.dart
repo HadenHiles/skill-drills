@@ -31,6 +31,13 @@ const Map<String, String> _activityEmoji = {
   'Lacrosse': '🥍',
   'Gymnastics': '🤸',
   'Guitar': '🎸',
+  'Chess': '♟️',
+  'Swimming': '🏊',
+  'Yoga': '🧘',
+  'Cycling': '🚴',
+  'Football': '🏈',
+  'Piano': '🎹',
+  'Custom': '⚙️',
 };
 
 // ─────────────────────────────────────────────────────────────────────────────

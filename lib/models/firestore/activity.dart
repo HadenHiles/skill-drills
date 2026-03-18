@@ -52,7 +52,25 @@ class ActivityTerminology {
       // Guitar: musicians do "exercises"; multiple "passes" through a piece
       case 'Guitar':
         return const ActivityTerminology(drillLabel: 'Exercise', setsLabel: 'Passes');
-      // All other activities (Hockey, Basketball, Soccer, Pickleball, Lacrosse, custom)
+      // Chess: each practice item is an "exercise" (puzzle, study, analysis)
+      case 'Chess':
+        return const ActivityTerminology(drillLabel: 'Exercise');
+      // Swimming: each training block is a "set"; individual efforts are "lengths"
+      case 'Swimming':
+        return const ActivityTerminology(drillLabel: 'Set', repsLabel: 'Lengths');
+      // Yoga: poses and sequences are grouped in "rounds"
+      case 'Yoga':
+        return const ActivityTerminology(setsLabel: 'Rounds');
+      // Cycling: workouts grouped in "intervals"; laps as the rep unit
+      case 'Cycling':
+        return const ActivityTerminology(drillLabel: 'Workout', setsLabel: 'Intervals', repsLabel: 'Laps');
+      // Football: practice blocks grouped as "rounds"
+      case 'Football':
+        return const ActivityTerminology(setsLabel: 'Rounds');
+      // Piano: musicians do "exercises"; multiple "passes" through a piece
+      case 'Piano':
+        return const ActivityTerminology(drillLabel: 'Exercise', setsLabel: 'Passes');
+      // All other activities (Hockey, Basketball, Soccer, Pickleball, Lacrosse, Custom)
       default:
         return const ActivityTerminology();
     }
@@ -89,6 +107,20 @@ class ActivityTerminology {
         return '🤸';
       case 'Guitar':
         return '🎸';
+      case 'Chess':
+        return '♟️';
+      case 'Swimming':
+        return '🏊';
+      case 'Yoga':
+        return '🧘';
+      case 'Cycling':
+        return '🚴';
+      case 'Football':
+        return '🏈';
+      case 'Piano':
+        return '🎹';
+      case 'Custom':
+        return '⚙️';
       default:
         return '🎯';
     }

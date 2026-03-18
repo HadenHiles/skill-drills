@@ -233,6 +233,13 @@ Future<void> resetActivities({List<String> selectedActivities = const []}) async
     'Lacrosse': ['Catching', 'Passing', 'Shooting', 'Cradling', 'Ground Balls', 'Footwork'],
     'Gymnastics': ['Strength', 'Flexibility', 'Balance', 'Handstand', 'Core', 'Conditioning'],
     'Guitar': ['Scales', 'Chords', 'Strumming', 'Picking', 'Rhythm', 'Theory'],
+    'Chess': ['Opening Theory', 'Tactics', 'Endgame', 'Middle Game', 'Strategy', 'Analysis'],
+    'Swimming': ['Freestyle', 'Backstroke', 'Breaststroke', 'Butterfly', 'Starts & Turns', 'Endurance'],
+    'Yoga': ['Flexibility', 'Strength', 'Balance', 'Breathing', 'Inversions', 'Flow'],
+    'Cycling': ['Endurance', 'Sprints', 'Climbing', 'Cadence', 'Technique', 'Recovery'],
+    'Football': ['Throwing', 'Route Running', 'Catching', 'Blocking', 'Defense', 'Conditioning'],
+    'Piano': ['Scales', 'Chords', 'Arpeggios', 'Sight Reading', 'Repertoire', 'Theory'],
+    'Custom': ['Fundamentals', 'Conditioning', 'Technique', 'Practice'],
   };
 
   // Track how many activities have been activated so far — used to enforce the
@@ -363,6 +370,12 @@ List<DrillType> _allDrillTypes() => [
       ..._lacrosseDrillTypes(),
       ..._gymnasticsDrillTypes(),
       ..._guitarDrillTypes(),
+      ..._chessDrillTypes(),
+      ..._swimmingDrillTypes(),
+      ..._yogaDrillTypes(),
+      ..._cyclingDrillTypes(),
+      ..._footballDrillTypes(),
+      ..._pianoDrillTypes(),
     ];
 
 // ── Universal ─────────────────────────────────────────────────────────────────
@@ -928,6 +941,185 @@ List<DrillType> _guitarDrillTypes() => [
           MeasurementTarget('amount', 'Target Quality', 3, null, false) as Measurement,
         ],
     ];
+
+// ── Chess ─────────────────────────────────────────────────────────────────────
+
+List<DrillType> _chessDrillTypes() => [
+      // Tactics / puzzle training: solved + attempted + session time
+      DrillType('chess_puzzles', 'Tactics / Puzzle Training', 'Puzzles solved, accuracy, and session time', 0, 64, activityKey: 'Chess')
+        ..measurements = [
+          MeasurementResult('amount', 'Puzzles Solved', 1, null) as Measurement,
+          MeasurementResult('amount', 'Attempted', 2, null) as Measurement,
+          MeasurementResult('duration', 'Session Time', 3, null) as Measurement,
+          MeasurementTarget('amount', 'Target Solved', 4, null, false) as Measurement,
+        ],
+      // Game analysis: games reviewed + quality
+      DrillType('chess_analysis', 'Game Analysis', 'Games reviewed and self-rated annotation quality', 0, 65, activityKey: 'Chess')
+        ..measurements = [
+          MeasurementResult('amount', 'Games Reviewed', 1, null) as Measurement,
+          MeasurementResult('amount', 'Quality (1–10)', 2, null) as Measurement,
+          MeasurementTarget('amount', 'Target Quality', 3, null, false) as Measurement,
+        ],
+      // Opening / theory: correct moves recalled / positions tested
+      DrillType('chess_opening', 'Opening / Theory Study', 'Correct moves recalled out of total positions tested', 0, 66, activityKey: 'Chess')
+        ..measurements = [
+          MeasurementResult('amount', 'Correct Moves', 1, null) as Measurement,
+          MeasurementResult('amount', 'Positions Tested', 2, null) as Measurement,
+          MeasurementTarget('amount', 'Target Correct', 3, null, false) as Measurement,
+        ],
+    ];
+
+// ── Swimming ──────────────────────────────────────────────────────────────────
+
+List<DrillType> _swimmingDrillTypes() => [
+      // Intervals: distance + split + reps + RPE
+      DrillType('swim_interval', 'Swim Intervals', 'Distance, split time, reps, and effort for interval training', 0, 67, activityKey: 'Swimming')
+        ..measurements = [
+          MeasurementResult('amount', 'Distance (m)', 1, null) as Measurement,
+          MeasurementResult('duration', 'Split Time', 2, null) as Measurement,
+          MeasurementResult('amount', 'Reps', 3, null) as Measurement,
+          MeasurementResult('rpe', 'RPE (1–10)', 4, null) as Measurement,
+          MeasurementTarget('duration', 'Target Split', 5, null, true) as Measurement,
+          MeasurementTarget('rpe', 'Target RPE', 6, null, false) as Measurement,
+        ],
+      // Stroke technique: clean laps / total laps
+      DrillType('swim_drill', 'Stroke Technique Drill', 'Clean laps out of total laps for stroke mechanics focus', 0, 68, activityKey: 'Swimming')
+        ..measurements = [
+          MeasurementResult('amount', 'Clean Laps', 1, null) as Measurement,
+          MeasurementResult('amount', 'Total Laps', 2, null) as Measurement,
+          MeasurementTarget('amount', 'Target Clean', 3, null, false) as Measurement,
+        ],
+      // Endurance / distance set: total distance + time + RPE
+      DrillType('swim_endurance', 'Endurance / Distance Set', 'Total distance and time for aerobic swim sets', 0, 69, activityKey: 'Swimming')
+        ..measurements = [
+          MeasurementResult('amount', 'Distance (m)', 1, null) as Measurement,
+          MeasurementResult('duration', 'Total Time', 2, null) as Measurement,
+          MeasurementResult('rpe', 'RPE (1–10)', 3, null) as Measurement,
+          MeasurementTarget('duration', 'Target Time', 4, null, true) as Measurement,
+          MeasurementTarget('rpe', 'Target RPE', 5, null, false) as Measurement,
+        ],
+    ];
+
+// ── Yoga ──────────────────────────────────────────────────────────────────────
+
+List<DrillType> _yogaDrillTypes() => [
+      // Pose hold: hold time + sets
+      DrillType('yoga_hold', 'Pose Hold', 'Hold time and sets for static pose work', 0, 70, activityKey: 'Yoga')
+        ..measurements = [
+          MeasurementResult('duration', 'Hold Time', 1, null) as Measurement,
+          MeasurementResult('amount', 'Sets', 2, null) as Measurement,
+          MeasurementTarget('duration', 'Target Hold', 3, null, false) as Measurement,
+        ],
+      // Flow sequence: sequences completed + quality
+      DrillType('yoga_flow', 'Flow Sequence', 'Full sequences completed with self-rated quality', 0, 71, activityKey: 'Yoga')
+        ..measurements = [
+          MeasurementResult('amount', 'Sequences', 1, null) as Measurement,
+          MeasurementResult('amount', 'Quality (1–10)', 2, null) as Measurement,
+          MeasurementTarget('amount', 'Target Sequences', 3, null, false) as Measurement,
+        ],
+      // Breathwork / pranayama: rounds + total duration
+      DrillType('yoga_breath', 'Breathwork / Pranayama', 'Rounds and total duration for breathing practice', 0, 72, activityKey: 'Yoga')
+        ..measurements = [
+          MeasurementResult('amount', 'Rounds', 1, null) as Measurement,
+          MeasurementResult('duration', 'Total Duration', 2, null) as Measurement,
+          MeasurementTarget('amount', 'Target Rounds', 3, null, false) as Measurement,
+        ],
+    ];
+
+// ── Cycling ───────────────────────────────────────────────────────────────────
+
+List<DrillType> _cyclingDrillTypes() => [
+      // Cycling intervals: distance + best split + reps + RPE
+      DrillType('cycling_interval', 'Cycling Intervals', 'Distance, best split, reps, and effort for interval sessions', 0, 73, activityKey: 'Cycling')
+        ..measurements = [
+          MeasurementResult('amount', 'Distance (km)', 1, null) as Measurement,
+          MeasurementResult('duration', 'Best Split', 2, null) as Measurement,
+          MeasurementResult('amount', 'Reps', 3, null) as Measurement,
+          MeasurementResult('rpe', 'RPE (1–10)', 4, null) as Measurement,
+          MeasurementTarget('duration', 'Target Split', 5, null, true) as Measurement,
+          MeasurementTarget('rpe', 'Target RPE', 6, null, false) as Measurement,
+        ],
+      // Steady / endurance ride: distance + total time + RPE
+      DrillType('cycling_steady', 'Steady / Endurance Ride', 'Total distance, ride time, and sustained effort rating', 0, 74, activityKey: 'Cycling')
+        ..measurements = [
+          MeasurementResult('amount', 'Distance (km)', 1, null) as Measurement,
+          MeasurementResult('duration', 'Total Time', 2, null) as Measurement,
+          MeasurementResult('rpe', 'RPE (1–10)', 3, null) as Measurement,
+          MeasurementTarget('duration', 'Target Time', 4, null, false) as Measurement,
+          MeasurementTarget('rpe', 'Target RPE', 5, null, false) as Measurement,
+        ],
+      // Cadence drill: peak RPM + duration
+      DrillType('cycling_cadence', 'Cadence Drill', 'Peak RPM achieved and drill duration for cadence work', 0, 75, activityKey: 'Cycling')
+        ..measurements = [
+          MeasurementResult('amount', 'Peak RPM', 1, null) as Measurement,
+          MeasurementResult('duration', 'Duration', 2, null) as Measurement,
+          MeasurementTarget('amount', 'Target RPM', 3, null, false) as Measurement,
+          MeasurementTarget('duration', 'Target Duration', 4, null, false) as Measurement,
+        ],
+    ];
+
+// ── Football ──────────────────────────────────────────────────────────────────
+
+List<DrillType> _footballDrillTypes() => [
+      // Throwing accuracy: on-target throws / attempts
+      DrillType('football_throwing', 'Throwing Accuracy', 'On-target throws out of total attempts', 0, 76, activityKey: 'Football')
+        ..measurements = [
+          MeasurementResult('amount', 'On Target', 1, null) as Measurement,
+          MeasurementResult('amount', 'Attempts', 2, null) as Measurement,
+          MeasurementTarget('amount', 'Target On Target', 3, null, false) as Measurement,
+        ],
+      // Agility / route drill: best time + reps + RPE
+      DrillType('football_agility', 'Agility / Route Drill', 'Timed agility or route drill with effort rating', 0, 77, activityKey: 'Football')
+        ..measurements = [
+          MeasurementResult('duration', 'Best Time', 1, null) as Measurement,
+          MeasurementResult('amount', 'Reps', 2, null) as Measurement,
+          MeasurementResult('rpe', 'RPE (1–10)', 3, null) as Measurement,
+          MeasurementTarget('duration', 'Target Time', 4, null, true) as Measurement,
+          MeasurementTarget('rpe', 'Target RPE', 5, null, false) as Measurement,
+        ],
+      // Catching / receiving: caught / attempted
+      DrillType('football_catching', 'Catching / Receiving', 'Balls caught cleanly out of total thrown', 0, 78, activityKey: 'Football')
+        ..measurements = [
+          MeasurementResult('amount', 'Caught', 1, null) as Measurement,
+          MeasurementResult('amount', 'Attempted', 2, null) as Measurement,
+          MeasurementTarget('amount', 'Target Caught', 3, null, false) as Measurement,
+        ],
+    ];
+
+// ── Piano ─────────────────────────────────────────────────────────────────────
+
+List<DrillType> _pianoDrillTypes() => [
+      // Scale / exercise: BPM achieved + clean runs + total runs
+      DrillType('piano_scale', 'Scale / Exercise (BPM)', 'BPM achieved and clean runs for scale and exercise training', 0, 79, activityKey: 'Piano')
+        ..measurements = [
+          MeasurementResult('amount', 'BPM Achieved', 1, null) as Measurement,
+          MeasurementResult('amount', 'Clean Runs', 2, null) as Measurement,
+          MeasurementResult('amount', 'Total Runs', 3, null) as Measurement,
+          MeasurementTarget('amount', 'Target BPM', 4, null, false) as Measurement,
+        ],
+      // Chord / voicing transitions: changes per minute + clean streak
+      DrillType('piano_chord', 'Chord / Voicing Transitions', 'Changes per minute and longest clean streak', 0, 80, activityKey: 'Piano')
+        ..measurements = [
+          MeasurementResult('amount', 'Changes / Min', 1, null) as Measurement,
+          MeasurementResult('amount', 'Best Streak (clean)', 2, null) as Measurement,
+          MeasurementTarget('amount', 'Target Changes / Min', 3, null, false) as Measurement,
+        ],
+      // Technical exercise: BPM achieved + clean reps (Hanon, Czerny, etc.)
+      DrillType('piano_technique', 'Technical Exercise (BPM)', 'BPM achieved and clean executions for technique patterns', 0, 81, activityKey: 'Piano')
+        ..measurements = [
+          MeasurementResult('amount', 'BPM Achieved', 1, null) as Measurement,
+          MeasurementResult('amount', 'Clean Reps / Sets', 2, null) as Measurement,
+          MeasurementTarget('amount', 'Target BPM', 3, null, false) as Measurement,
+        ],
+      // Piece / repertoire: run-throughs + quality
+      DrillType('piano_repertoire', 'Piece / Repertoire', 'Full run-throughs with self-rated quality (1-10)', 0, 82, activityKey: 'Piano')
+        ..measurements = [
+          MeasurementResult('amount', 'Run-throughs', 1, null) as Measurement,
+          MeasurementResult('amount', 'Quality (1–10)', 2, null) as Measurement,
+          MeasurementTarget('amount', 'Target Quality', 3, null, false) as Measurement,
+        ],
+    ];
+
 // DEFAULT DRILLS  (seeded on first launch only — skipped if any drills exist)
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -2459,6 +2651,352 @@ List<_DrillSpec> _defaultDrillSpecs() => [
           drillTypeId: 'guitar_chord',
           skillTitles: ['Theory', 'Chords'],
           measurements: [MeasurementResult('amount', 'Positions (clean)', 1, null) as Measurement, MeasurementResult('amount', 'Total Positions', 2, null) as Measurement, MeasurementTarget('amount', 'Target Positions', 3, 5, false) as Measurement]),
+      // ── Chess ───────────────────────────────────────────────────────────────────
+      _DrillSpec(
+          title: 'Tactics Puzzle Sprint',
+          description:
+              'Open chess.com/tactics or lichess.org/training. Set a 15-minute timer and solve as many puzzles as possible — no hints, no engine. Count solved puzzles and note which motifs trip you up most (pins, forks, back-rank mates, skewers). Tactics are the #1 rating-improvement lever at every level below 1800. Players who do 15 minutes of daily tactics improve their rating faster than players who do any other single activity.',
+          activityTitle: 'Chess',
+          drillTypeId: 'chess_puzzles',
+          skillTitles: ['Tactics'],
+          measurements: [MeasurementResult('amount', 'Puzzles Solved', 1, null) as Measurement, MeasurementResult('amount', 'Puzzles Attempted', 2, null) as Measurement, MeasurementResult('duration', 'Session Time', 3, null) as Measurement, MeasurementTarget('amount', 'Target Solved', 4, 15, false) as Measurement]),
+      _DrillSpec(
+          title: 'Opening Repertoire Recall',
+          description:
+              'Sit at a board or game editor with no reference material. Play through your prepared repertoire lines from memory — each move recalled without hesitation scores 1 point. Stop when you deviate unexpectedly, note the position, resume from the next branch. Spaced-retrieval practice ingrains main lines far faster than passively reviewing annotated games. Cover all lines (as White and as Black) in one session.',
+          activityTitle: 'Chess',
+          drillTypeId: 'chess_opening',
+          skillTitles: ['Opening Theory'],
+          measurements: [MeasurementResult('amount', 'Correct Moves', 1, null) as Measurement, MeasurementResult('amount', 'Positions Tested', 2, null) as Measurement, MeasurementTarget('amount', 'Target Correct', 3, 20, false) as Measurement]),
+      _DrillSpec(
+          title: 'K+P vs K Endgame Conversion',
+          description:
+              'Set up King + pawn vs King positions: pawn on various files (a–h) and ranks (3–6), defending king placed differently each time. Use the rule of the square and the opposition to either promote or correctly hold a draw. The K+P vs K endgame is the most fundamental of all endgames — every pawn ending reduces to it. Most players who can convert this correctly will win 25–40% more technically drawn games.',
+          activityTitle: 'Chess',
+          drillTypeId: 'chess_analysis',
+          skillTitles: ['Endgame'],
+          measurements: [MeasurementResult('amount', 'Positions Correct', 1, null) as Measurement, MeasurementResult('amount', 'Positions Attempted', 2, null) as Measurement, MeasurementTarget('amount', 'Target Correct', 3, 8, false) as Measurement]),
+      _DrillSpec(
+          title: 'Post-Game Annotation',
+          description:
+              'After any game (over-the-board or online), annotate it within 24 hours WITHOUT an engine. Write a sentence for each move where you thought longer than 30 seconds — what did you see, what did you miss, why did you choose that move? Then verify with the engine. Engine review of your OWN analysis is 5× more effective than watching computer-analysed games passively. Rate annotation quality (1–10) for depth and honesty.',
+          activityTitle: 'Chess',
+          drillTypeId: 'chess_analysis',
+          skillTitles: ['Analysis', 'Strategy'],
+          measurements: [MeasurementResult('amount', 'Games Annotated', 1, null) as Measurement, MeasurementResult('amount', 'Quality (1–10)', 2, null) as Measurement, MeasurementTarget('amount', 'Target Quality', 3, 7, false) as Measurement]),
+      _DrillSpec(
+          title: 'Blindfold Visualization',
+          description:
+              'Cover the board or close your eyes. Have a partner or app read out a series of moves (e.g., "1. d4 d5 2. c4 e6 3. Nc3 Nf6"). Visualize the resulting position after each move before opening your eyes to check. Track how many of 10 positions you visualize with all pieces correctly placed. Visualization is the core component of chess calculation — every additional half-move you can see clearly ahead multiplies practical strength.',
+          activityTitle: 'Chess',
+          drillTypeId: 'chess_puzzles',
+          skillTitles: ['Tactics', 'Middle Game'],
+          measurements: [MeasurementResult('amount', 'Correct Visualizations', 1, null) as Measurement, MeasurementResult('amount', 'Total Positions', 2, null) as Measurement, MeasurementTarget('amount', 'Target Correct', 3, 7, false) as Measurement]),
+      // ── Swimming ──────────────────────────────────────────────────────────────────
+      _DrillSpec(
+          title: '100m Freestyle Time Trial',
+          description:
+              'Swim 100 meters (4 lengths of a 25m pool) freestyle at maximum effort. Focus on: blade-shaped hand entry with fingers together, high-elbow pull through, continuous kick, and a tight streamlined push-off each turn. This is the standard benchmarking distance for swimmers at every level. Rest 5 minutes between efforts if doing multiple reps. Log your time and track improvement over weeks.',
+          activityTitle: 'Swimming',
+          drillTypeId: 'swim_interval',
+          skillTitles: ['Freestyle'],
+          measurements: [MeasurementResult('amount', 'Distance (m)', 1, 100) as Measurement, MeasurementResult('duration', 'Time', 2, null) as Measurement, MeasurementResult('amount', 'Reps', 3, 1) as Measurement, MeasurementTarget('duration', 'Target Time', 4, null, true) as Measurement]),
+      _DrillSpec(
+          title: 'Catch-Up Drill (Freestyle Timing)',
+          description:
+              'Swim freestyle but hold your lead arm fully extended until the recovering hand "catches up" and taps it. Only then switch arms. This exaggerated pause forces you to feel the glide phase and prevents the premature hand drop that kills distance per stroke. The most widely used drill for correcting stroke timing. Swim 4 × 25m at easy pace, focusing entirely on the tap before each switch.',
+          activityTitle: 'Swimming',
+          drillTypeId: 'swim_drill',
+          skillTitles: ['Freestyle'],
+          measurements: [MeasurementResult('amount', 'Clean Lengths', 1, null) as Measurement, MeasurementResult('amount', 'Total Lengths', 2, null) as Measurement, MeasurementTarget('amount', 'Target Clean', 3, 4, false) as Measurement]),
+      _DrillSpec(
+          title: 'Pull Buoy Freestyle (Arms Only)',
+          description:
+              'Place a pull buoy between your thighs to eliminate the kick. Focus entirely on the arm stroke and body rotation. This isolation reveals weaknesses in catch, pull, and push phases masked when the kick compensates for poor upper-body mechanics. 4 × 50m. Count strokes per length — a lower count = more efficient stroke. Most recreational swimmers drop 4–6 strokes per length when pull buoy forces honest mechanics.',
+          activityTitle: 'Swimming',
+          drillTypeId: 'swim_drill',
+          skillTitles: ['Freestyle'],
+          measurements: [MeasurementResult('amount', 'Clean Lengths', 1, null) as Measurement, MeasurementResult('amount', 'Total Lengths', 2, null) as Measurement, MeasurementResult('amount', 'Avg Strokes / Length', 3, null) as Measurement, MeasurementTarget('amount', 'Target Stroke Count', 4, 18, true) as Measurement]),
+      _DrillSpec(
+          title: 'Flutter Kick Isolation',
+          description:
+              'Hold a kickboard at arm\'s length, face down, kick continuously for 25m. Feet should barely break the surface — a large splash means feet are too high and the kick is not propulsive. Keep feet relaxed and ankles loose. 4 × 25m, 30 seconds rest between. Flutter kick tempo directly drives stroke rhythm in freestyle — an underpowered kick stalls the entire stroke cycle.',
+          activityTitle: 'Swimming',
+          drillTypeId: 'swim_drill',
+          skillTitles: ['Freestyle', 'Endurance'],
+          measurements: [MeasurementResult('amount', 'Clean Lengths', 1, null) as Measurement, MeasurementResult('amount', 'Total Lengths', 2, null) as Measurement, MeasurementTarget('amount', 'Target Lengths', 3, 4, false) as Measurement]),
+      _DrillSpec(
+          title: 'Flip Turn Practice',
+          description:
+              'Approach the wall at comfortable pace. Your head should submerge when your lead hand is one arm\'s length from the wall. Tuck chin while rotating, push off on your back, rotate to belly during the streamline, and surface before the 15-metre mark. Do 20 consecutive flip turn reps, walking back to the start each time. A well-executed flip turn saves 1–2 seconds per length and costs virtually zero energy versus an open turn.',
+          activityTitle: 'Swimming',
+          drillTypeId: 'swim_drill',
+          skillTitles: ['Starts & Turns'],
+          measurements: [MeasurementResult('amount', 'Clean Turns', 1, null) as Measurement, MeasurementResult('amount', 'Total Attempts', 2, null) as Measurement, MeasurementTarget('amount', 'Target Clean', 3, 16, false) as Measurement]),
+      _DrillSpec(
+          title: '8 × 50m Descending Intervals',
+          description:
+              'Swim 8 repetitions of 50m freestyle. Rest 20 seconds between each. Make each rep 1–2 seconds faster than the last ("descending"). The final rep should be at 90–95% effort. If you cannot descend all 8, you started too slow (fine) or built too much fatigue early (went out too hard). The descending set teaches pacing, builds speed endurance, and trains progressive effort control across a full set.',
+          activityTitle: 'Swimming',
+          drillTypeId: 'swim_interval',
+          skillTitles: [
+            'Freestyle',
+            'Endurance'
+          ],
+          measurements: [
+            MeasurementResult('amount', 'Distance (m)', 1, 50) as Measurement,
+            MeasurementResult('duration', 'Last Rep Time', 2, null) as Measurement,
+            MeasurementResult('amount', 'Reps', 3, 8) as Measurement,
+            MeasurementResult('rpe', 'RPE (1–10)', 4, null) as Measurement,
+            MeasurementTarget('duration', 'Target Last Rep', 5, null, true) as Measurement
+          ]),
+      // ── Yoga ─────────────────────────────────────────────────────────────────────
+      _DrillSpec(
+          title: 'Sun Salutation A (5 Rounds)',
+          description:
+              'Move through Surya Namaskar A: Mountain → Forward Fold → Half Lift → Plank → Chaturanga → Upward Dog → Downward Dog → Forward Fold → Mountain. Every transition matches a breath. 5 complete rounds, slightly increasing pace each round. The Sun Salutation warms every major joint in the body in under 10 minutes and is the universal warm-up of yoga practice. Focus on: spreading fingers in plank, externally rotating the thighs in Downward Dog, and squeezing glutes in Upward Dog.',
+          activityTitle: 'Yoga',
+          drillTypeId: 'yoga_flow',
+          skillTitles: ['Flow', 'Breathing'],
+          measurements: [MeasurementResult('amount', 'Rounds Completed', 1, null) as Measurement, MeasurementResult('amount', 'Quality (1–10)', 2, null) as Measurement, MeasurementTarget('amount', 'Target Rounds', 3, 5, false) as Measurement]),
+      _DrillSpec(
+          title: 'Warrior Sequence Hold (I – II – III)',
+          description:
+              'From Downward Dog, step forward into Warrior I. Hold 5 breaths. Open hips into Warrior II. Hold 5 breaths. Shift to Warrior III (one-leg balance, torso and arms parallel to the floor). Hold 5 breaths. Return to Downward Dog and repeat on the other side. The Warrior sequence builds quad, glute, and hip flexor strength while developing hip flexibility — all three poses reinforce the connected lower-body stability that transfers directly to every athletic activity.',
+          activityTitle: 'Yoga',
+          drillTypeId: 'yoga_hold',
+          skillTitles: ['Strength', 'Balance', 'Flexibility'],
+          measurements: [MeasurementResult('duration', 'Hold Per Pose (s)', 1, null) as Measurement, MeasurementResult('amount', 'Sets', 2, null) as Measurement, MeasurementTarget('duration', 'Target Hold', 3, 30, false) as Measurement]),
+      _DrillSpec(
+          title: 'Tree Pose Balance Hold',
+          description:
+              'Stand tall and shift weight to one foot. Place the other foot on the inner calf or inner thigh — never on the knee joint. Bring hands to heart centre or extend overhead. Hold 60 seconds without touching down. Switch sides. Progress: eyes open → soft gaze → eyes closed. Balance work simultaneously trains the visual, vestibular, and proprioceptive systems — three independent inputs the nervous system must reconcile for stable single-leg standing.',
+          activityTitle: 'Yoga',
+          drillTypeId: 'yoga_hold',
+          skillTitles: ['Balance'],
+          measurements: [MeasurementResult('duration', 'Hold (each side)', 1, null) as Measurement, MeasurementResult('amount', 'Falls / Resets', 2, null) as Measurement, MeasurementTarget('duration', 'Target Hold', 3, 60, false) as Measurement]),
+      _DrillSpec(
+          title: 'Seated Forward Fold Progression',
+          description:
+              'Sit on the floor with legs extended. Hinge from the hips (not the spine) — reach forward with a flat back first, then relax into a rounded hold at the furthest point. Hold 3 × 60 seconds with 30 seconds rest. Hamstring tightness is the most common cause of lower back pain in desk workers and the #1 limiting factor in yoga progression. Consistent daily forward fold practice produces visible flexibility gains within 3–4 weeks.',
+          activityTitle: 'Yoga',
+          drillTypeId: 'yoga_hold',
+          skillTitles: ['Flexibility'],
+          measurements: [MeasurementResult('duration', 'Hold Time', 1, null) as Measurement, MeasurementResult('amount', 'Sets', 2, null) as Measurement, MeasurementTarget('duration', 'Target Hold', 3, 60, false) as Measurement]),
+      _DrillSpec(
+          title: '4-7-8 Breathwork (Pranayama)',
+          description:
+              'Sit comfortably. Inhale through the nose for 4 counts, hold for 7, exhale slowly through the mouth for 8. The 8-count exhale activates the parasympathetic nervous system — it is physiologically impossible to maintain an elevated stress response during a full long exhale. 4 breath cycles = 1 round. Complete 3 rounds with 30 seconds rest between. Consistent pranayama practice lowers resting heart rate and measurably improves focus within 4–6 weeks.',
+          activityTitle: 'Yoga',
+          drillTypeId: 'yoga_breath',
+          skillTitles: ['Breathing'],
+          measurements: [MeasurementResult('amount', 'Rounds', 1, null) as Measurement, MeasurementResult('duration', 'Total Duration', 2, null) as Measurement, MeasurementTarget('amount', 'Target Rounds', 3, 12, false) as Measurement]),
+      _DrillSpec(
+          title: 'Crow Pose (Bakasana) Balance Hold',
+          description:
+              'From a wide squat, place hands flat on the floor shoulder-width, fingers spread. Lean forward, place knees on the backs of your upper arms as high as possible, and shift weight until feet lift. Hold without touching down. The crow pose requires wrist extension mobility, scapular depression strength, and the head-forward weight shift — all prerequisites for inversions and advanced arm balances. Track your best unbroken hold each session.',
+          activityTitle: 'Yoga',
+          drillTypeId: 'yoga_hold',
+          skillTitles: ['Balance', 'Strength', 'Inversions'],
+          measurements: [MeasurementResult('duration', 'Best Hold', 1, null) as Measurement, MeasurementResult('amount', 'Sets', 2, null) as Measurement, MeasurementTarget('duration', 'Target Hold', 3, 10, false) as Measurement]),
+      // ── Cycling ──────────────────────────────────────────────────────────────────
+      _DrillSpec(
+          title: 'High Cadence Spin (90+ RPM)',
+          description:
+              'Set a very light resistance — nearly negligible. Spin at 90–100 RPM for 10 continuous minutes. Stay seated; do not bounce. High-cadence training builds muscular and neural efficiency at supramaximal turnover rates. When you return to your normal cadence it feels effortless by comparison. Sustained cadence of 90 RPM is the most evidence-backed training cadence for reducing muscular fatigue on long rides and improving pedaling economy.',
+          activityTitle: 'Cycling',
+          drillTypeId: 'cycling_cadence',
+          skillTitles: ['Cadence', 'Technique'],
+          measurements: [MeasurementResult('amount', 'Peak RPM', 1, null) as Measurement, MeasurementResult('duration', 'Duration', 2, null) as Measurement, MeasurementTarget('amount', 'Target RPM', 3, 90, false) as Measurement, MeasurementTarget('duration', 'Target Duration', 4, 600, false) as Measurement]),
+      _DrillSpec(
+          title: '20-Minute FTP Interval',
+          description:
+              'Ride at your FTP (Functional Threshold Power) — the highest average effort you can sustain for roughly 60 minutes — for exactly 20 continuous minutes. Without a power meter, target RPE 8–8.5 / 10. FTP training is the single most efficient workout for raising aerobic threshold. Even one 20-minute FTP effort per week drives measurable adaptation. Log distance covered as a proxy for power if no power meter is available.',
+          activityTitle: 'Cycling',
+          drillTypeId: 'cycling_interval',
+          skillTitles: [
+            'Endurance',
+            'Climbing'
+          ],
+          measurements: [
+            MeasurementResult('amount', 'Distance (km)', 1, null) as Measurement,
+            MeasurementResult('duration', 'Interval Time', 2, null) as Measurement,
+            MeasurementResult('amount', 'Reps', 3, 1) as Measurement,
+            MeasurementResult('rpe', 'RPE (1–10)', 4, null) as Measurement,
+            MeasurementTarget('duration', 'Target Duration', 5, 1200, false) as Measurement,
+            MeasurementTarget('rpe', 'Target RPE', 6, 8, false) as Measurement
+          ]),
+      _DrillSpec(
+          title: 'Tabata Sprint Intervals (8 × 20s)',
+          description:
+              '8 rounds of 20-second all-out sprint followed by 10 seconds easy pedaling. Use your highest resistance gear. The Tabata protocol is one of the highest VO2max stimuli achievable in under 4 minutes of active effort. Track whether you maintain output quality in rounds 7–8 relative to rounds 1–2 — if rounds 7–8 fade dramatically, you started too hard. Rest 10 minutes between Tabata blocks if doing more than one.',
+          activityTitle: 'Cycling',
+          drillTypeId: 'cycling_interval',
+          skillTitles: [
+            'Sprints'
+          ],
+          measurements: [
+            MeasurementResult('amount', 'Reps Completed', 1, null) as Measurement,
+            MeasurementResult('duration', 'Session Duration', 2, null) as Measurement,
+            MeasurementResult('rpe', 'RPE (1–10)', 3, null) as Measurement,
+            MeasurementTarget('amount', 'Target Reps', 4, 8, false) as Measurement,
+            MeasurementTarget('rpe', 'Target RPE', 5, 9, false) as Measurement
+          ]),
+      _DrillSpec(
+          title: 'Active Recovery Spin',
+          description:
+              'Ride at 50–60% of max heart rate (RPE 3–4) for 20–40 minutes — a pace where you can hold full conversations. Recovery rides accelerate lactate clearance, maintain aerobic adaptation, and promote glycogen resynthesis without adding cumulative fatigue. The most common training error in recreational cyclists is riding recovery days too hard, which sabotages the quality of subsequent hard sessions. Keep it genuinely easy.',
+          activityTitle: 'Cycling',
+          drillTypeId: 'cycling_steady',
+          skillTitles: [
+            'Recovery'
+          ],
+          measurements: [
+            MeasurementResult('amount', 'Distance (km)', 1, null) as Measurement,
+            MeasurementResult('duration', 'Ride Time', 2, null) as Measurement,
+            MeasurementResult('rpe', 'RPE (1–10)', 3, null) as Measurement,
+            MeasurementTarget('rpe', 'Target RPE', 4, 4, false) as Measurement,
+            MeasurementTarget('duration', 'Target Duration', 5, 1800, false) as Measurement
+          ]),
+      _DrillSpec(
+          title: 'Hill Repeat Sprints',
+          description:
+              'Find a hill with 4–6% grade and 500–1000m usable length. Sprint uphill at 90–95% effort, freewheel slowly back down for full recovery. Repeat 4–8 times. Hill repeats train lactate threshold and muscular strength simultaneously — each sprint combines interval training with leg-press resistance. The descent forces genuine recovery, ensuring quality output every single rep. Build from 4 repeats to 8 over 4 weeks.',
+          activityTitle: 'Cycling',
+          drillTypeId: 'cycling_interval',
+          skillTitles: [
+            'Climbing',
+            'Sprints'
+          ],
+          measurements: [
+            MeasurementResult('amount', 'Reps Completed', 1, null) as Measurement,
+            MeasurementResult('duration', 'Best Climb Time', 2, null) as Measurement,
+            MeasurementResult('rpe', 'RPE (1–10)', 3, null) as Measurement,
+            MeasurementTarget('amount', 'Target Reps', 4, 6, false) as Measurement,
+            MeasurementTarget('rpe', 'Target RPE', 5, 9, false) as Measurement
+          ]),
+      _DrillSpec(
+          title: 'One-Leg Pedaling (Stroke Technique)',
+          description:
+              'Unclip or loosen one foot. Pedal with one leg only for 30 seconds at easy cadence, then switch. The single-leg drill isolates push, kick-over, pull, and pull-back phases. Most cyclists only push — one-leg drills instantly reveal the dead spot at the top and bottom of the stroke that wastes 20–30% of pedaling energy. 5 × 30 seconds each leg within a longer easy ride. When you return to two-leg pedaling, the round smooth feeling is immediately obvious.',
+          activityTitle: 'Cycling',
+          drillTypeId: 'cycling_cadence',
+          skillTitles: ['Technique', 'Cadence'],
+          measurements: [MeasurementResult('amount', 'Reps Per Leg', 1, null) as Measurement, MeasurementResult('duration', 'Interval Duration', 2, null) as Measurement, MeasurementTarget('amount', 'Target Reps', 3, 5, false) as Measurement, MeasurementTarget('duration', 'Target Interval', 4, 30, false) as Measurement]),
+      // ── Football ─────────────────────────────────────────────────────────────────
+      _DrillSpec(
+          title: 'Spiral Mechanics Form Throws',
+          description:
+              'Stand 10 yards from a partner, fence, or target. Focus entirely on mechanics: middle and ring fingers across the laces, thumb underneath, index finger near the tip. Release with a tight 9–12 o\'clock spiral rotation — the ball should revolve on a stable axis the entire way to the target. Take 20 slow-tempo throws. The tight spiral is 100% about finger position and pressure at release — not arm strength. Rushing mechanics before the muscle pattern is clean is the single biggest cause of inaccuracy.',
+          activityTitle: 'Football',
+          drillTypeId: 'football_throwing',
+          skillTitles: ['Throwing'],
+          measurements: [MeasurementResult('amount', 'On Target', 1, null) as Measurement, MeasurementResult('amount', 'Attempts', 2, null) as Measurement, MeasurementTarget('amount', 'Target On Target', 3, 16, false) as Measurement]),
+      _DrillSpec(
+          title: 'Route Running Cone Cuts',
+          description:
+              'Set two cones 8 yards apart. Practice three fundamental routes at each: 5-yard out (sharp 90° plant-and-cut away from quarterback), 5-yard slant (45° hard cut toward center), and 5-yard hitch (4 steps → stop and turn back toward quarterback). On every route: run at full speed to the break point — do NOT decelerate before the cut. Deceleration before the cut is the the universal tell for defenders. 15 reps per route.',
+          activityTitle: 'Football',
+          drillTypeId: 'football_agility',
+          skillTitles: [
+            'Route Running'
+          ],
+          measurements: [
+            MeasurementResult('duration', 'Best Time', 1, null) as Measurement,
+            MeasurementResult('amount', 'Reps', 2, null) as Measurement,
+            MeasurementResult('rpe', 'RPE (1–10)', 3, null) as Measurement,
+            MeasurementTarget('duration', 'Target Time', 4, null, true) as Measurement,
+            MeasurementTarget('rpe', 'Target RPE', 5, 7, false) as Measurement
+          ]),
+      _DrillSpec(
+          title: 'Concentration Catches',
+          description:
+              'Have a partner throw or self-toss 25 balls in quick succession from different angles and speeds. Catch every one with your hands only — no body trapping. The rule: eyes locked on the ball all the way into your hands, maintaining thumb contact from initial touch through secure possession. Track clean hands-only catches. Hands-only catching prevents the most common drop type (ball hitting body before hands). Every elite receiver trains this daily.',
+          activityTitle: 'Football',
+          drillTypeId: 'football_catching',
+          skillTitles: ['Catching'],
+          measurements: [MeasurementResult('amount', 'Caught', 1, null) as Measurement, MeasurementResult('amount', 'Attempted', 2, null) as Measurement, MeasurementTarget('amount', 'Target Caught', 3, 22, false) as Measurement]),
+      _DrillSpec(
+          title: '40-Yard Dash (Acceleration Sprint)',
+          description:
+              'From a 3-point or 2-point stance, explode forward for 40 yards. Key cues: first 3 steps are pure horizontal drive (body at 45°), head stays down through 20 yards, arms drive hard with elbows at 90° and open hands. Time 5 reps with 3 minutes full rest between each. 40-yard dash speed directly determines the outcome of contested downfield plays. A 0.1-second improvement — achievable in 6–8 weeks of sprint-start training — changes draft positioning at every level.',
+          activityTitle: 'Football',
+          drillTypeId: 'pace',
+          skillTitles: ['Conditioning'],
+          measurements: [MeasurementResult('amount', 'Distance (yd)', 1, 40) as Measurement, MeasurementResult('duration', 'Best Time', 2, null) as Measurement, MeasurementTarget('duration', 'Target Time', 3, null, true) as Measurement]),
+      _DrillSpec(
+          title: 'Ladder Footwork Drill',
+          description:
+              'Use an agility ladder or tape marks 18 inches apart. Work through 5 patterns: two-in two-out, lateral crossover, icky shuffle, in-in-out-out, and Ali shuffle. Two passes of all 10 rungs per pattern. Ladder work trains foot speed, coordination, and the stop-start motor patterns used on every play. Critical rule: nail each pattern slowly before adding pace — rushing choppy footwork into muscle memory at speed is counterproductive.',
+          activityTitle: 'Football',
+          drillTypeId: 'football_agility',
+          skillTitles: ['Conditioning', 'Route Running'],
+          measurements: [MeasurementResult('amount', 'Patterns Completed', 1, null) as Measurement, MeasurementResult('duration', 'Best Pass Time', 2, null) as Measurement, MeasurementResult('rpe', 'RPE (1–10)', 3, null) as Measurement, MeasurementTarget('amount', 'Target Patterns', 4, 5, false) as Measurement]),
+      _DrillSpec(
+          title: 'Back-Shoulder Throw & Catch',
+          description:
+              'Set two targets: one at 7 yards in, one at 7 yards out. The throw targets the shoulder away from the imaginary defender while the receiver adjusts back. 20 reps each combination (in and out). The back-shoulder throw is the highest percentage red-zone completion in football — it cannot be undercut because the route and throw go in opposite directions. Both QB accuracy and receiver body adjustment are trained simultaneously.',
+          activityTitle: 'Football',
+          drillTypeId: 'football_throwing',
+          skillTitles: ['Throwing', 'Catching'],
+          measurements: [MeasurementResult('amount', 'On Target', 1, null) as Measurement, MeasurementResult('amount', 'Attempts', 2, null) as Measurement, MeasurementTarget('amount', 'Target On Target', 3, 16, false) as Measurement]),
+      // ── Piano ─────────────────────────────────────────────────────────────────────
+      _DrillSpec(
+          title: 'Hanon Exercise #1 (Metronome)',
+          description:
+              'Open Hanon "The Virtuoso Pianist" No. 1. Set a metronome to 60 BPM. Play with strict fingering (1-2-3-4-5-4-3-2-1) with curved fingers and a firm, even touch on every note. Both hands simultaneously. When clean at a given tempo for 2 continuous minutes, step up by 4 BPM. The Hanon exercises are the most widely used piano technique drills in the world — every conservatory student uses them. They build finger independence, evenness of attack, and wrist freedom simultaneously.',
+          activityTitle: 'Piano',
+          drillTypeId: 'piano_technique',
+          skillTitles: ['Scales', 'Chords'],
+          measurements: [MeasurementResult('amount', 'BPM Achieved', 1, null) as Measurement, MeasurementResult('amount', 'Clean Sets', 2, null) as Measurement, MeasurementTarget('amount', 'Target BPM', 3, 108, false) as Measurement]),
+      _DrillSpec(
+          title: 'Major Scales — All 12 Keys',
+          description:
+              'Play through all 12 major scales, both hands together, one octave up and down. Standard fingering throughout (thumb crosses under on beat 3 or 4 as required per key). Metronome at 60 BPM, one note per click. Track the tempo at which you can play all 12 keys cleanly without stopping. Scales in all keys are the most direct path to fingerboard fluency — the ability to play in any key without hesitation is the single biggest separator between beginning and intermediate pianists.',
+          activityTitle: 'Piano',
+          drillTypeId: 'piano_scale',
+          skillTitles: ['Scales', 'Theory'],
+          measurements: [MeasurementResult('amount', 'BPM Achieved', 1, null) as Measurement, MeasurementResult('amount', 'Keys Clean', 2, null) as Measurement, MeasurementResult('amount', 'Total Keys Tested', 3, null) as Measurement, MeasurementTarget('amount', 'Target BPM', 4, 100, false) as Measurement]),
+      _DrillSpec(
+          title: 'Chord Inversions (All Root Positions)',
+          description:
+              'Take one major chord (e.g. C major). Play: root position (C-E-G) → first inversion (E-G-C) → second inversion (G-C-E) → back to root. Do this for all 12 major chords, then all 12 minor chords as a second set. Use a slow metronome throughout. Goal: zero gap between chord shapes — all fingers land simultaneously. Track changes per minute and how many of the 24 chords you completed cleanly.',
+          activityTitle: 'Piano',
+          drillTypeId: 'piano_chord',
+          skillTitles: ['Chords', 'Theory'],
+          measurements: [MeasurementResult('amount', 'Changes / Min', 1, null) as Measurement, MeasurementResult('amount', 'Chords Clean', 2, null) as Measurement, MeasurementTarget('amount', 'Target Changes / Min', 3, 24, false) as Measurement]),
+      _DrillSpec(
+          title: 'Contrary Motion Scales',
+          description:
+              'Start both hands at middle C. Play ascending with the right hand while the left simultaneously descends — both hands move in mirror image. This is cognitively harder than parallel motion because the brain must run two independent motor programs. 5 minutes per session at whatever tempo allows both hands to stay locked together. Contrary motion reveals asymmetric weaknesses between hands faster than any other scale exercise.',
+          activityTitle: 'Piano',
+          drillTypeId: 'piano_scale',
+          skillTitles: ['Scales'],
+          measurements: [MeasurementResult('amount', 'BPM Achieved', 1, null) as Measurement, MeasurementResult('amount', 'Clean Runs', 2, null) as Measurement, MeasurementResult('amount', 'Total Runs', 3, null) as Measurement, MeasurementTarget('amount', 'Target BPM', 4, 80, false) as Measurement]),
+      _DrillSpec(
+          title: 'Daily Piece Run-Through',
+          description:
+              'Pick one piece from your repertoire. Play it start to finish — no stopping for mistakes, no going back. Even if you play a wrong note, keep going. Rate quality (1–10) after each pass on: rhythmic accuracy, dynamics (loud/soft contrast), and evenness of tone. The no-stop rule is absolute: stopping at every error trains stopping. The run-through reveals patterns of consistent error locations that isolated practice misses.',
+          activityTitle: 'Piano',
+          drillTypeId: 'piano_repertoire',
+          skillTitles: ['Repertoire'],
+          measurements: [MeasurementResult('amount', 'Run-throughs', 1, null) as Measurement, MeasurementResult('amount', 'Quality (1–10)', 2, null) as Measurement, MeasurementTarget('amount', 'Target Quality', 3, 8, false) as Measurement]),
+      _DrillSpec(
+          title: 'Sight Reading — New Piece Daily',
+          description:
+              'Open a piece you have never played before. Sight-read it at half the marked tempo. Never stop and never go back — forward motion only. Count aloud or with a metronome. Rate accuracy and rhythmic precision (1–10) after the first pass. Sight reading is the most neglected skill in amateur piano practice and the most career-critical skill for any pianist who performs with others. 5 minutes of daily sight reading sustained for a year transforms practical musicianship completely.',
+          activityTitle: 'Piano',
+          drillTypeId: 'piano_repertoire',
+          skillTitles: ['Sight Reading'],
+          measurements: [MeasurementResult('amount', 'Pieces Attempted', 1, null) as Measurement, MeasurementResult('amount', 'Quality (1–10)', 2, null) as Measurement, MeasurementTarget('amount', 'Target Quality', 3, 6, false) as Measurement]),
+      _DrillSpec(
+          title: 'Two-Hand Independence (Alberti Bass)',
+          description:
+              'Set up a simple left-hand Alberti bass pattern (C-G-E-G repeated in a loop) and layer a simple right-hand melody on top. Practice each hand alone for 2 minutes, then combine at slow tempo. Two-hand independence is the central challenge of intermediate piano — the hands naturally want to mirror each other and the skill is neurologically suppressing that impulse. This drill is the direct gateway to classical accompaniment, jazz voicings, and any advanced repertoire.',
+          activityTitle: 'Piano',
+          drillTypeId: 'piano_technique',
+          skillTitles: ['Chords', 'Repertoire'],
+          measurements: [MeasurementResult('amount', 'Clean Passes', 1, null) as Measurement, MeasurementResult('amount', 'Total Passes', 2, null) as Measurement, MeasurementResult('amount', 'Quality (1–10)', 3, null) as Measurement, MeasurementTarget('amount', 'Target Quality', 4, 7, false) as Measurement]),
     ];
 
 // ─────────────────────────────────────────────────────────────────────────────
