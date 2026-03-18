@@ -13,6 +13,7 @@ import 'package:skilldrills/onboarding/welcome_screen.dart';
 import 'package:skilldrills/services/session.dart';
 import 'package:skilldrills/services/subscription.dart';
 import 'package:skilldrills/theme/active_activity_notifier.dart';
+import 'package:skilldrills/theme/activity_theme.dart';
 import 'package:skilldrills/theme/settings_state_notifier.dart';
 import 'package:skilldrills/theme/theme.dart';
 import 'login.dart';
@@ -105,14 +106,21 @@ class SkillDrills extends StatelessWidget {
     return Consumer2<SettingsStateNotifier, ActiveActivityNotifier>(
       builder: (context, settingsState, activityState, child) {
         settings = settingsState.settings;
-        final accent = activityState.accentColor;
+        final headerAccent = activityState.accentColor;
+        final isDark = settingsState.settings.darkMode;
 
         return MaterialApp(
           title: 'Skill Drills',
           navigatorKey: navigatorKey,
-          theme: SkillDrillsTheme.lightThemeWithPrimary(accent),
-          darkTheme: SkillDrillsTheme.darkThemeWithPrimary(accent),
-          themeMode: settingsState.settings.darkMode ? ThemeMode.dark : ThemeMode.system,
+          theme: SkillDrillsTheme.lightThemeWithPrimary(
+            headerAccent,
+            ActivityColors.adaptAccentForUi(headerAccent, isDarkMode: false),
+          ),
+          darkTheme: SkillDrillsTheme.darkThemeWithPrimary(
+            headerAccent,
+            ActivityColors.adaptAccentForUi(headerAccent, isDarkMode: true),
+          ),
+          themeMode: isDark ? ThemeMode.dark : ThemeMode.system,
           builder: (context, child) => GestureDetector(
             behavior: HitTestBehavior.opaque,
             onTap: () => FocusManager.instance.primaryFocus?.unfocus(),

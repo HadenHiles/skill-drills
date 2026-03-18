@@ -29,9 +29,32 @@ class ActiveActivityNotifier extends ChangeNotifier {
   Activity? get primary => _primary;
 
   /// Accent colour derived from [primary].
-  /// Falls back to [SkillDrillsColors.brandBlue] when there is no active
-  /// activity yet or the title is unrecognised.
-  Color get accentColor => ActivityColors.forActivity(_primary?.title);
+  ///
+  /// Priority:
+  ///   1. [Activity.customColor] — user-set Pro override (any activity)
+  ///   2. Predefined map in [ActivityColors] — standard activities
+  ///   3. [SkillDrillsColors.brandBlue] — custom / unknown activities with no
+  ///      user-set colour ("default theme")
+  Color get accentColor {
+    final p = _primary;
+    if (p == null) return SkillDrillsColors.brandBlue;
+    if (p.customColor != null) return Color(p.customColor!);
+    return ActivityColors.forActivity(p.title);
+  }
+
+  /// `true` when the activity uses the default brand theme (brandBlue),
+  /// i.e. it is a custom/unknown activity with no user-set colour.
+  /// Used to decide whether to show the plain logo or the emoji overlay logo.
+  bool get isDefaultTheme {
+    final p = _primary;
+    if (p == null) return true;
+    // User has set an explicit colour → themed.
+    if (p.customColor != null) return false;
+    // Predefined standard activity → themed.
+    if (ActivityColors.hasActivityTheme(p.title)) return false;
+    // Custom / unknown with no override → default theme.
+    return true;
+  }
 
   /// Emoji representing the primary activity (e.g. "🏒" for Hockey).
   String get icon => _primary?.icon ?? '🎯';

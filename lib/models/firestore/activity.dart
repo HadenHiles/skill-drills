@@ -161,6 +161,11 @@ class Activity {
   /// Emoji icon displayed alongside the activity name throughout the UI.
   String icon;
 
+  /// Optional user-chosen accent colour (stored as ARGB int).
+  /// When non-null, this overrides the built-in per-activity colour from
+  /// [ActivityColors] and is used to skin the app.  Only settable by Pro users.
+  int? customColor;
+
   Activity(
     this.title,
     this.createdBy, {
@@ -170,6 +175,7 @@ class Activity {
     String? setsLabel,
     String? repsLabel,
     String? icon,
+    this.customColor,
   })  : drillLabel = drillLabel ?? ActivityTerminology.defaultsFor(title).drillLabel,
         setsLabel = setsLabel ?? ActivityTerminology.defaultsFor(title).setsLabel,
         repsLabel = repsLabel ?? ActivityTerminology.defaultsFor(title).repsLabel,
@@ -186,7 +192,8 @@ class Activity {
         drillLabel = (map['drill_label'] as String?)?.isNotEmpty == true ? map['drill_label'] as String : ActivityTerminology.defaultsFor(map['title'] as String?).drillLabel,
         setsLabel = (map['sets_label'] as String?)?.isNotEmpty == true ? map['sets_label'] as String : ActivityTerminology.defaultsFor(map['title'] as String?).setsLabel,
         repsLabel = (map['reps_label'] as String?)?.isNotEmpty == true ? map['reps_label'] as String : ActivityTerminology.defaultsFor(map['title'] as String?).repsLabel,
-        icon = (map['icon'] as String?)?.isNotEmpty == true ? map['icon'] as String : ActivityTerminology.iconFor(map['title'] as String?);
+        icon = (map['icon'] as String?)?.isNotEmpty == true ? map['icon'] as String : ActivityTerminology.iconFor(map['title'] as String?),
+        customColor = map['custom_color'] as int?;
 
   Map<String, dynamic> toMap() {
     List<Map<String, dynamic>> skillMaps = [];
@@ -204,6 +211,7 @@ class Activity {
       'sets_label': setsLabel,
       'reps_label': repsLabel,
       'icon': icon,
+      if (customColor != null) 'custom_color': customColor,
       if (lastActivatedAt != null) kActivityLastActivatedAtField: Timestamp.fromDate(lastActivatedAt!),
     };
   }

@@ -179,29 +179,64 @@ class _NavState extends State<Nav> {
   /// Builds the Start-tab logo: the activity emoji stacked above the
   /// SkillDrills wordmark.  Displayed inside the collapsible [SliverAppBar]
   /// header on the primary/home tab.
-  Widget _buildLogoWithEmoji(String emoji) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Text(
-          emoji,
-          style: const TextStyle(
-            fontSize: 28,
-            height: 1.0,
-            // Prevent inherited colour overrides from affecting the emoji.
-            color: Colors.white,
-          ),
-        ),
-        const SizedBox(height: 6),
-        SizedBox(
-          height: 34,
-          child: SvgPicture.asset(
+  Widget _buildLogoWithEmoji(String emoji, Color headerColor) {
+    // SVG viewBox: 2019.16 × 704.84 → aspect ratio ≈ 2.865
+    // The circle icon mark spans roughly x=0..564 (≈28% of total width).
+    // We cover that region + a small gap so the emoji clearly replaces it
+    // and there is adequate breathing room before the 'SKILL DRILLS' text.
+    const double logoHeight = 44;
+    const double svgAspect = 2019.16 / 704.84; // ≈ 2.865
+    final double logoWidth = logoHeight * svgAspect; // ≈ 126 px
+    // 30% covers the icon mark (28%) plus a small gap before the first letter.
+    final double overlayWidth = logoWidth * 0.30; // ≈ 38 px
+
+    return SizedBox(
+      width: logoWidth,
+      height: logoHeight,
+      child: Stack(
+        alignment: Alignment.centerLeft,
+        children: [
+          // Full SVG wordmark rendered at the calculated natural size.
+          SvgPicture.asset(
             'assets/images/logo/SkillDrills.svg',
-            semanticsLabel: 'Skill Drills',
+            width: logoWidth,
+            height: logoHeight,
+            fit: BoxFit.fill,
           ),
-        ),
-      ],
+          // Coloured overlay that erases the SVG's built-in circle icon
+          // and hosts the activity emoji in its place.
+          SizedBox(
+            width: overlayWidth,
+            height: logoHeight,
+            child: ColoredBox(
+              color: headerColor,
+              child: Center(
+                child: Text(
+                  emoji,
+                  style: const TextStyle(
+                    fontSize: 22,
+                    height: 1.0,
+                    // Prevent the theme's text colour from tinting the emoji.
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Builds the plain SkillDrills SVG logo (no emoji overlay).
+  /// Used when the active activity uses the default / unthemed brandBlue.
+  Widget _buildDefaultLogo() {
+    return SizedBox(
+      height: 44,
+      child: SvgPicture.asset(
+        'assets/images/logo/SkillDrills.svg',
+        semanticsLabel: 'Skill Drills',
+      ),
     );
   }
 
@@ -300,6 +335,7 @@ class _NavState extends State<Nav> {
           animation: sessionService, // listen to ChangeNotifier
           builder: (context, child) {
             final activityIcon = context.watch<ActiveActivityNotifier>().icon;
+            final isDefaultTheme = context.watch<ActiveActivityNotifier>().isDefaultTheme;
             return SlidingUpPanel(
               backdropEnabled: true,
               controller: sessionPanelController,
@@ -414,7 +450,14 @@ class _NavState extends State<Nav> {
                           collapseMode: CollapseMode.parallax,
                           titlePadding: _showLogoToolbar ? const EdgeInsets.only(left: 10, right: 10, bottom: 20, top: 20) : null,
                           centerTitle: _showLogoToolbar ? true : false,
-                          title: _showLogoToolbar ? _buildLogoWithEmoji(activityIcon) : _title,
+                          title: _showLogoToolbar
+                              ? (isDefaultTheme
+                                  ? _buildDefaultLogo()
+                                  : _buildLogoWithEmoji(
+                                      activityIcon,
+                                      Theme.of(context).primaryColor,
+                                    ))
+                              : _title,
                           background: Container(
                             color: _showLogoToolbar ? Theme.of(context).primaryColor : Theme.of(context).scaffoldBackgroundColor,
                           ),

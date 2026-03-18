@@ -1,9 +1,14 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:skilldrills/main.dart';
 import 'package:skilldrills/models/firestore/activity.dart';
 import 'package:skilldrills/models/firestore/skill.dart';
+import 'package:skilldrills/services/subscription.dart';
+import 'package:skilldrills/theme/activity_theme.dart';
 import 'package:skilldrills/widgets/basic_title.dart';
 
 import 'category_item.dart';
@@ -23,6 +28,14 @@ class ActivityDetail extends StatefulWidget {
 class _ActivityDetailState extends State<ActivityDetail> {
   final _formKey = GlobalKey<FormState>();
   final titleFieldController = TextEditingController();
+
+  // ── Appearance state ──────────────────────────────────────────────────────
+  late String _icon;
+  int? _customColor;
+
+  // ── Pro subscription state ────────────────────────────────────────────────
+  bool _isPro = true; // optimistic default prevents flash
+  StreamSubscription<CustomerInfo>? _subscriptionListener;
 
   // ── Terminology controllers ────────────────────────────────────────────────
   final _drillLabelCtrl = TextEditingController();
@@ -45,10 +58,16 @@ class _ActivityDetailState extends State<ActivityDetail> {
     final sport = widget.sport!;
     titleFieldController.text = sport.title!;
 
+    // Appearance
+    _icon = sport.icon;
+    _customColor = sport.customColor;
+
     // Pre-fill terminology with existing values (or activity defaults).
     _drillLabelCtrl.text = sport.drillLabel;
     _setsLabelCtrl.text = sport.setsLabel;
     _repsLabelCtrl.text = sport.repsLabel;
+
+    _initSubscriptionState();
 
     if (sport.reference != null) {
       sport.reference!.collection('skills').get().then((snapshots) {
@@ -74,6 +93,17 @@ class _ActivityDetailState extends State<ActivityDetail> {
       } else {
         _validateCategoryTitle = true;
       }
+    });
+  }
+
+  // ── Pro subscription helpers ──────────────────────────────────────────────
+
+  Future<void> _initSubscriptionState() async {
+    final isPro = await hasActiveSubscription();
+    if (mounted) setState(() => _isPro = isPro);
+    _subscriptionListener = customerInfoStream.listen((info) {
+      final nowPro = info.entitlements.active.containsKey(kProEntitlement);
+      if (mounted) setState(() => _isPro = nowPro);
     });
   }
 
@@ -168,6 +198,8 @@ class _ActivityDetailState extends State<ActivityDetail> {
       Activity a = Activity(
         titleFieldController.text.toString().trim(),
         user!.uid,
+        icon: _icon,
+        customColor: _customColor,
         drillLabel: _effectiveDrillLabel(),
         setsLabel: _effectiveSetsLabel(),
         repsLabel: _effectiveRepsLabel(),
@@ -192,6 +224,8 @@ class _ActivityDetailState extends State<ActivityDetail> {
       Map<String, dynamic> activityMap = {
         "title": titleFieldController.text.toString().trim(),
         "created_by": user!.uid,
+        "icon": _icon,
+        if (_customColor != null) "custom_color": _customColor,
         "drill_label": _effectiveDrillLabel(),
         "sets_label": _effectiveSetsLabel(),
         "reps_label": _effectiveRepsLabel(),
@@ -358,6 +392,42 @@ class _ActivityDetailState extends State<ActivityDetail> {
               const SizedBox(height: 16),
               const Divider(),
 
+              // ── Appearance ────────────────────────────────────────────────
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
+                child: Text("Appearance", style: Theme.of(context).textTheme.titleLarge),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 2, 20, 16),
+                child: Text(
+                  "Choose an icon for this activity.",
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.55),
+                      ),
+                ),
+              ),
+              // Icon emoji picker
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: _AppearanceIconRow(
+                  icon: _icon,
+                  onChanged: (v) => setState(() => _icon = v),
+                ),
+              ),
+              const SizedBox(height: 20),
+              // Color swatch grid — Pro only
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: _AppearanceColorPicker(
+                  selectedColor: _customColor != null ? Color(_customColor!) : null,
+                  isPro: _isPro,
+                  onSelected: (c) => setState(() => _customColor = c?.value),
+                ),
+              ),
+
+              const SizedBox(height: 16),
+              const Divider(),
+
               // ── Skills ────────────────────────────────────────────────────
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
@@ -421,6 +491,7 @@ class _ActivityDetailState extends State<ActivityDetail> {
 
   @override
   void dispose() {
+    _subscriptionListener?.cancel();
     titleFieldController.dispose();
     _drillLabelCtrl.dispose();
     _setsLabelCtrl.dispose();
@@ -463,6 +534,216 @@ class _TerminologyField extends StatelessWidget {
         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       ),
       style: Theme.of(context).textTheme.bodyLarge,
+    );
+  }
+}
+
+// ── Appearance: icon row ──────────────────────────────────────────────────────
+
+/// A row containing a preview chip and a text field for the activity emoji icon.
+class _AppearanceIconRow extends StatefulWidget {
+  const _AppearanceIconRow({required this.icon, required this.onChanged});
+
+  final String icon;
+  final ValueChanged<String> onChanged;
+
+  @override
+  State<_AppearanceIconRow> createState() => _AppearanceIconRowState();
+}
+
+class _AppearanceIconRowState extends State<_AppearanceIconRow> {
+  late final TextEditingController _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = TextEditingController(text: widget.icon);
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  bool _isSingleEmoji(String v) {
+    if (v.isEmpty) return false;
+    // Dart's runes give Unicode code points; a single "visual" emoji may
+    // comprise multiple code points (e.g. skin tone modifiers, ZWJ sequences).
+    // We accept any non-empty single-grapheme-cluster string as a valid icon.
+    // Simple heuristic: ≤ 8 code points and the length in runes is ≥ 1.
+    return v.runes.length >= 1 && v.runes.length <= 8;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        // Preview chip
+        Container(
+          width: 48,
+          height: 48,
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Center(
+            child: Text(
+              widget.icon,
+              style: const TextStyle(fontSize: 26, height: 1.0),
+            ),
+          ),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: TextFormField(
+            controller: _ctrl,
+            maxLength: 10,
+            decoration: const InputDecoration(
+              labelText: 'Icon (emoji)',
+              helperText: 'Enter a single emoji',
+              counterText: '',
+              border: OutlineInputBorder(),
+              isDense: true,
+              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            ),
+            style: const TextStyle(fontSize: 22, height: 1.3),
+            onChanged: (v) {
+              if (_isSingleEmoji(v.trim())) {
+                widget.onChanged(v.trim());
+              }
+            },
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ── Appearance: color swatch picker ──────────────────────────────────────────
+
+/// A grid of color swatches that Pro users can tap to set the activity accent.
+/// Free users see the swatches dimmed with a Pro upgrade prompt.
+class _AppearanceColorPicker extends StatelessWidget {
+  const _AppearanceColorPicker({
+    required this.selectedColor,
+    required this.isPro,
+    required this.onSelected,
+  });
+
+  final Color? selectedColor;
+  final bool isPro;
+  final ValueChanged<Color?> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final swatches = ActivityColors.pickerSwatches;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text("Accent color", style: Theme.of(context).textTheme.bodyLarge),
+            if (!isPro) ...[
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).primaryColor.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  'Pro',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: Theme.of(context).primaryColor,
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          isPro ? 'Choose a custom accent colour for this activity.' : 'Upgrade to Pro to set a custom accent colour.',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.55),
+              ),
+        ),
+        const SizedBox(height: 12),
+        Opacity(
+          opacity: isPro ? 1.0 : 0.35,
+          child: Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              // "None" swatch — clears custom colour, reverts to default
+              _SwatchTile(
+                color: null,
+                isSelected: selectedColor == null,
+                isEnabled: isPro,
+                onTap: isPro ? () => onSelected(null) : null,
+              ),
+              for (final c in swatches)
+                _SwatchTile(
+                  color: c,
+                  isSelected: selectedColor?.value == c.value,
+                  isEnabled: isPro,
+                  onTap: isPro ? () => onSelected(c) : null,
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SwatchTile extends StatelessWidget {
+  const _SwatchTile({
+    required this.color,
+    required this.isSelected,
+    required this.isEnabled,
+    required this.onTap,
+  });
+
+  final Color? color;
+  final bool isSelected;
+  final bool isEnabled;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final isNone = color == null;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          color: isNone ? Colors.transparent : color,
+          border: Border.all(
+            color: isSelected ? Theme.of(context).colorScheme.onSurface : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.15),
+            width: isSelected ? 2.5 : 1,
+          ),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: isNone
+            ? Center(
+                child: Icon(
+                  Icons.block_rounded,
+                  size: 18,
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4),
+                ),
+              )
+            : isSelected
+                ? const Center(
+                    child: Icon(Icons.check_rounded, size: 18, color: Colors.white),
+                  )
+                : null,
+      ),
     );
   }
 }

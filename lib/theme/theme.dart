@@ -629,15 +629,20 @@ class SkillDrillsTheme {
   // reference to [primary].  Use these when an active [Activity] should skin
   // the app with its own brand accent.
 
-  /// Returns [lightTheme] with all primary-colour references replaced by
-  /// [primary].  The structural neutrals (backgrounds, surfaces, text) are
-  /// untouched so readability is preserved at any hue.
-  static ThemeData lightThemeWithPrimary(Color primary) {
+  /// Returns [lightTheme] with all primary-colour references replaced.
+  ///
+  /// [headerAccent] is applied to `primaryColor` (used as the Start-screen
+  /// header background).  [uiAccent] is applied to every interactive element
+  /// (buttons, focus rings, nav selection, progress indicator) — pass a
+  /// contrast-adjusted variant here when [headerAccent] is too light for
+  /// white-text legibility.  Defaults to [headerAccent] when omitted.
+  static ThemeData lightThemeWithPrimary(Color headerAccent, [Color? uiAccent]) {
+    final c = uiAccent ?? headerAccent;
     return lightTheme.copyWith(
-      primaryColor: primary,
+      primaryColor: headerAccent,
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: primary,
+          backgroundColor: c,
           foregroundColor: Colors.white,
           elevation: 0,
           shadowColor: Colors.transparent,
@@ -654,7 +659,7 @@ class SkillDrillsTheme {
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
-          foregroundColor: primary,
+          foregroundColor: c,
           padding: _buttonPadding,
           minimumSize: const Size(0, 48),
           shape: _buttonShape,
@@ -667,8 +672,8 @@ class SkillDrillsTheme {
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: primary,
-          side: BorderSide(color: primary, width: 1.5),
+          foregroundColor: c,
+          side: BorderSide(color: c, width: 1.5),
           padding: _buttonPadding,
           minimumSize: const Size(0, 48),
           shape: _buttonShape,
@@ -682,40 +687,42 @@ class SkillDrillsTheme {
       inputDecorationTheme: lightTheme.inputDecorationTheme.copyWith(
         focusedBorder: OutlineInputBorder(
           borderRadius: SkillDrillsRadius.smBorderRadius,
-          borderSide: BorderSide(color: primary, width: 2),
+          borderSide: BorderSide(color: c, width: 2),
         ),
-        prefixIconColor: WidgetStateColor.resolveWith((s) => s.contains(WidgetState.focused) ? primary : SkillDrillsColors.lightOnSurfaceMuted),
-        suffixIconColor: WidgetStateColor.resolveWith((s) => s.contains(WidgetState.focused) ? primary : SkillDrillsColors.lightOnSurfaceMuted),
+        prefixIconColor: WidgetStateColor.resolveWith((s) => s.contains(WidgetState.focused) ? c : SkillDrillsColors.lightOnSurfaceMuted),
+        suffixIconColor: WidgetStateColor.resolveWith((s) => s.contains(WidgetState.focused) ? c : SkillDrillsColors.lightOnSurfaceMuted),
       ),
-      bottomNavigationBarTheme: lightTheme.bottomNavigationBarTheme.copyWith(selectedItemColor: primary),
-      snackBarTheme: lightTheme.snackBarTheme.copyWith(actionTextColor: primary),
+      bottomNavigationBarTheme: lightTheme.bottomNavigationBarTheme.copyWith(selectedItemColor: c),
+      snackBarTheme: lightTheme.snackBarTheme.copyWith(actionTextColor: c),
       progressIndicatorTheme: ProgressIndicatorThemeData(
-        color: primary,
-        linearTrackColor: primary.withValues(alpha: 0.18),
+        color: c,
+        linearTrackColor: c.withValues(alpha: 0.18),
       ),
       textSelectionTheme: TextSelectionThemeData(
         cursorColor: SkillDrillsColors.lightOnSurface,
-        selectionColor: primary.withValues(alpha: 0.20),
-        selectionHandleColor: primary,
+        selectionColor: c.withValues(alpha: 0.20),
+        selectionHandleColor: c,
       ),
       colorScheme: lightTheme.colorScheme.copyWith(
-        primary: primary,
-        secondary: primary,
+        primary: headerAccent,
+        secondary: c,
       ),
     );
   }
 
-  /// Returns [darkTheme] with all primary-colour references replaced by
-  /// [primary].  The `colorScheme.primary` (used for surfaces/app bar in
-  /// dark mode) is preserved as [SkillDrillsColors.darkAppBar] so the
-  /// structural chrome stays dark; only `secondary` (the CTA / tint colour)
-  /// is replaced.
-  static ThemeData darkThemeWithPrimary(Color primary) {
+  /// Returns [darkTheme] with all primary-colour references replaced.
+  ///
+  /// [headerAccent] drives `primaryColor` (the header background in the Start
+  /// tab).  [uiAccent] drives every interactive element — pass a
+  /// contrast-adjusted variant when [headerAccent] is too dark to be visible
+  /// against dark surfaces.  Defaults to [headerAccent] when omitted.
+  static ThemeData darkThemeWithPrimary(Color headerAccent, [Color? uiAccent]) {
+    final c = uiAccent ?? headerAccent;
     return darkTheme.copyWith(
-      primaryColor: primary,
+      primaryColor: headerAccent,
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: primary,
+          backgroundColor: c,
           foregroundColor: Colors.white,
           elevation: 0,
           shadowColor: Colors.transparent,
@@ -732,7 +739,7 @@ class SkillDrillsTheme {
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
-          foregroundColor: primary,
+          foregroundColor: c,
           padding: _buttonPadding,
           minimumSize: const Size(0, 48),
           shape: _buttonShape,
@@ -745,8 +752,8 @@ class SkillDrillsTheme {
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: primary,
-          side: BorderSide(color: primary, width: 1.5),
+          foregroundColor: c,
+          side: BorderSide(color: c, width: 1.5),
           padding: _buttonPadding,
           minimumSize: const Size(0, 48),
           shape: _buttonShape,
@@ -760,24 +767,24 @@ class SkillDrillsTheme {
       inputDecorationTheme: darkTheme.inputDecorationTheme.copyWith(
         focusedBorder: OutlineInputBorder(
           borderRadius: SkillDrillsRadius.smBorderRadius,
-          borderSide: BorderSide(color: primary, width: 2),
+          borderSide: BorderSide(color: c, width: 2),
         ),
-        prefixIconColor: WidgetStateColor.resolveWith((s) => s.contains(WidgetState.focused) ? primary : SkillDrillsColors.darkOnSurfaceMuted),
-        suffixIconColor: WidgetStateColor.resolveWith((s) => s.contains(WidgetState.focused) ? primary : SkillDrillsColors.darkOnSurfaceMuted),
+        prefixIconColor: WidgetStateColor.resolveWith((s) => s.contains(WidgetState.focused) ? c : SkillDrillsColors.darkOnSurfaceMuted),
+        suffixIconColor: WidgetStateColor.resolveWith((s) => s.contains(WidgetState.focused) ? c : SkillDrillsColors.darkOnSurfaceMuted),
       ),
-      bottomNavigationBarTheme: darkTheme.bottomNavigationBarTheme.copyWith(selectedItemColor: primary),
-      snackBarTheme: darkTheme.snackBarTheme.copyWith(actionTextColor: primary),
+      bottomNavigationBarTheme: darkTheme.bottomNavigationBarTheme.copyWith(selectedItemColor: c),
+      snackBarTheme: darkTheme.snackBarTheme.copyWith(actionTextColor: c),
       progressIndicatorTheme: ProgressIndicatorThemeData(
-        color: primary,
-        linearTrackColor: primary.withValues(alpha: 0.15),
+        color: c,
+        linearTrackColor: c.withValues(alpha: 0.15),
       ),
       textSelectionTheme: TextSelectionThemeData(
         cursorColor: SkillDrillsColors.darkOnSurface,
-        selectionColor: primary.withValues(alpha: 0.25),
-        selectionHandleColor: primary,
+        selectionColor: c.withValues(alpha: 0.25),
+        selectionHandleColor: c,
       ),
       colorScheme: darkTheme.colorScheme.copyWith(
-        secondary: primary,
+        secondary: c,
       ),
     );
   }

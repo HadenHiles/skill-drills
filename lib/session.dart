@@ -567,6 +567,9 @@ class _DrillPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Fire-and-forget: populate the cache so the info sheet opens instantly.
+    _prefetchDrillDetailsIfNeeded(drillResult.drillId);
+
     final sets = drillResult.setResults;
     final hasMeasurements = drillResult.measurementResults.isNotEmpty;
     final setLabel = drillResult.setsLabel.endsWith('s') ? drillResult.setsLabel.substring(0, drillResult.setsLabel.length - 1) : drillResult.setsLabel;
@@ -1697,22 +1700,83 @@ class _ScaleInput extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Drill-details pre-load cache
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Populated in the background as soon as a drill's page is first rendered so
+// that the info sheet opens instantly without a loading spinner.
+
+class _CachedDrillDetails {
+  final Drill drill;
+  final List<Measurement> measurements;
+  final List<Skill> skills;
+  _CachedDrillDetails(this.drill, this.measurements, this.skills);
+}
+
+final Map<String, _CachedDrillDetails> _drillDetailsCache = {};
+
+/// Fetches the full drill document, measurements, and skills from Firestore and
+/// stores them in [_drillDetailsCache] keyed by [drillId]. Safe to call many
+/// times — subsequent calls for an already-cached ID are no-ops.
+Future<void> _prefetchDrillDetailsIfNeeded(String drillId) async {
+  if (_drillDetailsCache.containsKey(drillId)) return;
+  final uid = FirebaseAuth.instance.currentUser?.uid;
+  if (uid == null) return;
+  try {
+    final drillRef = FirebaseFirestore.instance.collection('drills').doc(uid).collection('drills').doc(drillId);
+    final results = await Future.wait([
+      drillRef.get(),
+      drillRef.collection('measurements').orderBy('order').get(),
+      drillRef.collection('skills').get(),
+    ]);
+    final drillSnap = results[0] as DocumentSnapshot<Map<String, dynamic>>;
+    final measureSnap = results[1] as QuerySnapshot<Map<String, dynamic>>;
+    final skillsSnap = results[2] as QuerySnapshot<Map<String, dynamic>>;
+    if (!drillSnap.exists) return;
+    _drillDetailsCache[drillId] = _CachedDrillDetails(
+      Drill.fromSnapshot(drillSnap),
+      measureSnap.docs.map(Measurement.fromSnapshot).toList(),
+      skillsSnap.docs.map(Skill.fromSnapshot).toList(),
+    );
+  } catch (_) {
+    // Ignore prefetch errors — the sheet will fall back to on-demand fetching.
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Drill details sheet
 // ─────────────────────────────────────────────────────────────────────────────
 
 void _showDrillDetails(BuildContext context, session_model.DrillResult drillResult) {
+  final cached = _drillDetailsCache[drillResult.drillId];
   showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
-    builder: (_) => _DrillDetailsSheet(drillResult: drillResult),
+    builder: (_) => _DrillDetailsSheet(
+      drillResult: drillResult,
+      preloadedDrill: cached?.drill,
+      preloadedMeasurements: cached?.measurements,
+      preloadedSkills: cached?.skills,
+    ),
   );
 }
 
 class _DrillDetailsSheet extends StatefulWidget {
-  const _DrillDetailsSheet({required this.drillResult});
+  const _DrillDetailsSheet({
+    required this.drillResult,
+    this.preloadedDrill,
+    this.preloadedMeasurements,
+    this.preloadedSkills,
+  });
 
   final session_model.DrillResult drillResult;
+
+  /// Pre-fetched data. When supplied the sheet skips the Firestore fetch and
+  /// renders content immediately with no loading state.
+  final Drill? preloadedDrill;
+  final List<Measurement>? preloadedMeasurements;
+  final List<Skill>? preloadedSkills;
 
   @override
   State<_DrillDetailsSheet> createState() => _DrillDetailsSheetState();
@@ -1736,7 +1800,16 @@ class _DrillDetailsSheetState extends State<_DrillDetailsSheet> with SingleTicke
     _fade = CurvedAnimation(parent: _ctrl, curve: Curves.easeOut);
     _slide = Tween<Offset>(begin: const Offset(0, 0.12), end: Offset.zero).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic));
     _ctrl.forward();
-    _fetchDetails();
+    if (widget.preloadedDrill != null) {
+      // Data was pre-fetched when the drill page was first rendered — use it
+      // directly so the sheet opens with no loading spinner.
+      _drill = widget.preloadedDrill;
+      _measurements = widget.preloadedMeasurements ?? [];
+      _skills = widget.preloadedSkills ?? [];
+      _loading = false;
+    } else {
+      _fetchDetails();
+    }
   }
 
   @override
