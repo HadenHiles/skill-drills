@@ -75,10 +75,7 @@ class _RoutinesState extends State<Routines> with SingleTickerProviderStateMixin
   /// session will be locked to the correct activity.
   Future<void> _ensureActivityActive(String activityTitle) async {
     final uid = _auth.currentUser!.uid;
-    final activitiesRef = FirebaseFirestore.instance
-        .collection('activities')
-        .doc(uid)
-        .collection('activities');
+    final activitiesRef = FirebaseFirestore.instance.collection('activities').doc(uid).collection('activities');
 
     // Already the primary active activity — nothing to do.
     if (activityTitle == activeActivityNotifier.primary?.title) return;
@@ -97,9 +94,7 @@ class _RoutinesState extends State<Routines> with SingleTickerProviderStateMixin
 
     if (!_isPro) {
       final activeSnap = await activitiesRef.where('is_active', isEqualTo: true).get();
-      final active = activeSnap.docs
-          .map((d) => Activity.fromSnapshot(d as DocumentSnapshot<Map<String, dynamic>>))
-          .toList();
+      final active = activeSnap.docs.map((d) => Activity.fromSnapshot(d as DocumentSnapshot<Map<String, dynamic>>)).toList();
 
       if (active.length >= kFreeActiveActivityLimit) {
         final oldest = active.reduce((a, b) {
@@ -124,8 +119,7 @@ class _RoutinesState extends State<Routines> with SingleTickerProviderStateMixin
             SnackBar(
               duration: const Duration(seconds: 5),
               behavior: SnackBarBehavior.floating,
-              content: Text(
-                  '"${oldest.title}" was deactivated to make room. Upgrade to Pro for unlimited active activities.'),
+              content: Text('"${oldest.title}" was deactivated to make room. Upgrade to Pro for unlimited active activities.'),
               action: SnackBarAction(
                 label: 'Upgrade',
                 onPressed: () => navigatorKey.currentState!.push(
@@ -333,9 +327,7 @@ class _RoutinesState extends State<Routines> with SingleTickerProviderStateMixin
               (r) => RoutineItem(
                 routine: r,
                 deleteCallback: _deleteRoutine,
-                onBeforeOpen: r.activityTitle != null
-                    ? () => _ensureActivityActive(r.activityTitle!)
-                    : null,
+                onBeforeOpen: r.activityTitle != null ? () => _ensureActivityActive(r.activityTitle!) : null,
               ),
             ),
             const SizedBox(height: SkillDrillsSpacing.sm),
