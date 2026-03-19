@@ -84,6 +84,24 @@ class _DrillDetailState extends State<DrillDetail> {
         }).then((_) {
           setState(() {
             _activities = activities;
+
+            // For new drills with no pre-selected activity, default to the
+            // primary active activity so the field is never blank.
+            if (widget.drill == null && widget.initialActivity == null && _activity!.title!.isEmpty && activities.isNotEmpty) {
+              final primaryTitle = activeActivityNotifier.primary?.title;
+              Activity? defaultActivity;
+              if (primaryTitle != null) {
+                try {
+                  defaultActivity = activities.firstWhere((a) => a.title == primaryTitle);
+                } catch (_) {
+                  defaultActivity = activities.first;
+                }
+              } else {
+                defaultActivity = activities.first;
+              }
+              _activity = defaultActivity;
+              _drill = Drill(_drill!.title, _drill!.description, defaultActivity, _drill!.drillType);
+            }
           });
         });
       }
