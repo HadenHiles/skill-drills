@@ -429,18 +429,18 @@ class _AddDrillSheetState extends State<_AddDrillSheet> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
-                Icons.fitness_center_rounded,
+                Icons.sports_rounded,
                 size: 48,
                 color: Theme.of(context).colorScheme.onPrimary,
               ),
               const SizedBox(height: SkillDrillsSpacing.sm),
               Text(
-                'No drills yet',
+                'No active activities',
                 style: Theme.of(context).textTheme.titleSmall,
               ),
               const SizedBox(height: 4),
               Text(
-                'Create your first drill to add it to this session',
+                'Enable activities in Profile → Settings, or restore your default library, then create drills to add to sessions.',
                 style: Theme.of(context).textTheme.bodyMedium,
                 textAlign: TextAlign.center,
               ),

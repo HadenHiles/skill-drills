@@ -180,17 +180,38 @@ class _ActivitiesSettingsState extends State<ActivitiesSettings> {
             padding: const EdgeInsets.only(top: 10),
             children: items,
           )
-        : const Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Text(
-                "There are no activities to display",
-                style: TextStyle(
-                  fontSize: 16,
-                ),
+        : Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 40),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.sports_rounded,
+                    size: 48,
+                    color: Theme.of(context).colorScheme.onSurface.withAlpha(60),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'No Activities',
+                    style: Theme.of(context).textTheme.headlineSmall,
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'All activities have been deleted. Use "Restore Default Data" in Settings to rebuild your library.',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 20),
+                  OutlinedButton.icon(
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(Icons.arrow_back_rounded, size: 18),
+                    label: const Text('Back to Settings'),
+                  ),
+                ],
               ),
-            ],
+            ),
           );
   }
 

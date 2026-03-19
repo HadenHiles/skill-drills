@@ -377,10 +377,26 @@ class _DrillDetailState extends State<DrillDetail> {
                   Expanded(
                     child: activities.isEmpty
                         ? Center(
-                            child: Text(
-                              'No active activities.\nEnable some in Profile → Settings.',
-                              textAlign: TextAlign.center,
-                              style: Theme.of(context).textTheme.bodyMedium,
+                            child: Padding(
+                              padding: const EdgeInsets.all(24),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.sports_rounded, size: 40, color: Theme.of(context).colorScheme.onSurface.withAlpha(60)),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    'No active activities',
+                                    style: Theme.of(context).textTheme.titleSmall,
+                                    textAlign: TextAlign.center,
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    'Enable activities in Profile → Settings, or restore your default library.',
+                                    textAlign: TextAlign.center,
+                                    style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurface.withAlpha(150)),
+                                  ),
+                                ],
+                              ),
                             ),
                           )
                         : ListView.separated(
@@ -996,8 +1012,25 @@ class _DrillDetailState extends State<DrillDetail> {
                 )
               else if (_drillTypes!.isEmpty)
                 Padding(
-                  padding: const EdgeInsets.all(SkillDrillsSpacing.md),
-                  child: Text('No drill types set up yet.', style: theme.textTheme.bodyMedium),
+                  padding: const EdgeInsets.symmetric(horizontal: SkillDrillsSpacing.md, vertical: SkillDrillsSpacing.lg),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Icon(Icons.tune_rounded, size: 36, color: theme.colorScheme.onSurface.withAlpha(60)),
+                      const SizedBox(height: SkillDrillsSpacing.sm),
+                      Text(
+                        'No drill types available',
+                        style: theme.textTheme.titleSmall,
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Restore your default drill types in Profile → Settings → Restore Default Data.',
+                        style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurface.withAlpha(150)),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
                 )
               else
                 Builder(builder: (context) {

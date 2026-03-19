@@ -3,11 +3,13 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:skilldrills/main.dart';
 import 'package:skilldrills/models/firestore/activity.dart';
 import 'package:skilldrills/models/firestore/drill.dart';
 import 'package:skilldrills/services/factory.dart';
 import 'package:skilldrills/services/subscription.dart';
 import 'package:skilldrills/tabs/drills/drill_item.dart';
+import 'package:skilldrills/tabs/profile/settings/settings.dart';
 import 'package:skilldrills/theme/theme.dart';
 
 final FirebaseAuth auth = FirebaseAuth.instance;
@@ -285,12 +287,24 @@ class _DrillsState extends State<Drills> with SingleTickerProviderStateMixin {
                 color: Theme.of(context).colorScheme.secondary.withAlpha(18),
                 shape: BoxShape.circle,
               ),
-              child: Icon(Icons.fitness_center_rounded, size: 52, color: Theme.of(context).colorScheme.secondary),
+              child: Icon(Icons.sports_rounded, size: 52, color: Theme.of(context).colorScheme.secondary),
             ),
             const SizedBox(height: SkillDrillsSpacing.lg),
-            Text('No Drills Yet', style: Theme.of(context).textTheme.headlineSmall, textAlign: TextAlign.center),
+            Text('No Active Activities', style: Theme.of(context).textTheme.headlineSmall, textAlign: TextAlign.center),
             const SizedBox(height: SkillDrillsSpacing.sm),
-            Text('Tap the + button to create your first drill', style: Theme.of(context).textTheme.bodyMedium, textAlign: TextAlign.center),
+            Text(
+              'Enable at least one activity to see drills here, or restore your default library.',
+              style: Theme.of(context).textTheme.bodyMedium,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: SkillDrillsSpacing.lg),
+            OutlinedButton.icon(
+              onPressed: () => navigatorKey.currentState!.push(
+                MaterialPageRoute(builder: (_) => const ProfileSettings()),
+              ),
+              icon: const Icon(Icons.settings_rounded, size: 18),
+              label: const Text('Go to Settings'),
+            ),
           ],
         ),
       ),
