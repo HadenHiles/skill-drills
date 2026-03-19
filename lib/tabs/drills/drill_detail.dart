@@ -59,50 +59,59 @@ class _DrillDetailState extends State<DrillDetail> {
       _drill = Drill(_drill!.title, _drill!.description, widget.initialActivity, _drill!.drillType);
     }
 
-    // Load active activities only
+    // Load active activities — fetch all skills subcollections in parallel.
     FirebaseFirestore.instance.collection("activities").doc(auth.currentUser!.uid).collection("activities").get().then((snapshot) async {
-      List<Activity> activities = [];
-      if (snapshot.docs.isNotEmpty) {
-        await Future.forEach(snapshot.docs, (doc) async {
-          Activity a = Activity.fromSnapshot(doc);
-          // Only include active activities in the picker
-          if (!a.isActive) return;
-          await _getCategories(doc.reference).then((categories) {
-            a.skills = categories;
+      final activeDocs = snapshot.docs.where((doc) {
+        final a = Activity.fromSnapshot(doc);
+        return a.isActive;
+      }).toList();
 
-            final preselect = widget.initialActivity ?? widget.drill?.activity;
-            if (preselect != null && a == preselect) {
-              // Replace the stub with the fully-loaded activity (includes skills)
-              setState(() {
-                _activity = a;
-                _drill = Drill(_drill!.title, _drill!.description, a, _drill!.drillType);
-              });
-            }
+      if (activeDocs.isEmpty) {
+        if (mounted) setState(() => _activities = []);
+        return;
+      }
 
-            activities.add(a);
-          });
-        }).then((_) {
-          setState(() {
-            _activities = activities;
+      final activities = activeDocs.map(Activity.fromSnapshot).toList();
+      final skillsList = await Future.wait(
+        activeDocs.map((doc) => _getCategories(doc.reference)),
+      );
 
+      for (var i = 0; i < activities.length; i++) {
+        activities[i].skills = skillsList[i];
+      }
+
+      final preselect = widget.initialActivity ?? widget.drill?.activity;
+      Activity? preselectMatch;
+      if (preselect != null) {
+        try {
+          preselectMatch = activities.firstWhere((a) => a == preselect);
+        } catch (_) {}
+      }
+
+      if (mounted) {
+        setState(() {
+          _activities = activities;
+
+          if (preselectMatch != null) {
+            _activity = preselectMatch;
+            _drill = Drill(_drill!.title, _drill!.description, preselectMatch, _drill!.drillType);
+          } else if (widget.drill == null && widget.initialActivity == null && _activity!.title!.isEmpty && activities.isNotEmpty) {
             // For new drills with no pre-selected activity, default to the
             // primary active activity so the field is never blank.
-            if (widget.drill == null && widget.initialActivity == null && _activity!.title!.isEmpty && activities.isNotEmpty) {
-              final primaryTitle = activeActivityNotifier.primary?.title;
-              Activity? defaultActivity;
-              if (primaryTitle != null) {
-                try {
-                  defaultActivity = activities.firstWhere((a) => a.title == primaryTitle);
-                } catch (_) {
-                  defaultActivity = activities.first;
-                }
-              } else {
+            final primaryTitle = activeActivityNotifier.primary?.title;
+            Activity? defaultActivity;
+            if (primaryTitle != null) {
+              try {
+                defaultActivity = activities.firstWhere((a) => a.title == primaryTitle);
+              } catch (_) {
                 defaultActivity = activities.first;
               }
-              _activity = defaultActivity;
-              _drill = Drill(_drill!.title, _drill!.description, defaultActivity, _drill!.drillType);
+            } else {
+              defaultActivity = activities.first;
             }
-          });
+            _activity = defaultActivity;
+            _drill = Drill(_drill!.title, _drill!.description, defaultActivity, _drill!.drillType);
+          }
         });
       }
     });
@@ -138,21 +147,22 @@ class _DrillDetailState extends State<DrillDetail> {
       });
     }
 
-    // Load the drill types
+    // Load the drill types — fetch all measurement subcollections in parallel
+    // instead of serially so the list appears in one round-trip.
     FirebaseFirestore.instance.collection('drill_types').doc(auth.currentUser!.uid).collection('drill_types').orderBy('order').get().then((snapshot) async {
-      List<DrillType> drillTypes = [];
-      if (snapshot.docs.isNotEmpty) {
-        await Future.forEach(snapshot.docs, (doc) async {
-          DrillType dt = DrillType.fromSnapshot(doc);
-          await _getMeasurements(doc.reference).then((measurements) {
-            dt.measurements = measurements;
-            drillTypes.add(dt);
-          });
-        }).then((_) {
-          setState(() {
-            _drillTypes = drillTypes;
-          });
-        });
+      if (snapshot.docs.isEmpty) {
+        setState(() => _drillTypes = []);
+        return;
+      }
+      final drillTypes = snapshot.docs.map(DrillType.fromSnapshot).toList();
+      final measurements = await Future.wait(
+        drillTypes.map((dt) => _getMeasurements(dt.reference!)),
+      );
+      for (var i = 0; i < drillTypes.length; i++) {
+        drillTypes[i].measurements = measurements[i];
+      }
+      if (mounted) {
+        setState(() => _drillTypes = drillTypes);
       }
     });
 
