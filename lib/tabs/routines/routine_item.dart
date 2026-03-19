@@ -12,10 +12,15 @@ class RoutineItem extends StatelessWidget {
     super.key,
     required this.routine,
     required this.deleteCallback,
+    this.onBeforeOpen,
   });
 
   final Routine routine;
   final Function(Routine) deleteCallback;
+
+  /// Called (and awaited) immediately before navigating to [RoutineDetail].
+  /// Use this to ensure the routine's activity is active before opening.
+  final Future<void> Function()? onBeforeOpen;
 
   @override
   Widget build(BuildContext context) {
@@ -56,7 +61,8 @@ class RoutineItem extends StatelessWidget {
           );
         },
       ),
-      onTap: () {
+      onTap: () async {
+        if (onBeforeOpen != null) await onBeforeOpen!();
         navigatorKey.currentState!.push(
           PageRouteBuilder(
             pageBuilder: (ctx, anim, secondaryAnim) => RoutineDetail(routine: routine),

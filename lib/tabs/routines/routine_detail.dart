@@ -128,6 +128,20 @@ class _RoutineDetailState extends State<RoutineDetail> {
           } catch (_) {
             // Activity may have been deactivated; keep null so user re-picks.
           }
+        } else if (widget.routine == null && activities.isNotEmpty) {
+          // New routine — default to the primary active activity.
+          final primaryTitle = activeActivityNotifier.primary?.title;
+          Activity? defaultActivity;
+          if (primaryTitle != null) {
+            try {
+              defaultActivity = activities.firstWhere((a) => a.title == primaryTitle);
+            } catch (_) {
+              defaultActivity = activities.first;
+            }
+          } else {
+            defaultActivity = activities.first;
+          }
+          _selectedActivity = defaultActivity;
         }
         // Sync terminology from pre-selected activity.
         if (_selectedActivity != null) {
