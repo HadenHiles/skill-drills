@@ -172,27 +172,31 @@ class _StartState extends State<Start> with SingleTickerProviderStateMixin {
       final terminology = ActivityTerminology.defaultsFor(activityTitle);
       final activityIcon = ActivityTerminology.iconFor(activityTitle);
 
-      // Build DrillResults
-      final results = <session_model.DrillResult>[];
-      for (var i = 0; i < routineDrills.length; i++) {
-        final rd = routineDrills[i];
-        final drillResult = await buildDrillResultForSession(
-          drillId: rd.drillId,
-          drillTitle: rd.title,
-          activityTitle: activityTitle,
-          activityIcon: activityIcon,
-          setsLabel: terminology.setsLabel,
-          repsLabel: terminology.repsLabel,
-          order: i,
-          sets: rd.sets,
-          reps: rd.reps,
-          weight: rd.weight,
-          rir: rd.rir,
-          routineNotes: rd.notes,
-          routineId: routineId,
-        );
-        results.add(drillResult);
-      }
+      // Fetch sessions once and all drill measurements in parallel so that a
+      // routine with N drills requires N+1 Firestore reads instead of 2N.
+      final sessSnap = await FirebaseFirestore.instance.collection('sessions').doc(uid).collection('sessions').orderBy('started_at', descending: true).limit(20).get();
+
+      final results = await Future.wait(
+        List.generate(routineDrills.length, (i) {
+          final rd = routineDrills[i];
+          return buildDrillResultForSession(
+            drillId: rd.drillId,
+            drillTitle: rd.title,
+            activityTitle: activityTitle,
+            activityIcon: activityIcon,
+            setsLabel: terminology.setsLabel,
+            repsLabel: terminology.repsLabel,
+            order: i,
+            sets: rd.sets,
+            reps: rd.reps,
+            weight: rd.weight,
+            rir: rd.rir,
+            routineNotes: rd.notes,
+            routineId: routineId,
+            preloadedSessions: sessSnap,
+          );
+        }),
+      );
 
       if (sessionService.isRunning) {
         if (!mounted) return;

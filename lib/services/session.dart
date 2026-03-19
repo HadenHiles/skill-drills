@@ -450,17 +450,30 @@ Future<session_model.DrillResult> buildDrillResultForSession({
   /// The routine ID — used to fetch pinned notes from the most recent
   /// prior session of the same routine+drill.
   String? routineId,
+
+  /// Pre-fetched sessions snapshot. When building multiple DrillResults at
+  /// once (e.g. starting from a routine), pass this to avoid re-querying
+  /// Firestore for the same sessions data on every drill.
+  QuerySnapshot<Map<String, dynamic>>? preloadedSessions,
 }) async {
   final uid = FirebaseAuth.instance.currentUser!.uid;
 
-  // Fetch measurements and last session history in parallel.
-  final results = await Future.wait([
-    FirebaseFirestore.instance.collection('drills').doc(uid).collection('drills').doc(drillId).collection('measurements').orderBy('order').get(),
-    FirebaseFirestore.instance.collection('sessions').doc(uid).collection('sessions').orderBy('started_at', descending: true).limit(20).get(),
-  ]);
+  // When a pre-fetched sessions snapshot is available (e.g. routine start),
+  // only fetch the drill measurements. Otherwise fetch both in parallel.
+  final QuerySnapshot<Map<String, dynamic>> measSnap;
+  final QuerySnapshot<Map<String, dynamic>> sessSnap;
 
-  final measSnap = results[0];
-  final sessSnap = results[1];
+  if (preloadedSessions != null) {
+    measSnap = await FirebaseFirestore.instance.collection('drills').doc(uid).collection('drills').doc(drillId).collection('measurements').orderBy('order').get();
+    sessSnap = preloadedSessions;
+  } else {
+    final fetches = await Future.wait([
+      FirebaseFirestore.instance.collection('drills').doc(uid).collection('drills').doc(drillId).collection('measurements').orderBy('order').get(),
+      FirebaseFirestore.instance.collection('sessions').doc(uid).collection('sessions').orderBy('started_at', descending: true).limit(20).get(),
+    ]);
+    measSnap = fetches[0];
+    sessSnap = fetches[1];
+  }
 
   // Build deduplicated measurement template.
   // Use a set of "type|label" keys to skip exact duplicates.
