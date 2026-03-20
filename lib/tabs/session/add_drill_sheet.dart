@@ -183,7 +183,7 @@ class _AddDrillSheetState extends State<_AddDrillSheet> {
   }
 
   /// Whether the session is locked to a specific activity (a drill has already
-  /// been added). When locked, the filter cannot be changed by the user.
+  /// been added).
   bool get _isLocked => sessionService.lockedActivityTitle != null;
 
   /// Drills matching [_filterActivity] (and current query) as a flat list.

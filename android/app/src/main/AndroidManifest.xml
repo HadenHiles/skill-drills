@@ -3,7 +3,7 @@
     <!-- Required by RevenueCat / Google Play Billing -->
     <uses-permission android:name="com.android.vending.BILLING" />
     <application
-        android:label="skilldrills"
+        android:label="Skill Drills"
         android:name="${applicationName}"
         android:icon="@mipmap/launcher_icon">
         <activity
