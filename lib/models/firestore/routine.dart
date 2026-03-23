@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:skilldrills/models/firestore/drill_note.dart';
+import 'package:skilldrills/models/firestore/timer_mode.dart';
 
 /// A single drill entry inside a [Routine], ordered by [order].
 ///
@@ -27,6 +28,17 @@ class RoutineDrill {
   /// Target Reps In Reserve — 0 = failure, 5 = very easy (Weight Training only).
   int? rir;
 
+  /// Timer behavior for drills with duration measurements.
+  TimerMode timerMode;
+
+  /// Default countdown duration in seconds (for countdown mode).
+  /// Pre-loads the countdown timer when this drill starts in a session.
+  int? countdownSeconds;
+
+  /// Target time in seconds (for stopwatch mode with a goal).
+  /// Pre-loads as a target in the session UI.
+  int? targetSeconds;
+
   /// Per-drill notes authored in the routine builder.
   /// These are always pre-loaded when starting a session from this routine.
   List<DrillNote> notes;
@@ -41,6 +53,9 @@ class RoutineDrill {
     this.reps,
     this.weight,
     this.rir,
+    this.timerMode = TimerMode.none,
+    this.countdownSeconds,
+    this.targetSeconds,
     List<DrillNote>? notes,
   }) : notes = notes ?? [];
 
@@ -52,6 +67,9 @@ class RoutineDrill {
         reps = map['reps'] != null ? (map['reps'] as num).toInt() : null,
         weight = map['weight'] as num?,
         rir = map['rir'] != null ? (map['rir'] as num).toInt() : null,
+        timerMode = TimerMode.fromString(map['timer_mode'] as String?),
+        countdownSeconds = map['countdown_seconds'] != null ? (map['countdown_seconds'] as num).toInt() : null,
+        targetSeconds = map['target_seconds'] != null ? (map['target_seconds'] as num).toInt() : null,
         notes = (map['notes'] as List?)?.map((n) => DrillNote.fromMap(n as Map<String, dynamic>)).toList() ?? [];
 
   Map<String, dynamic> toMap() => {
@@ -62,6 +80,9 @@ class RoutineDrill {
         if (reps != null) 'reps': reps,
         if (weight != null) 'weight': weight,
         if (rir != null) 'rir': rir,
+        'timer_mode': timerMode.toFirestore(),
+        if (countdownSeconds != null) 'countdown_seconds': countdownSeconds,
+        if (targetSeconds != null) 'target_seconds': targetSeconds,
         'notes': notes.map((n) => n.toMap()).toList(),
       };
 

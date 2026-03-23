@@ -7,6 +7,7 @@ import 'package:skilldrills/models/firestore/drill_note.dart';
 import 'package:skilldrills/models/firestore/measurement_result.dart';
 import 'package:skilldrills/models/firestore/personal_best.dart';
 import 'package:skilldrills/models/firestore/session.dart' as session_model;
+import 'package:skilldrills/models/firestore/timer_mode.dart';
 import 'package:skilldrills/services/haptics.dart';
 import 'package:skilldrills/services/personal_bests.dart';
 import 'package:skilldrills/services/streaks.dart';
@@ -91,6 +92,110 @@ class SessionService extends ChangeNotifier {
     _restTimer = null;
     _restCountdown = null;
     notifyListeners();
+  }
+
+  // ── Per-drill timer (countdown or stopwatch) ───────────────────────────────
+  int? _activeDrillTimerIndex; // which drill's timer is running
+  TimerMode? _drillTimerMode; // countdown or stopwatch
+  Timer? _drillTimer;
+  Stopwatch? _drillStopwatch;
+  int? _drillCountdownRemaining; // seconds remaining (countdown mode)
+  Duration? _drillElapsed; // elapsed time (stopwatch mode)
+
+  int? get activeDrillTimerIndex => _activeDrillTimerIndex;
+  TimerMode? get drillTimerMode => _drillTimerMode;
+  int? get drillCountdownRemaining => _drillCountdownRemaining;
+  Duration? get drillElapsed => _drillElapsed;
+  bool get drillTimerRunning => _drillTimer != null || (_drillStopwatch?.isRunning ?? false);
+
+  /// Starts a countdown timer for the drill at [drillIndex].
+  void startDrillCountdown(int drillIndex, int seconds) {
+    _stopDrillTimer();
+    _activeDrillTimerIndex = drillIndex;
+    _drillTimerMode = TimerMode.countdown;
+    _drillCountdownRemaining = seconds;
+    notifyListeners();
+    _drillTimer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (_drillCountdownRemaining != null && _drillCountdownRemaining! > 0) {
+        _drillCountdownRemaining = _drillCountdownRemaining! - 1;
+        notifyListeners();
+      } else {
+        t.cancel();
+        _drillTimer = null;
+        notifyListeners();
+        hapticRestComplete(); // vibrate when countdown completes
+      }
+    });
+  }
+
+  /// Starts a stopwatch for the drill at [drillIndex].
+  void startDrillStopwatch(int drillIndex) {
+    _stopDrillTimer();
+    _activeDrillTimerIndex = drillIndex;
+    _drillTimerMode = TimerMode.stopwatch;
+    _drillStopwatch = Stopwatch();
+    _drillStopwatch!.start();
+    notifyListeners();
+    _drillTimer = Timer.periodic(const Duration(milliseconds: 100), (t) {
+      _drillElapsed = _drillStopwatch!.elapsed;
+      notifyListeners();
+    });
+  }
+
+  /// Pauses the active drill timer (works for both countdown and stopwatch).
+  void pauseDrillTimer() {
+    if (_drillTimerMode == TimerMode.stopwatch && _drillStopwatch != null) {
+      _drillStopwatch!.stop();
+      _drillElapsed = _drillStopwatch!.elapsed;
+    }
+    _drillTimer?.cancel();
+    _drillTimer = null;
+    notifyListeners();
+  }
+
+  /// Resumes a paused drill timer.
+  void resumeDrillTimer() {
+    if (_activeDrillTimerIndex == null) return;
+    if (_drillTimerMode == TimerMode.countdown && _drillCountdownRemaining != null) {
+      // Resume countdown from where it left off
+      _drillTimer = Timer.periodic(const Duration(seconds: 1), (t) {
+        if (_drillCountdownRemaining != null && _drillCountdownRemaining! > 0) {
+          _drillCountdownRemaining = _drillCountdownRemaining! - 1;
+          notifyListeners();
+        } else {
+          t.cancel();
+          _drillTimer = null;
+          notifyListeners();
+          hapticRestComplete();
+        }
+      });
+    } else if (_drillTimerMode == TimerMode.stopwatch && _drillStopwatch != null) {
+      // Resume stopwatch
+      _drillStopwatch!.start();
+      _drillTimer = Timer.periodic(const Duration(milliseconds: 100), (t) {
+        _drillElapsed = _drillStopwatch!.elapsed;
+        notifyListeners();
+      });
+    }
+    notifyListeners();
+  }
+
+  /// Stops and clears the active drill timer.
+  void stopDrillTimer() {
+    _stopDrillTimer();
+    notifyListeners();
+  }
+
+  void _stopDrillTimer() {
+    _drillTimer?.cancel();
+    _drillTimer = null;
+    _drillStopwatch?.stop();
+    _drillStopwatch?.reset();
+    _drillStopwatch = null;
+    _activeDrillTimerIndex = null;
+    _drillTimerMode = null;
+    _drillCountdownRemaining = null;
+    _drillElapsed = null;
   }
 
   /// True while [finishSession] is persisting to Firestore.
@@ -181,6 +286,7 @@ class SessionService extends ChangeNotifier {
     _restTimer?.cancel();
     _restTimer = null;
     _restCountdown = null;
+    _stopDrillTimer();
     notifyListeners();
   }
 
