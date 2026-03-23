@@ -305,6 +305,7 @@ class _HistoryState extends State<History> with SingleTickerProviderStateMixin {
                           isPro: _isPro,
                           pbMap: pbMap,
                           onDelete: () => _deleteSession(s),
+                          onDeleteDirect: () async { await s.reference?.delete(); },
                         )),
                   ],
                 );
@@ -351,11 +352,12 @@ class _HistoryState extends State<History> with SingleTickerProviderStateMixin {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _SessionCard extends StatefulWidget {
-  const _SessionCard({required this.session, required this.isPro, required this.onDelete, this.pbMap});
+  const _SessionCard({required this.session, required this.isPro, required this.onDelete, required this.onDeleteDirect, this.pbMap});
 
   final Session session;
   final bool isPro;
   final VoidCallback onDelete;
+  final Future<void> Function() onDeleteDirect;
   final Map<String, num>? pbMap;
 
   @override
@@ -446,7 +448,39 @@ class _SessionCardState extends State<_SessionCard> {
   @override
   Widget build(BuildContext context) {
     final session = widget.session;
-    return Card(
+    return Dismissible(
+      key: ValueKey(session.reference?.id ?? session.title),
+      direction: DismissDirection.endToStart,
+      background: Container(
+        margin: const EdgeInsets.symmetric(vertical: 4),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.error,
+          borderRadius: SkillDrillsRadius.mdBorderRadius,
+        ),
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: SkillDrillsSpacing.lg),
+        child: const Icon(Icons.delete_outline_rounded, color: Colors.white),
+      ),
+      confirmDismiss: (_) async {
+        final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Delete Session?'),
+            content: Text('Delete "${session.title}"? This cannot be undone.'),
+            actions: [
+              TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
+              TextButton(
+                style: TextButton.styleFrom(foregroundColor: Theme.of(context).colorScheme.error),
+                onPressed: () => Navigator.of(ctx).pop(true),
+                child: const Text('Delete'),
+              ),
+            ],
+          ),
+        );
+        return confirmed == true;
+      },
+      onDismissed: (_) => widget.onDeleteDirect(),
+      child: Card(
       margin: const EdgeInsets.symmetric(vertical: 4),
       child: Column(
         children: [
@@ -533,7 +567,8 @@ class _SessionCardState extends State<_SessionCard> {
           ],
         ],
       ),
-    );
+    ),  // Card
+    ); // Dismissible
   }
 }
 
