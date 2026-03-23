@@ -204,9 +204,22 @@ class _RoutineDetailState extends State<RoutineDetail> {
 
     setState(() => _saving = true);
 
-    // Re-number drills by current list order
+    // Re-number drills by current list order, preserving all planning fields
     final orderedDrills = _selectedDrills.asMap().entries.map((e) {
-      return RoutineDrill(e.value.drillId, e.value.title, e.key + 1);
+      final rd = e.value;
+      return RoutineDrill(
+        rd.drillId,
+        rd.title,
+        e.key + 1,
+        sets: rd.sets,
+        reps: rd.reps,
+        weight: rd.weight,
+        rir: rd.rir,
+        timerMode: rd.timerMode,
+        countdownSeconds: rd.countdownSeconds,
+        targetSeconds: rd.targetSeconds,
+        notes: rd.notes,
+      );
     }).toList();
 
     try {

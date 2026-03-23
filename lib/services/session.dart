@@ -479,25 +479,35 @@ class SessionService extends ChangeNotifier {
     session.endedAt = now;
     session.durationSeconds = _currentDuration?.inSeconds;
 
+    // ── Phase 1: persist the session ─────────────────────────────────────────
+    // _saving is cleared as soon as the write completes so the spinner stops
+    // immediately — pro-only hooks (PB, streak) run afterwards and cannot
+    // block the UI.
+    final uid = FirebaseAuth.instance.currentUser!.uid;
+    late String savedDocId;
     List<PersonalBest> newBests = [];
     try {
-      final uid = FirebaseAuth.instance.currentUser!.uid;
       final docRef = await FirebaseFirestore.instance.collection('sessions').doc(uid).collection('sessions').add(session.toMap());
-
-      // Pro-only post-save hooks.
-      final isPro = await hasActiveSubscription();
-      if (isPro && session.drillResults.isNotEmpty) {
-        // Compute personal bests.
-        newBests = await updatePersonalBests(uid, session, docRef.id);
-        // Update streak for each distinct activity in this session.
-        final activityTitles = session.drillResults.map((d) => d.activityTitle).toSet();
-        await Future.wait(
-          activityTitles.map((a) => updateStreak(uid, a, now)),
-        );
-      }
+      savedDocId = docRef.id;
     } finally {
       _saving = false;
       reset();
+    }
+
+    // ── Phase 2: pro-only post-save hooks ─────────────────────────────────────
+    // Runs after the UI is already unblocked. Failures here are non-fatal
+    // because the session document has already been written.
+    if (session.drillResults.isNotEmpty) {
+      try {
+        final isPro = await hasActiveSubscription();
+        if (isPro) {
+          newBests = await updatePersonalBests(uid, session, savedDocId);
+          final activityTitles = session.drillResults.map((d) => d.activityTitle).toSet();
+          await Future.wait(activityTitles.map((a) => updateStreak(uid, a, now)));
+        }
+      } catch (e) {
+        debugPrint('[SessionService] post-save hooks error (non-fatal): $e');
+      }
     }
     return newBests;
   }
