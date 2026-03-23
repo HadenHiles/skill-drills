@@ -1664,27 +1664,27 @@ class _DrillDetailState extends State<DrillDetail> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-              RadioListTile<TimerMode>(
-                value: TimerMode.none,
-                title: Text(TimerMode.none.displayName, style: theme.textTheme.bodyLarge),
-                subtitle: Text(
-                  TimerMode.none.description,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurface.withAlpha(150),
-                  ),
-                ),
-              ),
-              Divider(height: 1, color: theme.dividerColor),
-              RadioListTile<TimerMode>(
-                value: TimerMode.stopwatch,
-                title: Text(TimerMode.stopwatch.displayName, style: theme.textTheme.bodyLarge),
-                subtitle: Text(
-                  TimerMode.stopwatch.description,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurface.withAlpha(150),
-                  ),
-                ),
-              ),
+                    RadioListTile<TimerMode>(
+                      value: TimerMode.none,
+                      title: Text(TimerMode.none.displayName, style: theme.textTheme.bodyLarge),
+                      subtitle: Text(
+                        TimerMode.none.description,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurface.withAlpha(150),
+                        ),
+                      ),
+                    ),
+                    Divider(height: 1, color: theme.dividerColor),
+                    RadioListTile<TimerMode>(
+                      value: TimerMode.stopwatch,
+                      title: Text(TimerMode.stopwatch.displayName, style: theme.textTheme.bodyLarge),
+                      subtitle: Text(
+                        TimerMode.stopwatch.description,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurface.withAlpha(150),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -1798,15 +1798,15 @@ class _DrillDetailState extends State<DrillDetail> {
                   });
                 },
                 child: RadioListTile<TimerMode>(
-                value: TimerMode.countdown,
-                title: Text(TimerMode.countdown.displayName, style: theme.textTheme.bodyLarge),
-                subtitle: Text(
-                  TimerMode.countdown.description,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurface.withAlpha(150),
+                  value: TimerMode.countdown,
+                  title: Text(TimerMode.countdown.displayName, style: theme.textTheme.bodyLarge),
+                  subtitle: Text(
+                    TimerMode.countdown.description,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurface.withAlpha(150),
+                    ),
                   ),
                 ),
-              ),
               ),
               // Countdown duration field (countdown mode only)
               AnimatedSize(
