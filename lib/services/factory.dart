@@ -436,8 +436,15 @@ List<DrillType> _universalDrillTypes() => [
           MeasurementTarget('duration', 'Target Round Duration', 5, null, false) as Measurement,
           MeasurementTarget('rpe', 'Target RPE', 6, null, false) as Measurement,
         ],
+      // Best metric — shot power, serve speed, jump height, throw distance
+      DrillType('best_metric', 'Best / Personal Best', 'Track your best single-rep performance — shot power, serve speed, jump height, throw distance', 0, 8)
+        ..measurements = [
+          MeasurementResult('amount', 'Best Value', 1, null) as Measurement,
+          MeasurementResult('amount', 'Attempts', 2, null) as Measurement,
+          MeasurementTarget('amount', 'Target Value', 3, null, false) as Measurement,
+        ],
       // Distance + time + effort — running, sprints, base running
-      DrillType('pace', 'Distance + Time', 'Distance covered and elapsed time with effort rating', 0, 8)
+      DrillType('pace', 'Distance + Time', 'Distance covered and elapsed time with effort rating', 0, 9)
         ..measurements = [
           MeasurementResult('amount', 'Distance (m)', 1, null) as Measurement,
           MeasurementResult('duration', 'Time', 2, null) as Measurement,

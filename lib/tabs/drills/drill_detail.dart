@@ -1219,6 +1219,7 @@ class _DrillDetailState extends State<DrillDetail> {
       'count_duration': (icon: Icons.repeat_rounded, color: Color(0xFFFB8C00), label: 'Reps + Time'),
       'sets': (icon: Icons.fitness_center_rounded, color: Color(0xFF8E24AA), label: 'Strength'),
       'rounds': (icon: Icons.loop_rounded, color: Color(0xFF3949AB), label: 'Conditioning'),
+      'best_metric': (icon: Icons.workspace_premium_rounded, color: Color(0xFFFFB300), label: 'Personal Best'),
       'pace': (icon: Icons.straighten_rounded, color: Color(0xFF00897B), label: 'Distance'),
     };
     if (dt.id != null && universalMeta.containsKey(dt.id)) return universalMeta[dt.id]!;
@@ -1249,6 +1250,7 @@ class _DrillDetailState extends State<DrillDetail> {
       'count_duration': 'Use when both rep volume and total time both matter — stickhandling patterns, form drills, circuits.',
       'sets': 'Use for weight-room lifts where sets, reps, load, and proximity-to-failure are all tracked.',
       'rounds': 'Use for multi-round conditioning work where round count, round duration, and effort are logged.',
+      'best_metric': 'Use when tracking your best single-rep performance — shot power, serve speed, vertical jump, throw distance.',
       'pace': 'Use when you need to cover a distance and track how long it takes — runs, skates, swims.',
     };
     return useWhen[id];
@@ -1268,6 +1270,7 @@ class _DrillDetailState extends State<DrillDetail> {
         'count_duration': 'e.g. stickhandling pattern reps in a set time',
         'sets': 'e.g. off-ice barbell or dumbbell strength work',
         'rounds': 'e.g. interval skating sets, bag-skate rounds',
+        'best_metric': 'e.g. shot power (mph), sprint speed, vertical jump',
         'pace': 'e.g. off-ice conditioning run',
       },
       'Basketball': {
@@ -1278,6 +1281,7 @@ class _DrillDetailState extends State<DrillDetail> {
         'count_duration': 'e.g. ball-handling drill reps in a timed window',
         'sets': 'e.g. weight-room strength work',
         'rounds': 'e.g. suicide sprints, court conditioning sets',
+        'best_metric': 'e.g. vertical jump height, sprint speed, max standing reach',
         'pace': 'e.g. off-court conditioning run',
       },
       'Baseball': {
@@ -1288,6 +1292,7 @@ class _DrillDetailState extends State<DrillDetail> {
         'count_duration': 'e.g. tee work reps in a timed session',
         'sets': 'e.g. gym strength and conditioning',
         'rounds': 'e.g. batting-practice bucket rounds',
+        'best_metric': 'e.g. exit velocity (mph), throw velocity, home-to-first time',
         'pace': 'e.g. base-running or conditioning run',
       },
       'Golf': {
@@ -1298,6 +1303,7 @@ class _DrillDetailState extends State<DrillDetail> {
         'count_duration': 'e.g. chipping reps in a focused time block',
         'sets': 'e.g. gym mobility or strength work',
         'rounds': 'e.g. structured 9-hole practice round',
+        'best_metric': 'e.g. longest drive distance, ball speed (mph), clubhead speed',
         'pace': 'e.g. walking-round cardio or off-course conditioning',
       },
       'Soccer': {
@@ -1308,6 +1314,7 @@ class _DrillDetailState extends State<DrillDetail> {
         'count_duration': 'e.g. juggling or passing reps in a timed window',
         'sets': 'e.g. gym strength work',
         'rounds': 'e.g. interval sprints, suicides, conditioning circuits',
+        'best_metric': 'e.g. shot power (mph), throw-in distance, sprint speed',
         'pace': 'e.g. fitness run with distance and effort logged',
       },
       'Tennis': {
@@ -1318,6 +1325,7 @@ class _DrillDetailState extends State<DrillDetail> {
         'count_duration': 'e.g. feed-basket rally reps in a timed window',
         'sets': 'e.g. gym strength work',
         'rounds': 'e.g. on-court fitness circuit',
+        'best_metric': 'e.g. serve speed (mph), forehand power, smash velocity',
         'pace': 'e.g. off-court conditioning run',
       },
       'Running': {
@@ -1328,6 +1336,7 @@ class _DrillDetailState extends State<DrillDetail> {
         'count_duration': 'e.g. form-drill reps in a timed session window',
         'sets': 'e.g. gym strength or cross-training work',
         'rounds': 'e.g. structured interval training sets',
+        'best_metric': 'e.g. top speed (mph), vertical jump, standing long jump',
         'pace': 'e.g. distance run with total time and effort logged',
       },
       'Volleyball': {
@@ -1338,6 +1347,7 @@ class _DrillDetailState extends State<DrillDetail> {
         'count_duration': 'e.g. passing reps in a timed drill window',
         'sets': 'e.g. weight-room strength work',
         'rounds': 'e.g. conditioning sets or partner rally rounds',
+        'best_metric': 'e.g. serve speed (mph), vertical jump, approach jump height',
         'pace': 'e.g. off-court conditioning run',
       },
       'Martial Arts': {
@@ -1348,6 +1358,7 @@ class _DrillDetailState extends State<DrillDetail> {
         'count_duration': 'e.g. combination reps in a timed window',
         'sets': 'e.g. gym strength and conditioning work',
         'rounds': 'e.g. bag or pad work round sets',
+        'best_metric': 'e.g. punch power (force), kick speed, vertical jump',
         'pace': 'e.g. conditioning run or roadwork',
       },
       'Pickleball': {
@@ -1358,6 +1369,7 @@ class _DrillDetailState extends State<DrillDetail> {
         'count_duration': 'e.g. dinking or drilling reps in a timed window',
         'sets': 'e.g. off-court gym work',
         'rounds': 'e.g. partner rally or drilling sets',
+        'best_metric': 'e.g. smash speed, drive speed, vertical jump',
         'pace': 'e.g. off-court conditioning run',
       },
       'Lacrosse': {
@@ -1368,6 +1380,7 @@ class _DrillDetailState extends State<DrillDetail> {
         'count_duration': 'e.g. cradle or wall-ball reps in a timed window',
         'sets': 'e.g. off-field gym work',
         'rounds': 'e.g. conditioning circuits',
+        'best_metric': 'e.g. shot speed (mph), throw distance, sprint speed',
         'pace': 'e.g. field conditioning run',
       },
       'Gymnastics': {
@@ -1378,6 +1391,7 @@ class _DrillDetailState extends State<DrillDetail> {
         'count_duration': 'e.g. skill reps plus total session time',
         'sets': 'e.g. weighted or bodyweight strength sets',
         'rounds': 'e.g. conditioning circuits',
+        'best_metric': 'e.g. max hold time, vertical jump, standing reach',
         'pace': 'e.g. off-apparatus cardio conditioning',
       },
       'Guitar': {
@@ -1388,6 +1402,7 @@ class _DrillDetailState extends State<DrillDetail> {
         'count_duration': 'e.g. scale or riff reps in a focused time block',
         'sets': 'e.g. technique sets by hand position or key',
         'rounds': 'e.g. practice rotating through a chord progression or set of licks',
+        'best_metric': 'e.g. fastest clean BPM on a passage, longest tremolo duration',
         'pace': 'e.g. run-through a section of a song with total time tracked',
       },
     };
