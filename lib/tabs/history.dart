@@ -305,7 +305,9 @@ class _HistoryState extends State<History> with SingleTickerProviderStateMixin {
                           isPro: _isPro,
                           pbMap: pbMap,
                           onDelete: () => _deleteSession(s),
-                          onDeleteDirect: () async { await s.reference?.delete(); },
+                          onDeleteDirect: () async {
+                            await s.reference?.delete();
+                          },
                         )),
                   ],
                 );
@@ -481,93 +483,93 @@ class _SessionCardState extends State<_SessionCard> {
       },
       onDismissed: (_) => widget.onDeleteDirect(),
       child: Card(
-      margin: const EdgeInsets.symmetric(vertical: 4),
-      child: Column(
-        children: [
-          InkWell(
-            onTap: () => setState(() => _expanded = !_expanded),
-            borderRadius: SkillDrillsRadius.mdBorderRadius,
-            child: Padding(
-              padding: const EdgeInsets.all(SkillDrillsSpacing.md),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          session.title,
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                fontFamily: 'Choplin',
-                                fontWeight: FontWeight.w700,
-                              ),
+        margin: const EdgeInsets.symmetric(vertical: 4),
+        child: Column(
+          children: [
+            InkWell(
+              onTap: () => setState(() => _expanded = !_expanded),
+              borderRadius: SkillDrillsRadius.mdBorderRadius,
+              child: Padding(
+                padding: const EdgeInsets.all(SkillDrillsSpacing.md),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            session.title,
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  fontFamily: 'Choplin',
+                                  fontWeight: FontWeight.w700,
+                                ),
+                          ),
                         ),
-                      ),
-                      Icon(
-                        _expanded ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,
-                        size: 20,
-                        color: Theme.of(context).colorScheme.onPrimary,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Wrap(
-                    spacing: 10,
-                    runSpacing: 4,
-                    children: [
-                      _StatChip(icon: Icons.access_time_rounded, label: _formatTime(session.startedAt)),
-                      _StatChip(icon: Icons.timer_outlined, label: _formatDuration(session.durationSeconds)),
-                      _StatChip(
-                        icon: Icons.fitness_center_rounded,
-                        label: '${session.drillCount} drill${session.drillCount == 1 ? '' : 's'}',
-                      ),
-                      if (session.routineTitle != null) _StatChip(icon: Icons.event_note_rounded, label: session.routineTitle!),
-                    ],
-                  ),
-                ],
+                        Icon(
+                          _expanded ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,
+                          size: 20,
+                          color: Theme.of(context).colorScheme.onPrimary,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 4,
+                      children: [
+                        _StatChip(icon: Icons.access_time_rounded, label: _formatTime(session.startedAt)),
+                        _StatChip(icon: Icons.timer_outlined, label: _formatDuration(session.durationSeconds)),
+                        _StatChip(
+                          icon: Icons.fitness_center_rounded,
+                          label: '${session.drillCount} drill${session.drillCount == 1 ? '' : 's'}',
+                        ),
+                        if (session.routineTitle != null) _StatChip(icon: Icons.event_note_rounded, label: session.routineTitle!),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-          if (_expanded && session.drillResults.isNotEmpty) ...[
-            Divider(color: Theme.of(context).dividerColor, height: 1),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(SkillDrillsSpacing.md, 8, SkillDrillsSpacing.md, SkillDrillsSpacing.sm),
-              child: Column(
-                children: [
-                  ...session.drillResults.map((d) => _DrillResultTile(drillResult: d, isPro: widget.isPro, pbMap: widget.pbMap)),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      TextButton.icon(
-                        style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          minimumSize: Size.zero,
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            if (_expanded && session.drillResults.isNotEmpty) ...[
+              Divider(color: Theme.of(context).dividerColor, height: 1),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(SkillDrillsSpacing.md, 8, SkillDrillsSpacing.md, SkillDrillsSpacing.sm),
+                child: Column(
+                  children: [
+                    ...session.drillResults.map((d) => _DrillResultTile(drillResult: d, isPro: widget.isPro, pbMap: widget.pbMap)),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        TextButton.icon(
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            minimumSize: Size.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                          icon: _savingRoutine ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.event_note_rounded, size: 16),
+                          label: const Text('Save as Routine'),
+                          onPressed: _savingRoutine ? null : _createRoutineFromSession,
                         ),
-                        icon: _savingRoutine ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.event_note_rounded, size: 16),
-                        label: const Text('Save as Routine'),
-                        onPressed: _savingRoutine ? null : _createRoutineFromSession,
-                      ),
-                      TextButton.icon(
-                        style: TextButton.styleFrom(
-                          foregroundColor: Theme.of(context).colorScheme.error,
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          minimumSize: Size.zero,
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        TextButton.icon(
+                          style: TextButton.styleFrom(
+                            foregroundColor: Theme.of(context).colorScheme.error,
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            minimumSize: Size.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                          icon: const Icon(Icons.delete_outline_rounded, size: 16),
+                          label: const Text('Delete session'),
+                          onPressed: widget.onDelete,
                         ),
-                        icon: const Icon(Icons.delete_outline_rounded, size: 16),
-                        label: const Text('Delete session'),
-                        onPressed: widget.onDelete,
-                      ),
-                    ],
-                  ),
-                ],
+                      ],
+                    ),
+                  ],
+                ),
               ),
-            ),
+            ],
           ],
-        ],
-      ),
-    ),  // Card
+        ),
+      ), // Card
     ); // Dismissible
   }
 }
