@@ -9,6 +9,7 @@ import 'package:skilldrills/models/firestore/drill.dart';
 import 'package:skilldrills/models/firestore/drill_type.dart';
 import 'package:skilldrills/models/firestore/measurement.dart';
 import 'package:skilldrills/models/firestore/measurement_target.dart';
+import 'package:skilldrills/models/firestore/timer_mode.dart';
 import 'package:skilldrills/widgets/basic_title.dart';
 import 'package:skilldrills/services/utility.dart';
 import 'package:skilldrills/theme/theme.dart';
@@ -32,6 +33,8 @@ class _DrillDetailState extends State<DrillDetail> {
   final _formKey = GlobalKey<FormState>();
   final _titleFieldController = TextEditingController();
   final _descriptionFieldController = TextEditingController();
+  final _countdownDurationController = TextEditingController();
+  final _targetTimeController = TextEditingController();
   final _timerTextController = TextEditingController();
 
   Drill? _drill = Drill("", "", Activity("", null), null);
@@ -127,6 +130,13 @@ class _DrillDetailState extends State<DrillDetail> {
         _drillType = widget.drill!.drillType;
         if (widget.drill!.drillType != null) {
           _timerTextController.text = printDuration(Duration(seconds: widget.drill!.drillType!.timerInSeconds));
+        }
+        // Populate timer mode fields
+        if (widget.drill!.defaultCountdownSeconds != null) {
+          _countdownDurationController.text = printDuration(Duration(seconds: widget.drill!.defaultCountdownSeconds!));
+        }
+        if (widget.drill!.targetSeconds != null) {
+          _targetTimeController.text = printDuration(Duration(seconds: widget.drill!.targetSeconds!));
         }
       });
 
@@ -316,6 +326,25 @@ class _DrillDetailState extends State<DrillDetail> {
                     _buildInfoSection(),
                     _buildCategorySection(),
                     _buildTypeSection(),
+                    AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 400),
+                      transitionBuilder: (child, anim) => FadeTransition(
+                        opacity: anim,
+                        child: SlideTransition(
+                          position: Tween<Offset>(
+                            begin: const Offset(0, 0.08),
+                            end: Offset.zero,
+                          ).animate(CurvedAnimation(parent: anim, curve: Curves.easeOutCubic)),
+                          child: child,
+                        ),
+                      ),
+                      child: _drillType != null && _hasDurationMeasurements()
+                          ? Container(
+                              key: const ValueKey('timer-config'),
+                              child: _buildTimerConfigSection(),
+                            )
+                          : const SizedBox.shrink(key: ValueKey('no-timer-config')),
+                    ),
                     AnimatedSwitcher(
                       duration: const Duration(milliseconds: 400),
                       transitionBuilder: (child, anim) => FadeTransition(
@@ -1589,6 +1618,279 @@ class _DrillDetailState extends State<DrillDetail> {
           ],
         ),
       ),
+    );
+  }
+
+  // ── Timer configuration helpers ───────────────────────────────────────────
+
+  bool _hasDurationMeasurements() {
+    final measurements = _drill?.measurements ?? _drillType?.measurements ?? <Measurement>[];
+    return measurements.any((m) => m.type == 'duration');
+  }
+
+  Widget _buildTimerConfigSection() {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionHeader(
+          Icons.timer_outlined,
+          'Timer Configuration',
+          subtitle: 'Choose how time is tracked for this drill',
+        ),
+        Container(
+          color: theme.colorScheme.surface,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Divider(height: 1, color: theme.dividerColor),
+              // Timer mode radio buttons
+              RadioListTile<TimerMode>(
+                value: TimerMode.none,
+                groupValue: _drill!.timerMode,
+                onChanged: (value) {
+                  setState(() {
+                    _drill!.timerMode = value!;
+                    _countdownDurationController.clear();
+                    _targetTimeController.clear();
+                    _drill!.defaultCountdownSeconds = null;
+                    _drill!.targetSeconds = null;
+                  });
+                },
+                title: Text(TimerMode.none.displayName, style: theme.textTheme.bodyLarge),
+                subtitle: Text(
+                  TimerMode.none.description,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurface.withAlpha(150),
+                  ),
+                ),
+              ),
+              Divider(height: 1, color: theme.dividerColor),
+              RadioListTile<TimerMode>(
+                value: TimerMode.stopwatch,
+                groupValue: _drill!.timerMode,
+                onChanged: (value) {
+                  setState(() {
+                    _drill!.timerMode = value!;
+                    _countdownDurationController.clear();
+                    _drill!.defaultCountdownSeconds = null;
+                  });
+                },
+                title: Text(TimerMode.stopwatch.displayName, style: theme.textTheme.bodyLarge),
+                subtitle: Text(
+                  TimerMode.stopwatch.description,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurface.withAlpha(150),
+                  ),
+                ),
+              ),
+              // Target time field (stopwatch mode only)
+              AnimatedSize(
+                duration: const Duration(milliseconds: 250),
+                curve: Curves.easeOutCubic,
+                child: _drill!.timerMode == TimerMode.stopwatch
+                    ? Column(
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(
+                              SkillDrillsSpacing.md,
+                              0,
+                              SkillDrillsSpacing.md,
+                              SkillDrillsSpacing.md,
+                            ),
+                            child: TextField(
+                              controller: _targetTimeController,
+                              keyboardType: TextInputType.number,
+                              readOnly: true,
+                              style: theme.textTheme.bodyLarge,
+                              decoration: InputDecoration(
+                                labelText: 'Target Time (Optional)',
+                                hintText: 'Tap to set goal time',
+                                hintStyle: theme.textTheme.bodyMedium,
+                                prefixIcon: Icon(
+                                  Icons.flag_outlined,
+                                  size: 20,
+                                  color: theme.colorScheme.onSurface.withAlpha(170),
+                                ),
+                                suffixIcon: _targetTimeController.text.isNotEmpty
+                                    ? IconButton(
+                                        icon: const Icon(Icons.clear_rounded, size: 18),
+                                        onPressed: () {
+                                          setState(() {
+                                            _targetTimeController.clear();
+                                            _drill!.targetSeconds = null;
+                                          });
+                                        },
+                                      )
+                                    : null,
+                                labelStyle: TextStyle(
+                                  fontSize: 14,
+                                  color: theme.colorScheme.onSurface.withAlpha(170),
+                                ),
+                              ),
+                              onTap: () {
+                                const TextStyle suffixStyle = TextStyle(fontSize: 14, height: 1.5);
+                                Picker(
+                                  adapter: NumberPickerAdapter(data: <NumberPickerColumn>[
+                                    const NumberPickerColumn(
+                                      begin: 0,
+                                      end: 24,
+                                      suffix: Text(' hrs', style: suffixStyle),
+                                      jump: 1,
+                                    ),
+                                    const NumberPickerColumn(
+                                      begin: 0,
+                                      end: 59,
+                                      suffix: Text(' mins', style: suffixStyle),
+                                      jump: 1,
+                                    ),
+                                    const NumberPickerColumn(
+                                      begin: 0,
+                                      end: 59,
+                                      suffix: Text(' secs', style: suffixStyle),
+                                      jump: 5,
+                                    ),
+                                  ]),
+                                  height: 200,
+                                  backgroundColor: theme.colorScheme.surface,
+                                  textStyle: theme.textTheme.headlineSmall,
+                                  hideHeader: true,
+                                  confirmText: 'Ok',
+                                  confirmTextStyle: TextStyle(inherit: false, color: theme.primaryColor),
+                                  title: const Text('Target Time'),
+                                  selectedTextStyle: TextStyle(color: theme.primaryColor),
+                                  onConfirm: (Picker picker, List<int> value) {
+                                    final duration = Duration(
+                                      hours: picker.getSelectedValues()[0],
+                                      minutes: picker.getSelectedValues()[1],
+                                      seconds: picker.getSelectedValues()[2],
+                                    );
+                                    _targetTimeController.text = printDuration(duration);
+                                    setState(() => _drill!.targetSeconds = duration.inSeconds);
+                                  },
+                                ).showDialog(context);
+                              },
+                            ),
+                          ),
+                        ],
+                      )
+                    : const SizedBox.shrink(),
+              ),
+              Divider(height: 1, color: theme.dividerColor),
+              RadioListTile<TimerMode>(
+                value: TimerMode.countdown,
+                groupValue: _drill!.timerMode,
+                onChanged: (value) {
+                  setState(() {
+                    _drill!.timerMode = value!;
+                    _targetTimeController.clear();
+                    _drill!.targetSeconds = null;
+                  });
+                },
+                title: Text(TimerMode.countdown.displayName, style: theme.textTheme.bodyLarge),
+                subtitle: Text(
+                  TimerMode.countdown.description,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurface.withAlpha(150),
+                  ),
+                ),
+              ),
+              // Countdown duration field (countdown mode only)
+              AnimatedSize(
+                duration: const Duration(milliseconds: 250),
+                curve: Curves.easeOutCubic,
+                child: _drill!.timerMode == TimerMode.countdown
+                    ? Column(
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(
+                              SkillDrillsSpacing.md,
+                              0,
+                              SkillDrillsSpacing.md,
+                              SkillDrillsSpacing.md,
+                            ),
+                            child: TextField(
+                              controller: _countdownDurationController,
+                              keyboardType: TextInputType.number,
+                              readOnly: true,
+                              style: theme.textTheme.bodyLarge,
+                              decoration: InputDecoration(
+                                labelText: 'Countdown Duration',
+                                hintText: 'Tap to set duration',
+                                hintStyle: theme.textTheme.bodyMedium,
+                                prefixIcon: Icon(
+                                  Icons.hourglass_bottom_outlined,
+                                  size: 20,
+                                  color: theme.colorScheme.onSurface.withAlpha(170),
+                                ),
+                                suffixIcon: _countdownDurationController.text.isNotEmpty
+                                    ? IconButton(
+                                        icon: const Icon(Icons.clear_rounded, size: 18),
+                                        onPressed: () {
+                                          setState(() {
+                                            _countdownDurationController.clear();
+                                            _drill!.defaultCountdownSeconds = null;
+                                          });
+                                        },
+                                      )
+                                    : null,
+                                labelStyle: TextStyle(
+                                  fontSize: 14,
+                                  color: theme.colorScheme.onSurface.withAlpha(170),
+                                ),
+                              ),
+                              onTap: () {
+                                const TextStyle suffixStyle = TextStyle(fontSize: 14, height: 1.5);
+                                Picker(
+                                  adapter: NumberPickerAdapter(data: <NumberPickerColumn>[
+                                    const NumberPickerColumn(
+                                      begin: 0,
+                                      end: 24,
+                                      suffix: Text(' hrs', style: suffixStyle),
+                                      jump: 1,
+                                    ),
+                                    const NumberPickerColumn(
+                                      begin: 0,
+                                      end: 59,
+                                      suffix: Text(' mins', style: suffixStyle),
+                                      jump: 1,
+                                    ),
+                                    const NumberPickerColumn(
+                                      begin: 0,
+                                      end: 59,
+                                      suffix: Text(' secs', style: suffixStyle),
+                                      jump: 5,
+                                    ),
+                                  ]),
+                                  height: 200,
+                                  backgroundColor: theme.colorScheme.surface,
+                                  textStyle: theme.textTheme.headlineSmall,
+                                  hideHeader: true,
+                                  confirmText: 'Ok',
+                                  confirmTextStyle: TextStyle(inherit: false, color: theme.primaryColor),
+                                  title: const Text('Countdown Duration'),
+                                  selectedTextStyle: TextStyle(color: theme.primaryColor),
+                                  onConfirm: (Picker picker, List<int> value) {
+                                    final duration = Duration(
+                                      hours: picker.getSelectedValues()[0],
+                                      minutes: picker.getSelectedValues()[1],
+                                      seconds: picker.getSelectedValues()[2],
+                                    );
+                                    _countdownDurationController.text = printDuration(duration);
+                                    setState(() => _drill!.defaultCountdownSeconds = duration.inSeconds);
+                                  },
+                                ).showDialog(context);
+                              },
+                            ),
+                          ),
+                        ],
+                      )
+                    : const SizedBox.shrink(),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
