@@ -2,15 +2,18 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_picker_plus/flutter_picker_plus.dart';
 import 'package:skilldrills/main.dart';
 import 'package:skilldrills/models/firestore/activity.dart';
 import 'package:skilldrills/models/firestore/drill.dart';
 import 'package:skilldrills/models/firestore/routine.dart';
 import 'package:skilldrills/models/firestore/skill_drill_user.dart';
+import 'package:skilldrills/models/firestore/timer_mode.dart';
 import 'package:skilldrills/models/skill_drills_dialog.dart';
 import 'package:skilldrills/services/dialogs.dart';
 import 'package:skilldrills/services/factory.dart' as firestore_factory;
 import 'package:skilldrills/services/subscription.dart';
+import 'package:skilldrills/services/utility.dart';
 import 'package:skilldrills/tabs/drills/drill_detail.dart';
 import 'package:skilldrills/theme/theme.dart';
 import 'package:skilldrills/widgets/basic_title.dart';
@@ -493,6 +496,32 @@ class _RoutineDetailState extends State<RoutineDetail> {
     final setsCtrl = TextEditingController(text: rd.sets?.toString() ?? '');
     final repsCtrl = TextEditingController(text: rd.reps?.toString() ?? '');
 
+    // Find the full Drill object to check for duration measurements and default timer config
+    final drill = _allDrills.cast<Drill?>().firstWhere((d) => d?.reference?.id == rd.drillId, orElse: () => null);
+    final hasDuration = drill != null && (drill.drillType?.measurements?.any((m) => m.type == 'duration') ?? false);
+
+    // Timer configuration state (mutable within the StatefulBuilder)
+    TimerMode selectedTimerMode = rd.timerMode;
+    final countdownCtrl = TextEditingController(
+      text: rd.countdownSeconds != null ? printDuration(Duration(seconds: rd.countdownSeconds!)) : '',
+    );
+    final targetCtrl = TextEditingController(
+      text: rd.targetSeconds != null ? printDuration(Duration(seconds: rd.targetSeconds!)) : '',
+    );
+
+    // Pre-populate from drill defaults if routine values are missing but drill has config
+    if (hasDuration && drill.timerMode != TimerMode.none) {
+      if (selectedTimerMode == TimerMode.none) {
+        selectedTimerMode = drill.timerMode;
+      }
+      if (selectedTimerMode == TimerMode.countdown && countdownCtrl.text.isEmpty && drill.defaultCountdownSeconds != null) {
+        countdownCtrl.text = printDuration(Duration(seconds: drill.defaultCountdownSeconds!));
+      }
+      if (selectedTimerMode == TimerMode.stopwatch && targetCtrl.text.isEmpty && drill.targetSeconds != null) {
+        targetCtrl.text = printDuration(Duration(seconds: drill.targetSeconds!));
+      }
+    }
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -501,95 +530,261 @@ class _RoutineDetailState extends State<RoutineDetail> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(SkillDrillsRadius.lg)),
       ),
       builder: (ctx) {
-        return Padding(
-          padding: EdgeInsets.only(
-            left: SkillDrillsSpacing.md,
-            right: SkillDrillsSpacing.md,
-            top: SkillDrillsSpacing.md,
-            bottom: MediaQuery.of(ctx).viewInsets.bottom + SkillDrillsSpacing.lg,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Handle
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).dividerColor,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
+        return StatefulBuilder(
+          builder: (ctx, setModalState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                left: SkillDrillsSpacing.md,
+                right: SkillDrillsSpacing.md,
+                top: SkillDrillsSpacing.md,
+                bottom: MediaQuery.of(ctx).viewInsets.bottom + SkillDrillsSpacing.lg,
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Handle
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).dividerColor,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Text(
+                      rd.title,
+                      style: Theme.of(context).textTheme.titleLarge,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Configure this ${_drillLabel.toLowerCase()} for the routine.',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.55),
+                          ),
+                    ),
+                    const SizedBox(height: 20),
+                    // Sets / Reps
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _NumberStepField(
+                            controller: setsCtrl,
+                            label: _setsLabel,
+                            hint: 'e.g. 3',
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _NumberStepField(
+                            controller: repsCtrl,
+                            label: _repsLabel,
+                            hint: 'e.g. 10',
+                          ),
+                        ),
+                      ],
+                    ),
+                    // Timer configuration (only for drills with duration measurements)
+                    if (hasDuration) ...[
+                      const SizedBox(height: 24),
+                      Text(
+                        'Timer Mode',
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                      ),
+                      const SizedBox(height: 8),
+                      // Timer mode chips
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: TimerMode.values.map((mode) {
+                          final isSelected = selectedTimerMode == mode;
+                          return ChoiceChip(
+                            label: Text(mode.displayName),
+                            selected: isSelected,
+                            onSelected: (selected) {
+                              setModalState(() {
+                                selectedTimerMode = mode;
+                                if (mode != TimerMode.countdown) countdownCtrl.clear();
+                                if (mode != TimerMode.stopwatch) targetCtrl.clear();
+                              });
+                            },
+                          );
+                        }).toList(),
+                      ),
+                      // Countdown duration field
+                      if (selectedTimerMode == TimerMode.countdown) ...[
+                        const SizedBox(height: 16),
+                        TextField(
+                          controller: countdownCtrl,
+                          keyboardType: TextInputType.number,
+                          readOnly: true,
+                          decoration: InputDecoration(
+                            labelText: 'Countdown Duration',
+                            hintText: 'Tap to set',
+                            hintStyle: Theme.of(context).textTheme.bodyMedium,
+                            prefixIcon: const Icon(Icons.hourglass_bottom_outlined, size: 20),
+                            suffixIcon: countdownCtrl.text.isNotEmpty
+                                ? IconButton(
+                                    icon: const Icon(Icons.clear_rounded, size: 18),
+                                    onPressed: () {
+                                      setModalState(() => countdownCtrl.clear());
+                                    },
+                                  )
+                                : null,
+                          ),
+                          onTap: () {
+                            const TextStyle suffixStyle = TextStyle(fontSize: 14, height: 1.5);
+                            Picker(
+                              adapter: NumberPickerAdapter(data: <NumberPickerColumn>[
+                                const NumberPickerColumn(begin: 0, end: 24, suffix: Text(' hrs', style: suffixStyle), jump: 1),
+                                const NumberPickerColumn(begin: 0, end: 59, suffix: Text(' mins', style: suffixStyle), jump: 1),
+                                const NumberPickerColumn(begin: 0, end: 59, suffix: Text(' secs', style: suffixStyle), jump: 5),
+                              ]),
+                              height: 200,
+                              backgroundColor: Theme.of(context).colorScheme.surface,
+                              textStyle: Theme.of(context).textTheme.headlineSmall,
+                              hideHeader: true,
+                              confirmText: 'Ok',
+                              confirmTextStyle: TextStyle(inherit: false, color: Theme.of(context).primaryColor),
+                              title: const Text('Countdown Duration'),
+                              selectedTextStyle: TextStyle(color: Theme.of(context).primaryColor),
+                              onConfirm: (Picker picker, List<int> value) {
+                                final duration = Duration(
+                                  hours: picker.getSelectedValues()[0],
+                                  minutes: picker.getSelectedValues()[1],
+                                  seconds: picker.getSelectedValues()[2],
+                                );
+                                setModalState(() {
+                                  countdownCtrl.text = printDuration(duration);
+                                });
+                              },
+                            ).showDialog(context);
+                          },
+                        ),
+                      ],
+                      // Target time field
+                      if (selectedTimerMode == TimerMode.stopwatch) ...[
+                        const SizedBox(height: 16),
+                        TextField(
+                          controller: targetCtrl,
+                          keyboardType: TextInputType.number,
+                          readOnly: true,
+                          decoration: InputDecoration(
+                            labelText: 'Target Time (Optional)',
+                            hintText: 'Tap to set goal',
+                            hintStyle: Theme.of(context).textTheme.bodyMedium,
+                            prefixIcon: const Icon(Icons.flag_outlined, size: 20),
+                            suffixIcon: targetCtrl.text.isNotEmpty
+                                ? IconButton(
+                                    icon: const Icon(Icons.clear_rounded, size: 18),
+                                    onPressed: () {
+                                      setModalState(() => targetCtrl.clear());
+                                    },
+                                  )
+                                : null,
+                          ),
+                          onTap: () {
+                            const TextStyle suffixStyle = TextStyle(fontSize: 14, height: 1.5);
+                            Picker(
+                              adapter: NumberPickerAdapter(data: <NumberPickerColumn>[
+                                const NumberPickerColumn(begin: 0, end: 24, suffix: Text(' hrs', style: suffixStyle), jump: 1),
+                                const NumberPickerColumn(begin: 0, end: 59, suffix: Text(' mins', style: suffixStyle), jump: 1),
+                                const NumberPickerColumn(begin: 0, end: 59, suffix: Text(' secs', style: suffixStyle), jump: 5),
+                              ]),
+                              height: 200,
+                              backgroundColor: Theme.of(context).colorScheme.surface,
+                              textStyle: Theme.of(context).textTheme.headlineSmall,
+                              hideHeader: true,
+                              confirmText: 'Ok',
+                              confirmTextStyle: TextStyle(inherit: false, color: Theme.of(context).primaryColor),
+                              title: const Text('Target Time'),
+                              selectedTextStyle: TextStyle(color: Theme.of(context).primaryColor),
+                              onConfirm: (Picker picker, List<int> value) {
+                                final duration = Duration(
+                                  hours: picker.getSelectedValues()[0],
+                                  minutes: picker.getSelectedValues()[1],
+                                  seconds: picker.getSelectedValues()[2],
+                                );
+                                setModalState(() {
+                                  targetCtrl.text = printDuration(duration);
+                                });
+                              },
+                            ).showDialog(context);
+                          },
+                        ),
+                      ],
+                    ],
+                    const SizedBox(height: 20),
+                    // Actions
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton(
+                          onPressed: () => Navigator.of(ctx).pop(),
+                          child: const Text('Cancel'),
+                        ),
+                        const SizedBox(width: 8),
+                        FilledButton(
+                          onPressed: () {
+                            final sets = int.tryParse(setsCtrl.text.trim());
+                            final reps = int.tryParse(repsCtrl.text.trim());
+                            final countdownSeconds = countdownCtrl.text.isNotEmpty ? _parseDuration(countdownCtrl.text) : null;
+                            final targetSeconds = targetCtrl.text.isNotEmpty ? _parseDuration(targetCtrl.text) : null;
+
+                            setState(() {
+                              _selectedDrills[drillIndex] = RoutineDrill(
+                                rd.drillId,
+                                rd.title,
+                                rd.order,
+                                sets: sets,
+                                reps: reps,
+                                timerMode: selectedTimerMode,
+                                countdownSeconds: countdownSeconds,
+                                targetSeconds: targetSeconds,
+                                notes: rd.notes,
+                              );
+                            });
+                            Navigator.of(ctx).pop();
+                          },
+                          child: const Text('Done'),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 14),
-              Text(
-                rd.title,
-                style: Theme.of(context).textTheme.titleLarge,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Set $_setsLabel and $_repsLabel for this ${_drillLabel.toLowerCase()}.',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.55),
-                    ),
-              ),
-              const SizedBox(height: 20),
-              Row(
-                children: [
-                  Expanded(
-                    child: _NumberStepField(
-                      controller: setsCtrl,
-                      label: _setsLabel,
-                      hint: 'e.g. 3',
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _NumberStepField(
-                      controller: repsCtrl,
-                      label: _repsLabel,
-                      hint: 'e.g. 10',
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton(
-                    onPressed: () => Navigator.of(ctx).pop(),
-                    child: const Text('Cancel'),
-                  ),
-                  const SizedBox(width: 8),
-                  FilledButton(
-                    onPressed: () {
-                      final sets = int.tryParse(setsCtrl.text.trim());
-                      final reps = int.tryParse(repsCtrl.text.trim());
-                      setState(() {
-                        _selectedDrills[drillIndex] = RoutineDrill(
-                          rd.drillId,
-                          rd.title,
-                          rd.order,
-                          sets: sets,
-                          reps: reps,
-                        );
-                      });
-                      Navigator.of(ctx).pop();
-                    },
-                    child: const Text('Done'),
-                  ),
-                ],
-              ),
-            ],
-          ),
+            );
+          },
         );
       },
     );
+  }
+
+  /// Parse a duration string like "1h 30m 45s" back to seconds.
+  int _parseDuration(String text) {
+    final regex = RegExp(r'(\d+)\s*([hms])');
+    final matches = regex.allMatches(text);
+    int totalSeconds = 0;
+    for (final match in matches) {
+      final value = int.parse(match.group(1)!);
+      final unit = match.group(2);
+      if (unit == 'h') {
+        totalSeconds += value * 3600;
+      } else if (unit == 'm') {
+        totalSeconds += value * 60;
+      } else if (unit == 's') {
+        totalSeconds += value;
+      }
+    }
+    return totalSeconds;
   }
 
   // ── UI sections ─────────────────────────────────────────────────────────────

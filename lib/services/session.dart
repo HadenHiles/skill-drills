@@ -550,6 +550,15 @@ Future<session_model.DrillResult> buildDrillResultForSession({
   /// Target RIR (Weight Training — used as default for the RIR column).
   int? rir,
 
+  /// Timer behavior for drills with duration measurements (configured in routine builder).
+  TimerMode? timerMode,
+
+  /// Pre-configured countdown duration in seconds (for countdown mode).
+  int? countdownSeconds,
+
+  /// Pre-configured target time in seconds (for stopwatch mode with a goal).
+  int? targetSeconds,
+
   /// Notes pre-authored in the routine builder. Always shown in‐session.
   List<DrillNote>? routineNotes,
 
@@ -703,6 +712,9 @@ Future<session_model.DrillResult> buildDrillResultForSession({
   }
 
   return session_model.DrillResult(
+    timerMode: timerMode ?? TimerMode.none,
+    countdownSeconds: countdownSeconds,
+    targetSeconds: targetSeconds,
     drillId,
     drillTitle,
     activityTitle,

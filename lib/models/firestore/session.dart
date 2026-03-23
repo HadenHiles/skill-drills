@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:skilldrills/models/firestore/drill_note.dart';
 import 'package:skilldrills/models/firestore/measurement_result.dart';
+import 'package:skilldrills/models/firestore/timer_mode.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -62,6 +63,17 @@ class DrillResult {
   /// Optional rest period in seconds shown between sets / after this drill.
   int? restTimerSeconds;
 
+  /// Timer behavior for drills with duration measurements (configured in routine builder).
+  TimerMode timerMode;
+
+  /// Pre-configured countdown duration in seconds (for countdown mode).
+  /// When starting this drill from a routine, the countdown timer is pre-set to this value.
+  int? countdownSeconds;
+
+  /// Pre-configured target time in seconds (for stopwatch mode with a goal).
+  /// When starting this drill from a routine, the stopwatch displays this as a target.
+  int? targetSeconds;
+
   /// Measurement template (role="result"). Values are always null here; this
   /// list defines type/label/order for creating new [SetResult]s.
   List<MeasurementResult> measurementResults;
@@ -96,6 +108,9 @@ class DrillResult {
     this.sets,
     this.reps,
     this.restTimerSeconds,
+    this.timerMode = TimerMode.none,
+    this.countdownSeconds,
+    this.targetSeconds,
     List<MeasurementResult>? measurementResults,
     List<SetResult>? setResults,
     List<List<num?>>? historicSetValues,
@@ -134,6 +149,9 @@ class DrillResult {
         drillTitle = map['drill_title'] as String,
         activityTitle = (map['activity_title'] as String?) ?? '',
         activityIcon = (map['activity_icon'] as String?) ?? '🎯',
+        timerMode = TimerMode.fromString(map['timer_mode'] as String?),
+        countdownSeconds = map['countdown_seconds'] != null ? (map['countdown_seconds'] as num).toInt() : null,
+        targetSeconds = map['target_seconds'] != null ? (map['target_seconds'] as num).toInt() : null,
         order = (map['order'] as num).toInt(),
         setsLabel = (map['sets_label'] as String?) ?? 'Sets',
         repsLabel = (map['reps_label'] as String?) ?? 'Reps',
