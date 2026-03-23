@@ -81,9 +81,9 @@ class _DrillTimerScreenState extends State<DrillTimerScreen> with SingleTickerPr
     final seconds = d.inSeconds % 60;
     final millis = (d.inMilliseconds % 1000) ~/ 100;
     if (minutes > 0) {
-      return '${minutes}:${seconds.toString().padLeft(2, '0')}.${millis}';
+      return '$minutes:${seconds.toString().padLeft(2, '0')}.$millis';
     }
-    return '${seconds}.${millis}s';
+    return '$seconds.${millis}s';
   }
 
   String _formatCountdown(int seconds) {
@@ -92,7 +92,7 @@ class _DrillTimerScreenState extends State<DrillTimerScreen> with SingleTickerPr
     if (m > 0) {
       return '$m:${s.toString().padLeft(2, '0')}';
     }
-    return '${s}s';
+    return '${s}s'; // keep braces: plain 's' suffix needs them to avoid ambiguity
   }
 
   @override

@@ -1645,18 +1645,27 @@ class _DrillDetailState extends State<DrillDetail> {
             children: [
               Divider(height: 1, color: theme.dividerColor),
               // Timer mode radio buttons
-              RadioListTile<TimerMode>(
-                value: TimerMode.none,
+              RadioGroup<TimerMode>(
                 groupValue: _drill!.timerMode,
                 onChanged: (value) {
+                  if (value == null) return;
                   setState(() {
-                    _drill!.timerMode = value!;
-                    _countdownDurationController.clear();
-                    _targetTimeController.clear();
-                    _drill!.defaultCountdownSeconds = null;
-                    _drill!.targetSeconds = null;
+                    _drill!.timerMode = value;
+                    if (value != TimerMode.countdown) {
+                      _countdownDurationController.clear();
+                      _drill!.defaultCountdownSeconds = null;
+                    }
+                    if (value != TimerMode.stopwatch) {
+                      _targetTimeController.clear();
+                      _drill!.targetSeconds = null;
+                    }
                   });
                 },
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+              RadioListTile<TimerMode>(
+                value: TimerMode.none,
                 title: Text(TimerMode.none.displayName, style: theme.textTheme.bodyLarge),
                 subtitle: Text(
                   TimerMode.none.description,
@@ -1668,20 +1677,15 @@ class _DrillDetailState extends State<DrillDetail> {
               Divider(height: 1, color: theme.dividerColor),
               RadioListTile<TimerMode>(
                 value: TimerMode.stopwatch,
-                groupValue: _drill!.timerMode,
-                onChanged: (value) {
-                  setState(() {
-                    _drill!.timerMode = value!;
-                    _countdownDurationController.clear();
-                    _drill!.defaultCountdownSeconds = null;
-                  });
-                },
                 title: Text(TimerMode.stopwatch.displayName, style: theme.textTheme.bodyLarge),
                 subtitle: Text(
                   TimerMode.stopwatch.description,
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.onSurface.withAlpha(150),
                   ),
+                ),
+              ),
+                  ],
                 ),
               ),
               // Target time field (stopwatch mode only)
@@ -1777,16 +1781,24 @@ class _DrillDetailState extends State<DrillDetail> {
                     : const SizedBox.shrink(),
               ),
               Divider(height: 1, color: theme.dividerColor),
-              RadioListTile<TimerMode>(
-                value: TimerMode.countdown,
+              RadioGroup<TimerMode>(
                 groupValue: _drill!.timerMode,
                 onChanged: (value) {
+                  if (value == null) return;
                   setState(() {
-                    _drill!.timerMode = value!;
-                    _targetTimeController.clear();
-                    _drill!.targetSeconds = null;
+                    _drill!.timerMode = value;
+                    if (value != TimerMode.stopwatch) {
+                      _targetTimeController.clear();
+                      _drill!.targetSeconds = null;
+                    }
+                    if (value != TimerMode.countdown) {
+                      _countdownDurationController.clear();
+                      _drill!.defaultCountdownSeconds = null;
+                    }
                   });
                 },
+                child: RadioListTile<TimerMode>(
+                value: TimerMode.countdown,
                 title: Text(TimerMode.countdown.displayName, style: theme.textTheme.bodyLarge),
                 subtitle: Text(
                   TimerMode.countdown.description,
@@ -1794,6 +1806,7 @@ class _DrillDetailState extends State<DrillDetail> {
                     color: theme.colorScheme.onSurface.withAlpha(150),
                   ),
                 ),
+              ),
               ),
               // Countdown duration field (countdown mode only)
               AnimatedSize(
