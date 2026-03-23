@@ -4,7 +4,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:skilldrills/main.dart';
-import 'package:skilldrills/models/firestore/activity.dart';
 import 'package:skilldrills/models/firestore/drill_note.dart';
 import 'package:skilldrills/models/firestore/personal_best.dart';
 import 'package:skilldrills/models/firestore/routine.dart';
@@ -63,22 +62,18 @@ class _HistoryState extends State<History> with SingleTickerProviderStateMixin {
   }
 
   Future<void> _initState() async {
-    final uid = _auth.currentUser!.uid;
-    final results = await Future.wait([
-      hasActiveSubscription(),
-      FirebaseFirestore.instance.collection('activities').doc(uid).collection('activities').where('is_active', isEqualTo: true).limit(1).get(),
-    ]);
-    final isPro = results[0] as bool;
-    final actSnap = results[1] as QuerySnapshot;
-    final activeTitle = actSnap.docs.isNotEmpty ? Activity.fromSnapshot(actSnap.docs.first as DocumentSnapshot<Map<String, dynamic>>).title : null;
+    final isPro = await hasActiveSubscription();
 
     if (mounted) {
       setState(() {
         _isPro = isPro;
-        _activeActivityTitle = activeTitle;
+        _activeActivityTitle = activeActivityNotifier.primary?.title;
       });
       _rebuildStream();
     }
+
+    // Rebuild the Firestore query whenever the active activity changes.
+    activeActivityNotifier.addListener(_onActiveActivityChanged);
 
     _customerInfoSub = customerInfoStream.listen((info) {
       final nowPro = info.entitlements.active.containsKey(kProEntitlement);
@@ -87,6 +82,14 @@ class _HistoryState extends State<History> with SingleTickerProviderStateMixin {
         _rebuildStream();
       }
     });
+  }
+
+  void _onActiveActivityChanged() {
+    final newTitle = activeActivityNotifier.primary?.title;
+    if (newTitle != _activeActivityTitle) {
+      setState(() => _activeActivityTitle = newTitle);
+      _rebuildStream();
+    }
   }
 
   void _rebuildStream() {
@@ -121,6 +124,7 @@ class _HistoryState extends State<History> with SingleTickerProviderStateMixin {
 
   @override
   void dispose() {
+    activeActivityNotifier.removeListener(_onActiveActivityChanged);
     _customerInfoSub?.cancel();
     _animController.dispose();
     super.dispose();
