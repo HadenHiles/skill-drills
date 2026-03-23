@@ -205,16 +205,27 @@ class _SessionState extends State<Session> with SingleTickerProviderStateMixin {
         'Save & Finish',
         () async {
           Navigator.of(context).pop();
-          final newPbs = await sessionService.finishSession();
+          // Close the panel immediately so any subsequently-started routine
+          // session is not affected by the deferred save completing later.
           widget.sessionPanelController.close();
-          if (mounted) {
-            if (_isPro && newPbs.isNotEmpty) {
-              _showPbSummary(context, newPbs);
-            } else {
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                content: Text('"$title" saved!'),
+          try {
+            final newPbs = await sessionService.finishSession();
+            if (mounted) {
+              if (_isPro && newPbs.isNotEmpty) {
+                _showPbSummary(context, newPbs);
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                  content: Text('"$title" saved!'),
+                  behavior: SnackBarBehavior.floating,
+                  duration: const Duration(seconds: 3),
+                ));
+              }
+            }
+          } catch (e) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                content: Text('Failed to save session. Please try again.'),
                 behavior: SnackBarBehavior.floating,
-                duration: const Duration(seconds: 3),
               ));
             }
           }
